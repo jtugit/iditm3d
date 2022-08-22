@@ -8,11 +8,11 @@
 using namespace std;
 
 /** evaluate source terms excluding collision terms */
-void source_terms(Field ***,Field ***,Field ***,Field ***,int,int,int,int,int,int,int,double []);
+void source_terms(Field ***,Field ***,Field ***,Field ***,int,int,int,int,int,int,int,double [], double[]);
 
 int forward_scheme(DM da, Vec Xn, Vec Xn1, AppCtx *params)
 {
-    double source[nvar-3];
+    double source[nvar-3], Ls[14];
     Vec    localX, localU, localV, localW, localZ;
     Field  ***xn, ***xn1, ***uu, ***vv, ***ww, ***zz;
     int    xs, xm, ys, ym, zs, zm;
@@ -29,7 +29,7 @@ int forward_scheme(DM da, Vec Xn, Vec Xn1, AppCtx *params)
      * xn1 used is local array.
      * This routine must be called before declaring local uu, vv, ww, & zz
      *---------------------------------------------------------------------*/
-    paramaters(da, xn1, params);
+    parameters(da, xn1, params);
     /*---------------------------------------------------------------------
      *---------------------------------------------------------------------*/
 
@@ -96,12 +96,12 @@ int forward_scheme(DM da, Vec Xn, Vec Xn1, AppCtx *params)
 
                 if (i == 0 || i == Nr) continue;
 
-                source_terms(xn1, uu, ww, zz, xs, i, j, k, zk, yj, xi, source);
+                source_terms(xn1, uu, ww, zz, xs, i, j, k, zk, yj, xi, source, Ls);
 
                 /*-------numerical fluxes at the bottom face i-1/2 of the cell i
                  *-------------------------------------------------------------------*/
                 if (i==1 || (i==xs && i > 0)) {
-                    fluxes_r(xn1, uu, vv, i, j, k, flux_rthph);
+                    fluxes_r(xn1, uu, vv, zz, i, j, k, flux_rthph);
                     for (s=0; s< nvarm3; s++) Fr_atfaces[0][s]=flux_rthph[s];
                 }
                 else {
@@ -109,7 +109,7 @@ int forward_scheme(DM da, Vec Xn, Vec Xn1, AppCtx *params)
                 }
 
                 //numerical fluxes at the top face i+1/2 of the cell (i, j, k)
-                fluxes_r(xn1, uu, vv, ip, j, k, flux_rthph);
+                fluxes_r(xn1, uu, vv, zz, ip, j, k, flux_rthph);
                 for (s=0; s< nvarm3; s++) Fr_atfaces[1][s]=flux_rthph[s];
 
                 /*--------numerical fluxes at the left face j-1/2 of the cell (i, j, k)
@@ -117,7 +117,7 @@ int forward_scheme(DM da, Vec Xn, Vec Xn1, AppCtx *params)
                 if (j == ys) {
                     if (j == 0) for (s=0; s<nvarm3; s++) Ftheta_Lface[s] = 0.0;
                     else {
-                        fluxes_theta(xn1, uu, ww, i, j, k, flux_rthph);
+                        fluxes_theta(xn1, uu, ww, zz, i, j, k, flux_rthph);
                         for (s=0; s<nvarm3; s++) Ftheta_Lface[s]=flux_rthph[s];
                     }
                 }
@@ -127,7 +127,7 @@ int forward_scheme(DM da, Vec Xn, Vec Xn1, AppCtx *params)
 
                 //numerical fluxes at the right face j+1/2 of the cell (i, j, k)
                 if (j < Nthm) {
-                    fluxes_theta(xn1, uu, ww, i, jp, k, flux_rthph);
+                    fluxes_theta(xn1, uu, ww, zz, i, jp, k, flux_rthph);
                     for (s=0; s<nvarm3; s++) Ftheta_Rface[xi][s]=flux_rthph[s];
                 }
                 else for (s=0; s<nvarm3; s++) Ftheta_Rface[xi][s]=0.0;
@@ -146,7 +146,7 @@ int forward_scheme(DM da, Vec Xn, Vec Xn1, AppCtx *params)
                 fluxes_phi(xn1, uu, zz, i, j, kp, flux_rthph);
                 for (s=0; s<nvarm3; s++) Fphi_Rface[yj][xi][s]=flux_rthph[s];
 
-                //RHS of fluid equations
+                //solution of fluid equations
                 for (s=0; s<nvarm3; s++) {
                     xn[k][j][i].fx[s]= xn1[k][j][i].fx[s]
                                       -dt_half*( (rh2[ip]*Fr_atfaces[1][s]-rh2[i]*Fr_atfaces[0][s])/rh_d3[i]
@@ -156,7 +156,7 @@ int forward_scheme(DM da, Vec Xn, Vec Xn1, AppCtx *params)
                                                 -source[s]);
                 }
 
-                //right hand side of magnetic equation
+                //solution of magnetic equation
                 xn[k][j][i].fx[23]= xn1[k][j][i].fx[23]
                                    +dt_half*( (vv[kp][j][i].fx[24]-vv[k][j][i].fx[24])/rh_costh_dth_dph[j][i]
                                              -(sinth_h[jp]*vv[k][jp][i].fx[25]-sinth_h[j]*vv[k][j][i].fx[25])

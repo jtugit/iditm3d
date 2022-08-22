@@ -9,28 +9,28 @@
 using namespace std;
 
 /** evaluate source terms excluding collision terms */
-void source_terms(Field ***,Field ***,Field ***,Field ***,int,int,int,int,int,int,int,double []);
+void source_terms(Field ***,Field ***,Field ***,Field ***,int,int,int,int,int,int,int,double [], double []);
 
 int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
 {
     double source[nvar-3];
-    Vec    localX, localU, localV, localW, localZ;
+    Vec    localXn, localU, localV, localW, localZ;
     Field  ***xx, ***xn, ***xn1, ***uu, ***vv, ***ww, ***zz;
     int    xs, xm, ys, ym, zs, zm;
 
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
 
-    DMGetLocalVector(da, &localX);
-    DMGlobalToLocalBegin(da, Xn, INSERT_VALUES,localX);
-    DMGlobalToLocalEnd(da, Xn, INSERT_VALUES, localX);
-    DMDAVecGetArray(da, localX, &xn);
+    DMGetLocalVector(da, &localXn);
+    DMGlobalToLocalBegin(da, Xn, INSERT_VALUES,localXn);
+    DMGlobalToLocalEnd(da, Xn, INSERT_VALUES, localXn);
+    DMDAVecGetArray(da, localXn, &xn);
 
     /*----------------------------------------------------------------------
      * Calculate various parameters and store in vectors U, V, W, Z.
      * xx used is local array, corresponding to solution X at tn.
      * This routine must be called before declaring local uu, vv, ww, & zz
      *---------------------------------------------------------------------*/
-    paramaters(da, xn, params);
+    parameters(da, xn, params);
     /*---------------------------------------------------------------------
      *---------------------------------------------------------------------*/
 
@@ -61,7 +61,7 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
     int    i, j, k, xi, yj, zk, s, nvarm3=nvar-3, kc;
     int    ip, jm, jp, kp, kprime;
     double flux_rthph[nvar-3], Fr_atfaces[2][nvar-3], Ftheta_Lface[nvar-3], Fphi_Lface[nvar-3];
-    double Erss;
+    double Erss, Ls[14];
 
     for (k = zs; k < zs+zm; k++) {
         zk=k-zs;
@@ -98,12 +98,12 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
 
                 if (i == 0 || i == Nr) continue;
 
-                source_terms(xn, uu, ww, zz, xs, i, j, k, zk, yj, xi, source);
+                source_terms(xn, uu, ww, zz, xs, i, j, k, zk, yj, xi, source, Ls);
 
                 /*-------numerical fluxes at the bottom face i-1/2 of the cell i
                  *-------------------------------------------------------------------*/
                 if (i==1 || (i==xs && i > 0)) {
-                    fluxes_r(xn, uu, vv, i, j, k, flux_rthph);
+                    fluxes_r(xn, uu, vv, zz, i, j, k, flux_rthph);
                     for (s=0; s< nvarm3; s++) Fr_atfaces[0][s]=flux_rthph[s];
                 }
                 else {
@@ -111,7 +111,7 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
                 }
 
                 //numerical fluxes at the top face i+1/2 of the cell (i, j, k)
-                fluxes_r(xn, uu, vv, ip, j, k, flux_rthph);
+                fluxes_r(xn, uu, vv, zz, ip, j, k, flux_rthph);
                 for (s=0; s< nvarm3; s++) Fr_atfaces[1][s]=flux_rthph[s];
 
                 /*--------numerical fluxes at the left face j-1/2 of the cell (i, j, k)
@@ -119,7 +119,7 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
                 if (j == ys) {
                     if (j == 0) for (s=0; s<nvarm3; s++) Ftheta_Lface[s] = 0.0;
                     else {
-                        fluxes_theta(xn, uu, ww, i, j, k, flux_rthph);
+                        fluxes_theta(xn, uu, ww, zz, i, j, k, flux_rthph);
                         for (s=0; s<nvarm3; s++) Ftheta_Lface[s]=flux_rthph[s];
                     }
                 }
@@ -129,7 +129,7 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
 
                 //numerical fluxes at the right face j+1/2 of the cell (i, j, k)
                 if (j < Nthm) {
-                    fluxes_theta(xn, uu, ww, i, jp, k, flux_rthph);
+                    fluxes_theta(xn, uu, ww, zz, i, jp, k, flux_rthph);
                     for (s=0; s<nvarm3; s++) Ftheta_Rface[xi][s]=flux_rthph[s];
                 }
                 else for (s=0; s<nvarm3; s++) Ftheta_Rface[xi][s]=0.0;
@@ -150,6 +150,22 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
 
                 //RHS of fluid equations
                 for (s=0; s<nvarm3; s++) {
+                    if (s < 7)
+                    xx[k][j][i].fx[s]=( xn1[k][j][i].fx[s]
+                                       +dt2*( source[s]-(rh2[ip]*Fr_atfaces[1][s]-rh2[i]*Fr_atfaces[0][s])/rh_d3[i]
+                                            -(sinth_h[jp]*Ftheta_Rface[xi][s]-sinth_h[j]*Ftheta_Lface[s])
+                                             /rfavg_costh[j][i]
+                                            -(Fphi_Rface[yj][xi][s]-Fphi_Lface[s])/rfavg_costh_dth_dph[j][i]))
+                                      /(1.0+dt2*Ls[s]);
+                    //else if(s >= 3 && s < 7) xx[k][j][i].fx[s]=(xn1[k][j][i].fx[s]+dt2*source[s])/(1.0+dt2*Ls[s]);
+                    else if (s >= 12 && s <= 18)
+                    xx[k][j][i].fx[s]=( xn1[k][j][i].fx[s]
+                                       +dt2*( source[s]-(rh2[ip]*Fr_atfaces[1][s]-rh2[i]*Fr_atfaces[0][s])/rh_d3[i]
+                                            -(sinth_h[jp]*Ftheta_Rface[xi][s]-sinth_h[j]*Ftheta_Lface[s])
+                                             /rfavg_costh[j][i]
+                                            -(Fphi_Rface[yj][xi][s]-Fphi_Lface[s])/rfavg_costh_dth_dph[j][i]))
+                                      /(1.0+dt2*Ls[s-5]);
+                    else
                     xx[k][j][i].fx[s]= xn1[k][j][i].fx[s]
                                       +dt2*( source[s]-(rh2[ip]*Fr_atfaces[1][s]-rh2[i]*Fr_atfaces[0][s])/rh_d3[i]
                                             -(sinth_h[jp]*Ftheta_Rface[xi][s]-sinth_h[j]*Ftheta_Lface[s])
@@ -195,7 +211,7 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
                         for (s = 0; s < a3; s++) Erss += vv[s][jm][i].fx[23];
                         Erss = Erss/(double)a3;
 
-                        xx[k][j][i].fx[25]= xn[k][j][i].fx[25]
+                        xx[k][j][i].fx[25]= xn1[k][j][i].fx[25]
                                            +dt2*( (Erss - vv[k][jm][i].fx[23])/rfavg_dth[i]
                                                  -(rh[ip]*vv[k][j][ip].fx[24]-rh[i]*vv[k][j][i].fx[24])/rh_d2[i]);
                     }
@@ -204,16 +220,21 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
                 for (s=0; s<nvar; s++) {
                     if (isnan(xx[k][j][i].fx[s]) || isinf(xx[k][j][i].fx[s])) {
                         cout<<"Solution is Nan or inf at ("<<i<<", "<<j<<", "<<k
-                            <<", "<<s<<") in leap_frog advacen"<<endl;
+                            <<", "<<s<<") in Imex_leap_frog"<<endl;
                         exit(-1);
                     }
                 }
 
                 if(check_positivity(xx, i, j, k, 1) < 0) exit(-12);
 
+                if(i==28 && j==37 && k==73) cout<<params->ndt<<" "<< xx[k][j][i].fx[3]<<endl;
                 for (s = 0; s< nvar; s++) {
+                    //Robert-Asselin time filter
+                    if (params->ndt > params->npre && (params->ndt-params->npre) % 50 == 0)
+                        xn[k][j][i].fx[s] = xn[k][j][i].fx[s]
+                                           +params->RAgamma*(xx[k][j][i].fx[s]-2.0*xn[k][j][i].fx[s]+xn1[k][j][i].fx[s]);
+
                     xn1[k][j][i].fx[s] = xn[k][j][i].fx[s];
-                    xn[k][j][i].fx[s] = xx[k][j][i].fx[s];
                 }
             }
         }
@@ -223,13 +244,17 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
     boundary_bc(xn, xs, xm, ys, ym, zs, zm, params);
     boundary_bc(xn1, xs, xm, ys, ym, zs, zm, params);
 
-    DMDAVecRestoreArray(da, localX, &xn);
+    DMDAVecRestoreArray(da, localXn, &xn);
     DMDAVecRestoreArray(da, localU, &uu);
     DMDAVecRestoreArray(da, localV, &vv);
     DMDAVecRestoreArray(da, localW, &ww);
     DMDAVecRestoreArray(da, localZ, &zz);
 
-    DMRestoreLocalVector(da, &localX);
+    //update gloabl vector Xn from local vector localXn
+    //DMLocalToGlobalBegin(da, localXn, INSERT_VALUES, Xn);
+    //DMLocalToGlobalEnd(da, localXn, INSERT_VALUES, Xn);
+
+    DMRestoreLocalVector(da, &localXn);
     DMRestoreLocalVector(da, &localU);
     DMRestoreLocalVector(da, &localV);
     DMRestoreLocalVector(da, &localW);
@@ -242,6 +267,8 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
     DMDAVecRestoreArray(da, X, &xx);
     DMDAVecRestoreArray(da, Xn, &xn);
     DMDAVecRestoreArray(da, Xn1, &xn1);
+
+    params->sec += dt2;
 
     return 0;
 }

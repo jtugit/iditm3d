@@ -59,28 +59,28 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
                 rhoi = 0.0; ne = 0.0;
                 for (m = 0; m < sl; m++) {
                     xx[k][j][i].fx[m] = xdata[s+m];
-                    rhoi += ms[m]*xx[k][j][i].fx[m];
+                    rhoi += ms[m]*xx[k][j][i].fx[m]; //ion mass density in kg cm^{-3}
                     ne += xx[k][j][i].fx[m];
                 }
 
-                //(rhoi*uir), (rhoi*uitheta), (rhoi*uiphi)
+                //momentum density (rhoi*uir), (rhoi*uitheta), (rhoi*uiphi) in kg (m/s) cm^{-3} 
                 xx[k][j][i].fx[7] = rhoi*xdata[s+7];
                 xx[k][j][i].fx[8] = rhoi*xdata[s+8];
                 xx[k][j][i].fx[9] = rhoi*xdata[s+9];
 
-                //pi=ni*kb*Ti and pe=ne*kb*Te (ni=ne)
+                //pi=ni*kb*Ti and pe=ne*kb*Te (ni=ne) in J cm^{-3}
                 xx[k][j][i].fx[10] = ne*kb*xdata[s+10];
                 xx[k][j][i].fx[11] = ne*kb*xdata[s+11];
 
-                /* O, H, He, O2, N2, NO, N normalized density in cm ^-3*/
+                /* O, H, He, O2, N2, NO, N normalized density in cm^{-3} */
                 rhon = 0.0; Nn = 0.0;
                 for (m = 0; m < sm; m++) {
                     xx[k][j][i].fx[12+m]=xdata[s+12+m];
-                    rhon += ms[m]*xx[k][j][i].fx[12+m];
+                    rhon += ms[m]*xx[k][j][i].fx[12+m];  //neutral mass density in cm^{-3}
                     Nn += xx[k][j][i].fx[12+m];
                 }
 
-                //(rhon*unr), (rhon*untheta), (rhon*unphi)
+                //neutral momentum (rhon*unr), (rhon*untheta), (rhon*unphi) in kg (m/s) cm^{-3}
                 xx[k][j][i].fx[19] = rhon*xdata[s+19];
                 xx[k][j][i].fx[20] = rhon*xdata[s+20];
                 xx[k][j][i].fx[21] = rhon*xdata[s+21];

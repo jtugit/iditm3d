@@ -61,12 +61,10 @@ void boundary_bc(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm, Ap
                     xx[k][j][0].fx[12+s]= y1 + rrb*(y2-y1);
                 }
 
-                // pi = ni*kb*Ti and pe = ne*kb*Te
-                for (s=10; s <= 11; s++) {
-                    y1= log(xx[k][j][1].fx[s]);
-                    y2= log(xx[k][j][2].fx[s]);
-                    xx[k][j][0].fx[s] = exp(y1 + rrb*(y2-y1));
-                }
+                // pi = ni*kb*Ti
+                y1= log(xx[k][j][1].fx[10]);
+                y2= log(xx[k][j][2].fx[10]);
+                xx[k][j][0].fx[10] = exp(y1 + rrb*(y2-y1));
 
                 // pn = Nn*kb*Tn
                 y1= log(xx[k][j][1].fx[22]);
@@ -75,6 +73,9 @@ void boundary_bc(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm, Ap
 
                 if (xx[k][j][0].fx[11]/(kb*ne) < xx[k][j][0].fx[22]/(kb*Nn))
                     xx[k][j][0].fx[11] = ne/Nn*xx[k][j][0].fx[22];
+
+                // pe = ni*kb*Te
+                xx[k][j][0].fx[11]=xx[k][j][0].fx[10];
 
                 //Br_{i=-1/2,j,k},  Btheta_{i=0,j-1/2,k} and Bphi_{i=0,j,k-1/2}
                 y1=xx[k][j][1].fx[23];

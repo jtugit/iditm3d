@@ -51,9 +51,9 @@ PetscErrorCode initialize(DM da, Vec X, AppCtx *params)
 
         if (output_solution(da, xx, params) < 0) exit(-1);
 
-        cout<<"Finished reading IRI-MSIS data. The data are stored in output/uvbenp0.h5. Exit!"<<endl;
+        cout<<"Finished reading IRI-MSIS data, which are stored in output/uvbenp0.h5"<<endl;
 
-        return(-1);
+        return -1;
     }
     else {
     /* input values of state variables at time step 0 */

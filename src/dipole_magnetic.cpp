@@ -90,9 +90,9 @@ void dipole_magnetic(DM da, AppCtx *params)
                 Br=-2.0*Mz*cos(thetaC[j])/r3;
                 Bt=-Mz*sin(thetaC[j])/r3;  
 
-                /* normalized dipole magnetic field in spherical coordinates */
-                ww[k][j][i].fx[23]=Br;  //normalized
-                ww[k][j][i].fx[24]=Bt;  //normalized
+                /* dipole magnetic field in spherical coordinates */
+                ww[k][j][i].fx[23]=Br;
+                ww[k][j][i].fx[24]=Bt;
 
                 Omegae[zk][yj][xi] = e*sqrt(Br*Br+Bt*Bt)/me;
 

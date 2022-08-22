@@ -92,8 +92,7 @@ def plot_altitude_profile(wd, canv, fig, toolbar, altf, gridNumEnt, varib, ptype
     axes.xaxis.set_minor_locator(AutoMinorLocator())
     axes.yaxis.set_minor_locator(AutoMinorLocator())
 
-    if (var_index  < 3) or (var_index>=12 and var_index<=18) or (var_index>=32 and var_index<=35) \
-        or (var_index>=36 and var_index<=39) or var_index >= 41:
+    if (var_index  < 7) or (var_index>=12 and var_index<=18) or (var_index>=32 and var_index<=35):
         axes.set_xscale('log')
 
     axes.set_ylabel('Altitude (km)', fontsize=3, labelpad=0.7)

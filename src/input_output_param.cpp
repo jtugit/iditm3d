@@ -97,12 +97,20 @@ PetscErrorCode input_param(AppCtx *params)
         infstr.ignore(200, '\n');
         infstr >> sm;
         infstr.ignore(200, '\n');
+        infstr >> params->RAgamma;
+        infstr.ignore(200, '\n');
         infstr >> params->outpdir;
         infstr.ignore(200, '\n');
         infstr >> params->prefln;
         infstr.ignore(200, '\n');
+        infstr >> params->irifln;
+        infstr.ignore(200, '\n');
+        infstr >> params->msisfln;
+        infstr.ignore(200, '\n');
 
         infstr.close();
+
+        if(rank == 0 && params->lognum > 1) cout<<"lognum > 1. Not output to std device every time step"<<endl;
     }
 
     if(rank != nprocs-1) MPI_Send(&file_free,1, MPI_INT, rank+1, tag1, MPI_COMM_WORLD);

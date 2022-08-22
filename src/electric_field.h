@@ -46,7 +46,7 @@ inline void electric_field(Field ***xx, Field ***ww, Field ***uu, int i, int j, 
 /*------------------------------------------------------------------------------
  *   Edge averaged electric field E*_r, E*_theta, E*_phi
  *------------------------------------------------------------------------------*/
-inline void Estar(Field ***xx, Field ***uu, int i, int j, int k, Field ***vv)
+inline void Estar(Field ***xx, Field ***uu, Field ***zz, int i, int j, int k, Field ***vv)
 {
     int im=i-1, jm, km, kc, kmc, kkc, kh;
 
@@ -72,17 +72,17 @@ inline void Estar(Field ***xx, Field ***uu, int i, int j, int k, Field ***vv)
     else {km = k-1; kh = k;}
 
     if (j < Nth) {
-        max_speed_r_face(xx, i, j, k, rh[i], theta[j], phi[k], a_imjk);
-        max_speed_r_face(xx, i, jm, kc, rh[i], theta[jm], phi[kc], a_imj1k);
-        max_speed_r_face(xx, i, j, km, rh[i], theta[j], phi[km], a_imjk1);
+        max_speed_r_face(xx, zz, i, j, k, rh[i], theta[j], phi[k], a_imjk);
+        max_speed_r_face(xx, zz, i, jm, kc, rh[i], theta[jm], phi[kc], a_imj1k);
+        max_speed_r_face(xx, zz, i, j, km, rh[i], theta[j], phi[km], a_imjk1);
 
-        max_speed_theta_face(xx, i, j, k, rr[i], thetah[j], phi[k], b_ijmk);
-        max_speed_theta_face(xx, im, j, k, rr[im], thetah[j], phi[k], b_i1jmk);
-        max_speed_theta_face(xx, i, j, km, rr[i], thetah[j], phi[km], b_ijmk1);
+        max_speed_theta_face(xx, zz, i, j, k, rr[i], thetah[j], phi[k], b_ijmk);
+        max_speed_theta_face(xx, zz, im, j, k, rr[im], thetah[j], phi[k], b_i1jmk);
+        max_speed_theta_face(xx, zz, i, j, km, rr[i], thetah[j], phi[km], b_ijmk1);
 
-        max_speed_phi_face(xx, i, j, k, rr[i], theta[j], phih[k], c_ijkm);
-        max_speed_phi_face(xx, im, j, k, rr[im], theta[j], phih[k], c_i1jkm);
-        max_speed_phi_face(xx, i, jm, kc, rr[i], theta[jm], phih[kc], c_ij1km);
+        max_speed_phi_face(xx, zz, i, j, k, rr[i], theta[j], phih[k], c_ijkm);
+        max_speed_phi_face(xx, zz, im, j, k, rr[im], theta[j], phih[k], c_i1jkm);
+        max_speed_phi_face(xx, zz, i, jm, kc, rr[i], theta[jm], phih[kc], c_ij1km);
 
         a_imjkm[0]=max(a_imjk[0], a_imjk1[0]);
         a_imjkm[1]=min(a_imjk[1], a_imjk1[1]);
@@ -134,17 +134,17 @@ inline void Estar(Field ***xx, Field ***uu, int i, int j, int k, Field ***vv)
     else {
         kkc=(k+a3/2) % a3; kmc = (km+a3/2) % a3;
 
-        max_speed_r_face(xx, i, Nthm, kkc, rh[i], theta[Nthm], phi[kkc], a_imjk);
-        max_speed_r_face(xx, i, jm, k, rh[i], theta[jm], phi[k], a_imj1k);
+        max_speed_r_face(xx, zz, i, Nthm, kkc, rh[i], theta[Nthm], phi[kkc], a_imjk);
+        max_speed_r_face(xx, zz, i, jm, k, rh[i], theta[jm], phi[k], a_imj1k);
         //a_imjk1 at j=Nth is not needed
 
-        max_speed_theta_face(xx, i, j, k, rr[i], thetah[j], phi[k], b_ijmk);
-        max_speed_theta_face(xx, im, j, k, rr[im], thetah[j], phi[k], b_i1jmk);
-        max_speed_theta_face(xx, i, j, km, rr[i], thetah[j], phi[km], b_ijmk1);
+        max_speed_theta_face(xx, zz, i, j, k, rr[i], thetah[j], phi[k], b_ijmk);
+        max_speed_theta_face(xx, zz, im, j, k, rr[im], thetah[j], phi[k], b_i1jmk);
+        max_speed_theta_face(xx, zz, i, j, km, rr[i], thetah[j], phi[km], b_ijmk1);
 
-        max_speed_phi_face(xx, i, Nthm, kkc, rr[i], theta[Nthm], phih[kkc], c_ijkm);
+        max_speed_phi_face(xx, zz, i, Nthm, kkc, rr[i], theta[Nthm], phih[kkc], c_ijkm);
         //c_i1jkm at j=Nth is not needed;
-        max_speed_phi_face(xx, i, jm, k, rr[i], theta[jm], phih[k], c_ij1km);
+        max_speed_phi_face(xx, zz, i, jm, k, rr[i], theta[jm], phih[k], c_ij1km);
 
         //We don't need Br_imjkmp and Br_imjkmm at j=Nth
         Br_imjmpk=reconstructed_Br(xx, i, Nthm, kkc, rh[i], thetah[j], phi[kkc]);

@@ -180,11 +180,4 @@ inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int
     nust[zk][yj][xi][109]= 7.47e-10*nn[4];                  // N+ - N2
     nust[zk][yj][xi][110]= 2.69e-11*nn[5];                  // N+ - NO
     nust[zk][yj][xi][111]= 3.83e-11*nn[6]*Tr12*pow(1.0-0.063*logTr, 2.0);  // N+ - N
-
-    double nuin = 0.0;
-    for (s = 0; s < sl; s++) {
-        for (int m = 0; m < sm; m++) nuin += nust[zk][yj][xi][s*14+21+m];
-    }
-
-    nuin_omegae[k][j][i]=nuin/Omegae[zk][yj][xi];
 }

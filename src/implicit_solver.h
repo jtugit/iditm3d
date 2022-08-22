@@ -70,25 +70,28 @@ inline void GaussianElimination(double a[][4], int n, double res[])
 inline void implicit_solver(Field ***xx, Field ***xn, Field ***xn1, int i, int j, int k, int xi, int yj, int zk)
 {
     int  s, t;
-    double vmat[6][7]={{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
-                       {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
-                       {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
     double tmat[3][4] = {{0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0}};
     double bb[6], cc[3];
     double rhos, rhoi, rhon, sum_nues, sum_nueq, sum_rhonusq, sum_nues_div_ms;
-    double sum_nueq_div_mq, rhos_nusq_msmq, rhos_nusqmq_msmq, rhos_nusqms_msmq, temp;
+    double rhos_nusq_msmq, rhos_nusqmq_msmq, rhos_nusqms_msmq, temp;
     double ne, rhoe, uir_minus_unr, uit_minus_unt, uip_minus_unp, Nn; //ne = ni
-    double Ce, dCedTe, dCedTn, Te, Tn, rhoe_sum_nues, rhoe_sum_nueq;
-    double collr, collt, collp, coll_Tn_Ti;
+    double Len_part, Te, Tn, Ti, rhoe_sum_nues, rhoe_sum_nueq;
+    double collr, collt, collp, uiminusun_sq;
     double uer, uet, uep, uir, uit, uip, unr, unt, unp;
+    double Qefric, Qifric, Qnfric, Te12;
     const double two3rd=2.0/3.0, two3rd_dt = 2.0/3.0*dt;
 
     rhoi=0.0; rhon=0.0;
     sum_nues=0.0; sum_nueq=0.0; sum_rhonusq=0.0; sum_nues_div_ms=0.0;
-    rhos_nusq_msmq=0.0; rhos_nusqmq_msmq=0.0; sum_nueq_div_mq=0.0;
+    rhos_nusq_msmq=0.0; rhos_nusqmq_msmq=0.0;
     rhos_nusqms_msmq=0.0; ne=0.0; Nn=0.0;
 
-    //compute quantities at tn time step
+    const double Ei[3]={228.0, 326.0, 98.0};
+    const double Ai[3]={7.833e-6, 9.466e-6, 1.037e-8};
+    const double Bi[3]={1.021, 0.8458, 1.633};
+    const double Ci[3]={1.009, 0.9444, 1.466};
+
+    //compute quantities at tn+dt ne, rhoi, rhon, nust at tn time step
     for (s = 0; s < sl; s++) {
         sum_nues += nust[zk][yj][xi][s];
         sum_nueq += nust[zk][yj][xi][s+7];
@@ -110,54 +113,92 @@ inline void implicit_solver(Field ***xx, Field ***xn, Field ***xn1, int i, int j
         }
 
         sum_nues_div_ms =+ nust[zk][yj][xi][s]/ms[s];
-        sum_nueq_div_mq += nust[zk][yj][xi][s+7]/ms[s];
     }
+
+    uer=xx[k][j][i].fx[7]/rhoi; uet=xx[k][j][i].fx[8]/rhoi; uep=xx[k][j][i].fx[9]/rhoi;
+    uir=uer; uit=uet; uip=uep;
+    unr=xx[k][j][i].fx[19]/rhon; unt=xx[k][j][i].fx[20]/rhon; unp=xx[k][j][i].fx[21]/rhon;
 
     rhoe=ne*me;
     rhoe_sum_nues=rhoe*sum_nues;
     rhoe_sum_nueq=rhoe*sum_nueq;
 
+    double rhoe_sum_nues_uer = rhoe_sum_nues*uer;
+    double rhoe_sum_nues_uet = rhoe_sum_nues*uet;
+    double rhoe_sum_nues_uep = rhoe_sum_nues*uep;
+    double rhoe_sum_nueq_uer = rhoe_sum_nueq*uer;
+    double rhoe_sum_nueq_uet = rhoe_sum_nueq*uet;
+    double rhoe_sum_nueq_uep = rhoe_sum_nueq*uep;
+
+    Qefric=two3rd*( rhoe_sum_nues*((uer-uir)*(uer-uir)+(uet-uit)*(uet-uit)+(uep-uip)*(uep-uip))
+                   +rhoe_sum_nueq*((uer-unr)*(uer-unr)+(uet-unt)*(uet-unt)+(uep-unp)*(uep-unp)));
+
+    uiminusun_sq=(uir-unr)*(uir-unr)+(uit-unt)*(uit-unt)+(uip-unp)*(uip-unp);
+    Qifric=two3rd*rhos_nusqmq_msmq*uiminusun_sq;
+    Qnfric=two3rd*rhos_nusqms_msmq*uiminusun_sq;
+
     //electron heating terms evaluated at tn step
     Te=xn[k][j][i].fx[11]/(ne*kb);
     Tn=xn[k][j][i].fx[22]/(Nn*kb);
-    ele_cooling_rate(xn, ne, Te, Tn, i, j, k, Ce, dCedTe, dCedTn);
+
+    //part of thermal energy change between electrons and neutrals are treated explicitly
+    Len_part = 0.0; // ele_cooling_rate(xn, ne, Te, Tn, i, j, k);
+
+    //part of fine structure of O treated implicitly: at tn time step
+    double Z=5.0+3.0*exp(-228.0/Tn)+exp(-326.0/Tn), Dxi[3], Exi[3];
+    Dxi[0]=exp(-228.0/Tn); Dxi[1]=exp(-326.0/Tn); Dxi[2]=exp(-326.0/Tn);
+    Exi[0]=exp(-228.0/Te); Exi[1]=exp(-326.0/Te); Exi[2]=exp(-(98.0/Te+228.0/Tn));
+
+    double Le_coeff=0.0;
+    for (int m = 0; m < 3; m++) {
+        Le_coeff += Ai[m]*Ci[m]*pow(Te, Bi[m]-0.5)*((1.0+Bi[m])*Dxi[m]+(Ei[m]/Te+1.0+Bi[m])*Exi[m]);
+    }
+    Le_coeff = 5.099739e-14*xn[k][j][i].fx[12]/Z*Le_coeff;
+
+    Te12=sqrt(Te);
+
+    //add contribution from other cooling processes
+    Le_coeff = ( Le_coeff+(2.9e-14/Te12 + 1.77e-19*(1.0-1.21e-4*Te)*Te)*xx[k][j][i].fx[16]
+                +(6.9e-14/Te12+1.21e-18*(1.0+3.6e-2*Te12)*Te12)*xx[k][j][i].fx[15]
+                +7.9e-19*xx[k][j][i].fx[12]*(1.0+5.7e-4*Te)*Te12
+                +9.63e-16*xx[k][j][i].fx[13]*(1.0-1.35e-4*Te)*Te12
+                +2.46e-17*xx[k][j][i].fx[14]*Te12)*ne*e;
 
 /*-------------------------------------------------------------------------
  *------------------- calculate matrix elements
  *-----------------------------------------------------------------------*/
     //for velocity components
-    vmat[0][0]=1.0+dt*(rhoe_sum_nues+sum_rhonusq)/rhoi;
-    vmat[0][3]=-dt*sum_rhonusq/rhon;
+    double vmatr[2][3], vmatt[2][3], vmatp[2][3];
+    vmatr[0][0]=1.0+dt*(rhoe_sum_nues+sum_rhonusq)/rhoi;      //a1
+    vmatr[0][1]=-dt*sum_rhonusq/rhon;                         //b1
+    vmatr[1][0]=-dt*sum_rhonusq/rhoi;                         //a2
+    vmatr[1][1]=1.0 + dt*(rhoe_sum_nueq + sum_rhonusq)/rhon;  //b2
 
-    vmat[1][1]=vmat[0][0];
-    vmat[1][4]=vmat[0][3];
+    vmatt[0][0]=vmatr[0][0];
+    vmatt[0][1]=vmatr[0][1];
+    vmatt[1][0]=vmatr[1][0];
+    vmatt[1][1]=vmatr[1][1];
 
-    vmat[2][2]=vmat[0][0];
-    vmat[2][5]=vmat[0][3];
-
-    vmat[3][0]=-dt*sum_rhonusq/rhoi;
-    vmat[3][3]=1.0 + dt*(rhoe_sum_nueq + sum_rhonusq)/rhon;
-
-    vmat[4][1]=vmat[3][0];
-    vmat[4][4]=vmat[3][3];
-
-    vmat[5][2]=vmat[3][0];
-    vmat[5][5]=vmat[3][3];
+    vmatp[0][0]=vmatr[0][0];
+    vmatp[0][1]=vmatr[0][1];
+    vmatp[1][0]=vmatr[1][0];
+    vmatp[1][1]=vmatr[1][1];
 
     //for pressures
     tmat[0][0]=1.0 + dt2*(me*sum_nues_div_ms + rhos_nusq_msmq/ne);
     tmat[0][1]=-dt2*me*sum_nues_div_ms;
     tmat[0][2]=-dt2*rhos_nusq_msmq/Nn;
 
-    tmat[1][1]=1.0 - two3rd_dt*dCedTe/(kb*ne);
-    tmat[1][2]=-two3rd_dt*dCedTn/(kb*Nn);
+    tmat[1][0]=-dt2*me*sum_nues_div_ms;
+    tmat[1][1]=1.0+dt2*(me*sum_nues_div_ms + Le_coeff/(3.0*ne*kb));
+    tmat[1][2]=-two3rd_dt*Le_coeff/(Nn*kb);
 
     tmat[2][0]=-dt2*rhos_nusq_msmq/ne;
-    tmat[2][1]=-dt2*me*sum_nueq_div_mq;
-    tmat[2][2]=1.0 + dt2*(rhoe*sum_nueq_div_mq + rhos_nusq_msmq)/Nn;
+    tmat[2][1]=-two3rd_dt*Le_coeff/(ne*kb);
+    tmat[2][2]=1.0 + dt2*(rhos_nusq_msmq/Nn + Le_coeff/(3.0*Nn*kb));
 
 /*-------------------------------------------------------------------------
- *----- right hand side vector; using quantities at tn-dt nut nust at tn
+ *----- right hand side vector; using quantities at tn-dt but nust at tn
  *-----------------------------------------------------------------------*/
     rhoi=0.0; rhon=0.0; ne=0.0; Nn=0.0;
     for (s = 0; s < sl; s++) {
@@ -173,12 +214,6 @@ inline void implicit_solver(Field ***xx, Field ***xn, Field ***xn1, int i, int j
     rhoe_sum_nues=rhoe*sum_nues;
     rhoe_sum_nueq=rhoe*sum_nueq;
 
-    //electron heating terms evaluated at tn-dt step
-    double Ce1;
-    double Te1=xn1[k][j][i].fx[11]/(ne*kb);
-    double Tn1=xn1[k][j][i].fx[22]/(Nn*kb);
-    ele_cooling_rate(xn1, ne, Te1, Tn1, i, j, k, Ce1, dCedTe, dCedTn);
-
     uir=xn1[k][j][i].fx[7]/rhoi; uit=xn1[k][j][i].fx[8]/rhoi; uip=xn1[k][j][i].fx[9]/rhoi;
     uer=uir; uet=uit; uep=uip;
     unr=xn1[k][j][i].fx[19]/rhon; unt=xn1[k][j][i].fx[20]/rhon; unp=xn1[k][j][i].fx[21]/rhon;
@@ -191,52 +226,77 @@ inline void implicit_solver(Field ***xx, Field ***xn, Field ***xn1, int i, int j
     collt=sum_rhonusq*uit_minus_unt;
     collp=sum_rhonusq*uip_minus_unp;
 
-    vmat[0][6]= xx[k][j][i].fx[7]+dt*(rhoe_sum_nues*(2.0*uer-uir) - collr);
-    vmat[1][6]= xx[k][j][i].fx[8]+dt*(rhoe_sum_nues*(2.0*uet-uit) - collt);
-    vmat[2][6]= xx[k][j][i].fx[9]+dt*(rhoe_sum_nues*(2.0*uep-uip) - collp);
-    vmat[3][6]= xx[k][j][i].fx[19]+dt*(rhoe_sum_nueq*(2.0*uer-unr) + collr);
-    vmat[4][6]= xx[k][j][i].fx[20]+dt*(rhoe_sum_nueq*(2.0*uet-unt) + collt);
-    vmat[5][6]= xx[k][j][i].fx[21]+dt*(rhoe_sum_nues*(2.0*uep-unp) + collp);
+    vmatr[0][2]= xx[k][j][i].fx[7]+dt*(rhoe_sum_nues*(uer-uir)+rhoe_sum_nues_uer - collr);  //c1
+    vmatr[1][2]=xx[k][j][i].fx[19]+dt*(rhoe_sum_nueq*(uer-unr)+rhoe_sum_nueq_uer + collr);  //c2
+    vmatt[0][2]= xx[k][j][i].fx[8]+dt*(rhoe_sum_nues*(uet-uit)+rhoe_sum_nues_uet - collt);
+    vmatt[1][2]=xx[k][j][i].fx[20]+dt*(rhoe_sum_nueq*(uet-unt)+rhoe_sum_nueq_uet + collt);
+    vmatp[0][2]= xx[k][j][i].fx[9]+dt*(rhoe_sum_nues*(uep-uip)+rhoe_sum_nues_uep - collp);
+    vmatp[1][2]=xx[k][j][i].fx[21]+dt*(rhoe_sum_nueq*(uep-unp)+rhoe_sum_nueq_uep + collp);
 
-    coll_Tn_Ti=rhos_nusq_msmq*(xn1[k][j][i].fx[22]/Nn - xn1[k][j][i].fx[10]/ne);
-    double veldiff2=two3rd*( uir_minus_unr*uir_minus_unr+uit_minus_unt*uit_minus_unt
-                            +uip_minus_unp*uip_minus_unp);
+    //electron heating terms evaluated at tn-dt step
+    Te=xn1[k][j][i].fx[11]/(ne*kb);
+    Ti=xn1[k][j][i].fx[10]/(ne*kb);
+    Tn=xn1[k][j][i].fx[22]/(Nn*kb);
+    Te12=sqrt(Te);
 
-    tmat[0][3]=xx[k][j][i].fx[10]+dt2*( me*sum_nues_div_ms*(xn1[k][j][i].fx[11]-xn1[k][j][i].fx[10])
-                                       +coll_Tn_Ti + rhos_nusqmq_msmq*veldiff2);
-    tmat[1][3]=xx[k][j][i].fx[11]+two3rd_dt*(Ce+Ce1-dCedTe*Te - dCedTn*Tn);
-    tmat[2][3]=xx[k][j][i].fx[22]+dt2*( me*sum_nueq_div_mq*(xn1[k][j][i].fx[11]-rhoe/Nn*xn1[k][j][i].fx[22])
-                                       -coll_Tn_Ti + rhos_nusqms_msmq*veldiff2);
+    //part of fine structure of O treated implicitly: at tn-dt time step
+    Z=5.0+3.0*exp(-228.0/Tn)+exp(-326.0/Tn);
+    Dxi[0]=exp(-228.0/Tn); Dxi[1]=exp(-326.0/Tn); Dxi[2]=exp(-326.0/Tn);
+    Exi[0]=exp(-228.0/Te); Exi[1]=exp(-326.0/Te); Exi[2]=exp(-(98.0/Te+228.0/Tn));
+
+    Le_coeff=0.0;
+    for (int m = 0; m < 3; m++) {
+        Le_coeff += Ai[m]*Ci[m]*pow(Te, Bi[m]-0.5)*((1.0+Bi[m])*Dxi[m]+(Ei[m]/Te+1.0+Bi[m])*Exi[m]);
+    }
+    Le_coeff = 5.099739e-14*xn1[k][j][i].fx[12]/Z*Le_coeff;
+
+    Le_coeff=( Le_coeff+ (2.9e-14/Te12 + 1.77e-19*(1.0-1.21e-4*Te)*Te)*xx[k][j][i].fx[16]
+              +(6.9e-14/Te12+1.21e-18*(1.0+3.6e-2*Te12)*Te12)*xx[k][j][i].fx[15]
+              +7.9e-19*xx[k][j][i].fx[12]*(1.0+5.7e-4*Te)*Te12
+              +9.63e-16*xx[k][j][i].fx[13]*(1.0-1.35e-4*Te)*Te12
+              +2.46e-17*xx[k][j][i].fx[14]*Te12)*ne*e;
+
+    double coll_Te_Ti=me*sum_nues_div_ms*kb*(Te-Ti);
+    double coll_Tn_Ti=rhos_nusq_msmq*kb*(Tn-Ti);
+    double coll_Tn_Te=two3rd_dt*Le_coeff*(Tn-Te);
+
+    tmat[0][3]=xx[k][j][i].fx[10]+dt2*(Qifric+coll_Te_Ti+coll_Tn_Ti);
+    tmat[1][3]=xx[k][j][i].fx[11]+dt2*(Qefric-coll_Te_Ti+two3rd*Len_part)+coll_Tn_Te;
+    tmat[2][3]=xx[k][j][i].fx[22]+dt2*(Qnfric-coll_Tn_Ti-two3rd*Len_part)-coll_Tn_Te;
 
 /*-------------------------------------------------------------------------
  *------------------- solve linear equations
  *-----------------------------------------------------------------------*/
     //for velocity components
-    double delta=(vmat[0][0]*vmat[3][3]-vmat[3][0]*vmat[0][3]);
-    bb[0] = (vmat[0][6]*vmat[3][3]-vmat[3][6]*vmat[0][3])/delta;
-    bb[3] = (vmat[0][0]*vmat[3][6]-vmat[3][0]*vmat[0][6])/delta;
+    //vmat[0][0] - a1, vmat[0][1] - b1, vmat[1][0] - a2, vmat[1][1] - b2
+    double delta=(vmatr[0][0]*vmatr[1][1]-vmatr[1][0]*vmatr[0][1]);
+    bb[0] = (vmatr[0][2]*vmatr[1][1]-vmatr[1][2]*vmatr[0][1])/delta;
+    bb[1] = (vmatr[0][0]*vmatr[1][2]-vmatr[1][0]*vmatr[0][2])/delta;
 
-    delta=(vmat[1][1]*vmat[4][4]-vmat[4][1]*vmat[1][4]);
-    bb[1] = (vmat[1][6]*vmat[4][4]-vmat[4][6]*vmat[1][4])/delta;
-    bb[4] = (vmat[1][1]*vmat[4][6]-vmat[4][1]*vmat[1][6])/delta;
+    delta=(vmatt[0][0]*vmatt[1][1]-vmatt[1][0]*vmatt[0][1]);
+    bb[2] = (vmatt[0][2]*vmatt[1][1]-vmatt[1][2]*vmatt[0][1])/delta;
+    bb[3] = (vmatt[0][0]*vmatt[1][2]-vmatt[1][0]*vmatt[0][2])/delta;
 
-    delta=(vmat[2][2]*vmat[5][5]-vmat[5][2]*vmat[2][5]);
-    bb[2] = (vmat[2][6]*vmat[5][5]-vmat[5][6]*vmat[2][5])/delta;
-    bb[5] = (vmat[2][2]*vmat[5][6]-vmat[5][2]*vmat[2][6])/delta;
+    delta=(vmatp[0][0]*vmatp[1][1]-vmatp[1][0]*vmatp[0][1]);
+    bb[4] = (vmatp[0][2]*vmatp[1][1]-vmatp[1][2]*vmatp[0][1])/delta;
+    bb[5] = (vmatp[0][0]*vmatp[1][2]-vmatp[1][0]*vmatp[0][2])/delta;
 
     //for pressures
     GaussianElimination(tmat, 3, cc);
 
+    //if (i==20 && j==13 && k==68) cout <<sqrt(bb[0]*bb[0]+bb[2]*bb[2]+bb[4]*bb[4]) <<" "<<cc[1]<<endl;
     for (s = 0; s < 6; s++) {
         if (isnan(bb[s]) || isinf(bb[s])) {
-            cout<<"Velocity is Nan or inf at ("<<i<<", "<<j<<", "<<k<<"), s = "<<s<<" in implicit_solver"<<endl;
+            cout<<"Velocity is Nan or inf at ("<<i<<", "<<j<<", "<<k<<"), s = "<<s
+                <<" in implicit_solver"<<endl;
             exit(-2);
         }
     }
 
     for (s = 0; s < 3; s++) {
         if (isnan(cc[s]) || isinf(cc[s])) {
-            cout<<"Pressure is Nan or inf at ("<<i<<", "<<j<<", "<<k<<"), s = "<<s<<" in implicit_solver"<<endl;
+            cout<<"Pressure is Nan or inf at ("<<i<<", "<<j<<", "<<k<<"), s = "<<s
+                <<" in implicit_solver"<<endl;
             exit(-2);
         }
         if (cc[s] <= 0.0) {
@@ -244,10 +304,12 @@ inline void implicit_solver(Field ***xx, Field ***xn, Field ***xn1, int i, int j
             exit(-2);
         }
     }
-    for (s = 0; s < 3; s++) {
-        xx[k][j][i].fx[7+s]=bb[s];
-    }
-    for (s = 3; s < 6; s++) xx[k][j][i].fx[16+s]=bb[s];
+    xx[k][j][i].fx[7]=bb[0];
+    xx[k][j][i].fx[8]=bb[2];
+    xx[k][j][i].fx[9]=bb[4];
+    xx[k][j][i].fx[19]=bb[1];
+    xx[k][j][i].fx[20]=bb[3];
+    xx[k][j][i].fx[21]=bb[5];
     xx[k][j][i].fx[10]=cc[0];
     xx[k][j][i].fx[11]=cc[1];
     xx[k][j][i].fx[22]=cc[2];

@@ -1,17 +1,20 @@
 #include "reconstruction.h"
+#include <iostream>
+#include <fstream>
 
-inline void max_speed_r_face(Field ***xx, int i, int j, int k, double rg, double thetag,
+inline void max_speed_r_face(Field ***xx, Field ***zz, int i, int j, int k, double rg, double thetag,
     double phig, double a_imjk[])
 {
     double rhoim_mjk = 0.0, rhoim_pjk = 0.0, rhonim_mjk = 0.0, rhonim_pjk = 0.0;
     double Br0, Btheta0, BB2, Br, Btheta, Bphi, rhoeff_mu0;
-    const double five3rd=5.0e6/3.0;
+    const double five3rd=5.0/3.0;
 
     int im = i-1;
 
     //background magnetic field at (r_{i-1/2}, theta_{face_avg}[j]}, phi[k])
     ambient_mfd(rh[i], thetaC[j], Br0, Btheta0);
 
+    //mass density in kg cm^{-3}
     for (int s = 0; s < sl; s++) {
         rhoim_mjk += reconstructed(xx, im, j, k, s, rg, thetag, phig)*ms[s];
         rhoim_pjk += reconstructed(xx, i, j, k, s, rg, thetag, phig)*ms[s];
@@ -21,21 +24,25 @@ inline void max_speed_r_face(Field ***xx, int i, int j, int k, double rg, double
     }
 
 /* evaluate inteface speed a^{+}_{r_{i-1/2}, theta_{face_avg}[j]}, phi_k */
+    //pressure in Joule cm^{-3}
     double P = reconstructed(xx, im, j, k, 10, rg, thetag, phig)
               +reconstructed(xx, im, j, k, 11, rg, thetag, phig);
 
-    // squared sound & Alfven speeds at (im-, thetaC[j], k)
-    double Cs2 = five3rd*P/rhoim_mjk;  //density in cm^{-3} so first make Cs^2 1e6 large as the same as CA^2
+    // squared sound at (im-, thetaC[j], k) in (m/s)^2
+    double Cs2 = five3rd*P/rhoim_mjk;
 
     Br = reconstructed_Br(xx, im, j, k, rg, thetag, phig) + Br0;
     Btheta = reconstructed_Btheta(xx, im, j, k, rg, thetag, phig) + Btheta0;
     Bphi = reconstructed_Bphi(xx, im, j, k, rg, thetag, phig);
     BB2 = Br*Br+Btheta*Btheta+Bphi*Bphi;
 
-    rhoeff_mu0=(rhoim_mjk+nuin_omegae[k][j][im]*rhonim_mjk)*mu0;
+    double CA2_nonmd=1.0e-6*BB2/(rhoim_mjk*mu0);
+    //mass density in kg/cm^3. So multplying by 1e6 to convert to kg/m^3
+    rhoeff_mu0=1.0e6*rhoim_mjk*mu0; //(rhoim_mjk+zz[k][j][im].fx[23]*rhonim_mjk)*mu0;
 
+    //Alfven speed square at (im-, thetaC[j], k) in (m.s)^2. Fast speed along r direction in m/s
     double CA2 = BB2/rhoeff_mu0;
-    double Cfr=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Br*Br/rhoeff_mu0))));
+    double Cfr=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Br*Br/rhoeff_mu0))))/(1.0+CA2_nonmd/cspeed2);
     double ur = reconstructed(xx, im, j, k, 7, rg, thetag, phig)/rhoim_mjk;
 
     double aa = ur + Cfr;
@@ -52,29 +59,30 @@ inline void max_speed_r_face(Field ***xx, int i, int j, int k, double rg, double
     Bphi = reconstructed_Bphi(xx, i, j, k, rg, thetag, phig);
     BB2 = Br*Br+Btheta*Btheta+Bphi*Bphi;
 
-    if (i==Nr) rhoeff_mu0=(rhoim_pjk+nuin_omegae[k][j][im]*rhonim_pjk)*mu0;
-    else rhoeff_mu0=(rhoim_pjk+nuin_omegae[k][j][i]*rhonim_pjk)*mu0;
+    CA2_nonmd=1.0e-6*BB2/(rhoim_pjk*mu0);
+    if (i==Nr) rhoeff_mu0=1.0e6*rhoim_pjk*mu0; //(rhoim_pjk+zz[k][j][im].fx[23]*rhonim_pjk)*mu0;
+    else rhoeff_mu0=1.0e6*rhoim_pjk*mu0; //(rhoim_pjk+zz[k][j][i].fx[23]*rhonim_pjk)*mu0;
 
     CA2 = BB2/rhoeff_mu0;
-    Cfr=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Br*Br/(rhoeff_mu0)))));
+    Cfr=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Br*Br/(rhoeff_mu0)))))/(1.0+CA2_nonmd/cspeed2);
     ur = reconstructed(xx, i, j, k, 7, rg, thetag, phig)/rhoim_pjk;
 
     double cc= ur + Cfr;
     double dd= ur - Cfr;
 
     a_imjk[0] = max(aa, cc);
-    a_imjk[0] = max(a_imjk[0], 0.0)*1.0e-3; //covert velocity back to m/s
+    a_imjk[0] = max(a_imjk[0], 0.0); //velocity in m/s
 
     a_imjk[1] = min(bb, dd);
-    a_imjk[1] = min(a_imjk[1], 0.0)*1.0e-3; //covert velocity back to m/s
+    a_imjk[1] = min(a_imjk[1], 0.0); //velocity in m/s
 }
 
-inline void max_speed_theta_face(Field ***xx, int i, int j, int k, double rg, double thetag,
+inline void max_speed_theta_face(Field ***xx, Field ***zz, int i, int j, int k, double rg, double thetag,
     double phig, double b_ijmk[])
 {
     double rhoijm_mk = 0.0, rhoijm_pk = 0.0, rhonijm_mk = 0.0, rhonijm_pk = 0.0;
     double Br0, Btheta0, BB2, Br, Btheta, Bphi, phi_0_c, phi_Nth_c, rhoeff_mu0;
-    const double five3rd=5.0e6/3.0;
+    const double five3rd=5.0/3.0;
 
     int jm, jj, k_0_c, k_Nth_c;
 
@@ -91,7 +99,7 @@ inline void max_speed_theta_face(Field ***xx, int i, int j, int k, double rg, do
         rhonijm_pk += reconstructed(xx, i, jj, k_Nth_c, 12+s, rg, thetag, phi_Nth_c)*ms[s];
     }
 
-    // sound & Alfven speeds at (rfavg, jm-, k)
+    // sound & Alfven speeds at (rfavg, jm-, k) in (m/s)^2
     double P = reconstructed(xx, i, jm, k_0_c, 10, rg, thetag, phi_0_c)
               +reconstructed(xx, i, jm, k_0_c, 11, rg, thetag, phi_0_c);
     double Cs2 = five3rd*P/rhoijm_mk;
@@ -101,10 +109,11 @@ inline void max_speed_theta_face(Field ***xx, int i, int j, int k, double rg, do
     Bphi = reconstructed_Bphi(xx, i, jm, k_0_c, rg, thetag, phi_0_c);
     BB2 = Br*Br+Btheta*Btheta+Bphi*Bphi;
 
-    rhoeff_mu0=(rhoijm_mk+nuin_omegae[k_0_c][jm][i]*rhonijm_mk)*mu0;
+    double CA2_nonmd=1.0e-6*BB2/(rhoijm_mk*mu0);
+    rhoeff_mu0=1.0e6*rhoijm_mk*mu0; //(rhoijm_mk+zz[k_0_c][jm][i].fx[23]*rhonijm_mk)*mu0;
 
     double CA2 = BB2/rhoeff_mu0;
-    double Cftheta=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Btheta*Btheta/rhoeff_mu0))));
+    double Cftheta=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Btheta*Btheta/rhoeff_mu0))))/(1.0+CA2_nonmd/cspeed2);
     double utheta = reconstructed(xx, i, jm, k_0_c, 8, rg, thetag, phi_0_c)/rhoijm_mk;
 
     double aa= utheta + Cftheta;
@@ -120,29 +129,30 @@ inline void max_speed_theta_face(Field ***xx, int i, int j, int k, double rg, do
     Bphi = reconstructed_Bphi(xx, i, jj, k_Nth_c, rg, thetag, phi_Nth_c);
     BB2 = Br*Br+Btheta*Btheta+Bphi*Bphi;
 
-    rhoeff_mu0=(rhoijm_pk+nuin_omegae[k_Nth_c][jj][i]*rhonijm_pk)*mu0;
+    CA2_nonmd=1.0e-6*BB2/(rhoijm_pk*mu0);
+    rhoeff_mu0=1.0e6*rhoijm_pk*mu0; //(rhoijm_pk+zz[k_Nth_c][jj][i].fx[23]*rhonijm_pk)*mu0;
 
     CA2 = BB2/rhoeff_mu0;
-    Cftheta=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Btheta*Btheta/rhoeff_mu0))));
+    Cftheta=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Btheta*Btheta/rhoeff_mu0))))/(1.0+CA2_nonmd/cspeed2);
     utheta = reconstructed(xx, i, jj, k_Nth_c, 8, rg, thetag, phi_Nth_c)/rhoijm_pk;
 
     double cc= utheta + Cftheta;
     double dd= utheta - Cftheta;
 
     b_ijmk[0] = max(aa, cc);
-    b_ijmk[0] = max(b_ijmk[0], 0.0)*1.0e-3;
+    b_ijmk[0] = max(b_ijmk[0], 0.0); //velocity in m/s
 
     b_ijmk[1] = min(bb, dd);
-    b_ijmk[1] = min(b_ijmk[1], 0.0)*1.0e-3;
+    b_ijmk[1] = min(b_ijmk[1], 0.0);
 }
 
 // sound & Alfven speeds at (rfavg, j, km-)
-inline void max_speed_phi_face(Field ***xx, int i, int j, int k, double rg, double thetag,
+inline void max_speed_phi_face(Field ***xx, Field ***zz, int i, int j, int k, double rg, double thetag,
     double phig, double c_ijkm[])
 {
     double rhoijkm_m = 0.0, rhoijkm_p = 0.0, rhonijkm_m = 0.0, rhonijkm_p = 0.0;
     double Br0, Btheta0, BB2, Br, Btheta, Bphi, phih_m, rhoeff_mu0;
-    const double five3rd=5.0e6/3.0;
+    const double five3rd=5.0/3.0;
 
     int km;
     if (k == 0) {km = Np; phih_m=phih[Np+1];} else {km = k-1; phih_m=phih[k];}
@@ -166,10 +176,11 @@ inline void max_speed_phi_face(Field ***xx, int i, int j, int k, double rg, doub
     Bphi = reconstructed_Bphi(xx, i, j, km, rg, thetag, phih_m);
     BB2 = Br*Br+Btheta*Btheta+Bphi*Bphi;
 
-    rhoeff_mu0=(rhoijkm_m+nuin_omegae[k][j][i]*rhonijkm_m)*mu0;
+    double CA2_nonmd=1.0e-6*BB2/(rhoijkm_m*mu0);
+    rhoeff_mu0=1.0e6*rhoijkm_m*mu0; //(rhoijkm_m+zz[k][j][i].fx[23]*rhonijkm_m)*mu0;
 
     double CA2 = BB2/rhoeff_mu0;
-    double Cfphi=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Bphi*Bphi/rhoeff_mu0))));
+    double Cfphi=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Bphi*Bphi/rhoeff_mu0))))/(1.0+CA2_nonmd/cspeed2);
     double uphi = reconstructed(xx, i, j, km, 9, rg, thetag, phih_m)/rhoijkm_m;
 
     double aa= uphi + Cfphi;
@@ -185,18 +196,19 @@ inline void max_speed_phi_face(Field ***xx, int i, int j, int k, double rg, doub
     Bphi = reconstructed_Bphi(xx, i, j, k, rg, thetag, phig);
     BB2 = Br*Br+Btheta*Btheta+Bphi*Bphi;
 
-    rhoeff_mu0=(rhoijkm_p+nuin_omegae[k][j][i]*rhonijkm_p)*mu0;
+    CA2_nonmd=1.0e-6*BB2/(rhoijkm_p*mu0);
+    rhoeff_mu0=1.0e6*rhoijkm_p*mu0; //(rhoijkm_p+zz[k][j][i].fx[23]*rhonijkm_p)*mu0;
 
     CA2 = BB2/rhoeff_mu0;
-    Cfphi=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Bphi*Bphi/rhoeff_mu0))));
+    Cfphi=sqrt(0.5*(Cs2+CA2+sqrt((Cs2+CA2)*(Cs2+CA2)-4.0*Cs2*(Bphi*Bphi/rhoeff_mu0))))/(1.0+CA2_nonmd/cspeed2);
     uphi = reconstructed(xx, i, j, k, 9, rg, thetag, phig)/rhoijkm_p;
 
     double cc= uphi + Cfphi;
     double dd= uphi - Cfphi;
 
     c_ijkm[0] = max(aa, cc);
-    c_ijkm[0] = max(c_ijkm[0], 0.0)*1.0e-3;
+    c_ijkm[0] = max(c_ijkm[0], 0.0); //velocity in m/s
 
     c_ijkm[1] = min(bb, dd);
-    c_ijkm[1] = min(c_ijkm[1], 0.0)*1.0e-3;
+    c_ijkm[1] = min(c_ijkm[1], 0.0);
 }

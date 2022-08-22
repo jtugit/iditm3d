@@ -52,6 +52,7 @@ int main(int argc,char **argv)
 
     /* Input run setting parameters */
     if (input_param(&params) < 0) exit(-1);
+    double startUT = params.sec;
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - --------
     Create distributed array (DMDA) to manage parallel grid and vectors PETSC
@@ -107,10 +108,8 @@ int main(int argc,char **argv)
     params.ntot = params.ntot + params.npre;
     /*************** start time advancing *************************************/
     for (params.ndt = params.npre+1; params.ndt < params.ntot+1; params.ndt++) {
-        params.sec += dt;
         if (params.sec >= 86400) update_timedate(&params);
 
-        //advance the first half time step for explicit part
         imex_leap_frog(da, X, Xn, Xn1, &params);
 
         // output in parallel to a hdf5 file at chosen time steps
@@ -126,7 +125,7 @@ int main(int argc,char **argv)
             MPI_Reduce(&end_time, &allProcessesTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
             PetscPrintf(MPI_COMM_WORLD,"Step %D: Run time used %g (s), Phyiscal time simulated %12.5f (s)\n",
-               params.ndt, allProcessesTime-start_time, (double)(params.ndt-params.npre)*dt);
+               params.ndt, allProcessesTime-start_time, params.sec-startUT);
         }
     }
     /*************** done time advancing *************************************/

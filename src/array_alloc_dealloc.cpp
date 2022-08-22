@@ -94,12 +94,6 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
             }
         }
     }
-
-    nuin_omegae = new double**[a3];
-    for (k = 0; k < a3; k++) {
-        nuin_omegae[k] = new double*[a2];
-        for (j = 0; j < a2; j++) nuin_omegae[k][j]=new double[a1];
-    }
  
     for (k=0; k<zm; k++) {
         for (j=0; j<ym; j++) {
@@ -219,12 +213,6 @@ void array_deallocate(PetscInt xm, PetscInt ym, PetscInt zm)
     }
     delete[] nust;
     delete[] Omegae;
-
-    for (k = 0; k < a3; k++) {
-        for (j = 0; j < a2; j++) delete[] nuin_omegae[k][j];
-        delete[] nuin_omegae[k];
-    }
-    delete[] nuin_omegae;
 
     for (j = 0; j < a2; j++) {
         delete[] rCsinC[j];

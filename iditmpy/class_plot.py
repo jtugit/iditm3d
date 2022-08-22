@@ -355,7 +355,7 @@ class plot_button():
                     elif var_index == 40:
                         varib[i-i0] = vf_f
 
-                        varib[i-i0]=varib[i-i0]*1.0e-3 #fast mode speed in km/s
+                    varib[i-i0]=varib[i-i0]*1.0e-3 #fast mode speed in km/s
 
                 elif var_index == 41: #sound speed in m/s 
                     _, _, _, varib[i-i0] = fast_wave_speed.fast_speed(self.iditm_arr, \

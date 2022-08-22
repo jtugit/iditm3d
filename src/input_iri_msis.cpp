@@ -28,20 +28,17 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
     fstream  irifstr, msisfstr;
     int      xs, ys, zs, xm, ym, zm;
     int      i0[7]={0,0,0,0,0,0,0}, im[7]={0,0,0,0,0,0,0};
-    string   yy,mm, dd;
 
-    yy=to_string(params->iyr);
-    if (params->mon < 10) mm = "0"+to_string(params->mon); else mm=to_string(params->mon);
-    if (params->idate < 10) dd="0"+to_string(params->idate); else dd=to_string(params->idate); 
+    //yy=to_string(params->iyr);
 
-    string fname1 = params->workdir + "/inp/iri" + yy+mm+dd+".inp";
+    string fname1 = params->workdir + "/inp/" + params->irifln;
     irifstr.open(fname1, fstream::in);
     if(!irifstr) {
         cout << "Can't open file " << fname1 << endl;
         return -1;
     }
 
-    string fname2 = params->workdir + "/inp/msis" + yy+mm+dd+".inp";
+    string fname2 = params->workdir + "/inp/" + params->msisfln;
     msisfstr.open(fname2, fstream::in);
     if(!msisfstr) {
         cout << "Can't open file " << fname2 << endl;
@@ -97,7 +94,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 if (f20[10]>0.0) numHei++;
 
                 //initialy set (rhoi uir), (rhoi uitheta), (rhoi uiphi) to a small constant
-                for (s = 7; s < 10; s++) xx[k][j][i].fx[s] = 1.0e-21;
+                for (s = 7; s < 10; s++) xx[k][j][i].fx[s] = 1.0e-23;
 
                 /* ion and electron temperatures (K) (to be converted to pressures) */
                 xx[k][j][i].fx[10] = f20[6];
@@ -209,11 +206,17 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 }
             }
         }
+
+        for (j = Nth/3; j < ys+ym; j++) {
+            for (i = xs; i < xs+xm; i++) {
+                for (s = 3; s < 7; s++) xx[k][j][i].fx[s]=xx[k][j-1][i].fx[s];
+            }
+        }
     }
 
     //release memory allocated
     DMDAVecRestoreArray(da, localX, &localxx);
-    VecDestroy(&localX);
+    DMRestoreLocalVector(da,&localX);
 
     return 0;
 }

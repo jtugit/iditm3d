@@ -62,7 +62,7 @@ double coe[15], coiO2[13], coiN2[13], coiO[13], coiH[13], coiHe[13], coiNO[13], 
 double con[10];
 
 //ion and neutral collision frequencies */
-double ****nust, ***nuin_omegae, ***Omegae;
+double ****nust, ***Omegae;
 
 double ***fluxn;
 

@@ -6,7 +6,7 @@
 
 void solar_zenith(AppCtx *params, int ys, int ym, int zs, int zm);
 
-int paramaters(DM da, Field ***xx, AppCtx *params)
+int parameters(DM da, Field ***xx, AppCtx *params)
 {
     Vec      localU;
     int      i, j, k, s, m, tt;
@@ -18,7 +18,7 @@ int paramaters(DM da, Field ***xx, AppCtx *params)
     double Td, rhoi, rhon;
     double qn[5], nqd, Dst, amt, Te2, nuss[7];
     double Br, Btheta, Bphi, uir, uitheta, uiphi, Pi, Pe, unr, untheta, unphi, Pn;
-    double lambdae, lambdai, lambdan;
+    double lambdae, lambdai, lambdan, nuin;
 
     const double two3rdmu=2.0e-6/3.0;
 
@@ -80,6 +80,12 @@ int paramaters(DM da, Field ***xx, AppCtx *params)
 /*---------------- collision frequencies -----------*/
 /*--------------------------------------------------*/
                 collision_freq(xx, i, j, k, xi, yj, zk);
+
+                nuin = 0.0;
+                for (s = 0; s < sl; s++) {
+                    for (m = 0; m < sm; m++) nuin += nust[zk][yj][xi][s*14+21+m];
+                }
+                zz[k][j][i].fx[23]=nuin/Omegae[zk][yj][xi];
 
                 ne=uu[k][j][i].fx[6];
 
@@ -174,17 +180,18 @@ int paramaters(DM da, Field ***xx, AppCtx *params)
         }
     }
 
-    /* restore global array uu */
-    //DMDAVecRestoreArray(da,params->U, &uu);
-
-    /* get updated global array uu again. */
-    //DMDAVecGetArray(da, params->U, &uu);
-
-    // also get local array localuu with ghost values also updated for each process
+    // also get local array localuu with ghost values updated for each process
     DMGetLocalVector(da, &localU);
     DMGlobalToLocalBegin(da,params->U,INSERT_VALUES,localU);
     DMGlobalToLocalEnd(da,params->U,INSERT_VALUES,localU);
     DMDAVecGetArray(da, localU, &localuu);
+
+    Vec localZ;
+    Field ***localzz;
+    DMGetLocalVector(da, &localZ);
+    DMGlobalToLocalBegin(da,params->Z,INSERT_VALUES,localZ);
+    DMGlobalToLocalEnd(da,params->Z,INSERT_VALUES,localZ);
+    DMDAVecGetArray(da, localZ, &localzz);
 
     //calcuation of heat fluxes needs local uu because non-local grids required
     //therefre, they are evaluated in separate loops
@@ -311,7 +318,7 @@ int paramaters(DM da, Field ***xx, AppCtx *params)
             for (i=xs; i<xs+xm; i++) {
                 if (i == 0 || i == Nr) continue;
 
-                Estar(xx, localuu, i, j, k, vv);
+                Estar(xx, localuu, localzz, i, j, k, vv);
             }
 
             //bottom and top BCs for edge-averaged electric field
@@ -338,11 +345,12 @@ int paramaters(DM da, Field ***xx, AppCtx *params)
     DMDAVecRestoreArray(da,params->W,&ww);
     DMDAVecRestoreArray(da,params->Z,&zz);
 
-    // restore local array localuu
+    // restore local arrays and local vectors
     DMDAVecRestoreArray(da,localU,&localuu);
-
-    //release memory of local vector allocated with localuu
     DMRestoreLocalVector(da,&localU);
+
+    DMDAVecRestoreArray(da,localZ,&localzz);
+    DMRestoreLocalVector(da,&localZ);
 
     return 0;
 }

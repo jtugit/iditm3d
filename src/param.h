@@ -17,7 +17,7 @@
 #define nvar     26
 #define nion     7
 #define nonu     7
-#define denmin   1.0
+#define denmin   10.0
 
 /* variables of interest to be solved at each grid point */
 typedef struct {
@@ -30,6 +30,7 @@ typedef struct {
     std::string workdir;
     std::string outpdir;
     std::string prefln;
+    std::string irifln, msisfln;
     time_t      start_t;
 
     int         iyr, mon, idate;
@@ -51,6 +52,7 @@ typedef struct {
     double      vgsez;
     int         UseAL;
     double      ALindex;
+    double      RAgamma;
 
     double      rurb3;
 
@@ -71,6 +73,7 @@ const double e=1.6022e-19, ge=9.80665, Re=6371.2e3;
 const double kb=1.3807e-23, eps0=8.85e-12, mu0=1.25663706e-6;
 const double gm=3.984997527e14, cspd=3.0e8;
 const double w0=7.27220517e-5; //Earth's rotation rate
+const double cspeed2=9.0e16*9.0e-6;  //speed of light reduced by a factor of 0.002
 
 const double mp = 1.6605390666e-27;
 
@@ -152,7 +155,7 @@ extern double coe[15], coiO2[13], coiN2[13], coiO[13], coiH[13], coiHe[13], coiN
 extern double con[10];
 
 //ion and neutral collision frequencies */
-extern double ****nust, ***nuin_omegae, ***Omegae;
+extern double ****nust, ***Omegae;
 
 extern double ***fluxn;
 

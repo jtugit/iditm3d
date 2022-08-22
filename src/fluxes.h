@@ -1,4 +1,5 @@
 #include "max_mhd_speeds.h"
+#include <iostream>
 
 inline void neu_max_speed_r_face(Field ***xx, Field ***uu, int i, int j, int k, double an_imjk[])
 {
@@ -124,7 +125,7 @@ inline void neu_max_speed_phi_face(Field ***xx, Field ***uu, int i, int j, int k
 }
 
 /* ------ r-face fluxes at intefaces (i-1/2, j, k) of the cell i ---------------*/
-inline void fluxes_r(Field ***xx, Field ***uu, Field ***vv, int i, int j, int k, double flux_r[])
+inline void fluxes_r(Field ***xx, Field ***uu, Field ***vv, Field ***zz, int i, int j, int k, double flux_r[])
 {
     int im=i-1, s;
 
@@ -132,8 +133,9 @@ inline void fluxes_r(Field ***xx, Field ***uu, Field ***vv, int i, int j, int k,
     double Uim_mjk[nvar], Uim_pjk[nvar];
     double a_imjk[2];
 
-    max_speed_r_face(xx, i, j, k, rh[i], thetaC[j], phi[k], a_imjk);
+    max_speed_r_face(xx, zz, i, j, k, rh[i], thetaC[j], phi[k], a_imjk);
     double a_imjk_multi = a_imjk[0]*a_imjk[1], a_imjk_subtr = a_imjk[0]-a_imjk[1];
+    if (a_imjk[0] >5000.0e3 || fabs(a_imjk[1]) > 5000.0e3) std::cout<<"a_imjk "<<a_imjk[0]<<" "<<i<<" "<<j<<" "<<k<<endl; 
 
     for (s = 0; s < 12; s++) {
     //reconstructed conservative variables for plasma at im- and im+ sides of the interface im=i-1/2
@@ -170,7 +172,7 @@ inline void fluxes_r(Field ***xx, Field ***uu, Field ***vv, int i, int j, int k,
 }
 
 /* ------ theta-face fluxes at intefaces (i, j-1/2, k) i ------*/
-inline void fluxes_theta(Field ***xx, Field ***uu, Field ***ww, int i, int j, int k, double flux_theta[])
+inline void fluxes_theta(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int i, int j, int k, double flux_theta[])
 {
     int jm, kc, s;
 
@@ -178,8 +180,9 @@ inline void fluxes_theta(Field ***xx, Field ***uu, Field ***ww, int i, int j, in
     double Uijm_mk[nvar], Uijm_pk[nvar];
     double b_ijmk[2];
 
-    max_speed_theta_face(xx, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
+    max_speed_theta_face(xx, zz, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
     double b_ijmk_multi = b_ijmk[0]*b_ijmk[1], b_ijmk_subtr = b_ijmk[0] - b_ijmk[1];
+    if (b_ijmk[0] >5000.0e3 || fabs(b_ijmk[1]) > 5000.0e3) std::cout<<"b_ijmk "<<i<<" "<<j<<" "<<k<<endl; 
 
     if (j == 0) {jm = 0; kc = (k+a3/2) % a3;}
     else {jm = j-1; kc = k;}
@@ -226,8 +229,9 @@ inline void fluxes_phi(Field ***xx, Field ***uu, Field ***zz, int i, int j, int 
     if (k == 0) {km = Np; kprime = a3;}
     else {km = k-1; kprime = k;}
 
-    max_speed_phi_face(xx, i, j, k, rfavg[i], theta[j], phih[k], c_ijkm);
+    max_speed_phi_face(xx, zz, i, j, k, rfavg[i], theta[j], phih[k], c_ijkm);
     double c_ijkm_multi = c_ijkm[0]*c_ijkm[1], c_ijkm_subtr = c_ijkm[0]-c_ijkm[1];
+    if (c_ijkm[0] >5000.0e3 || fabs(c_ijkm[1]) > 5000.0e3) std::cout<<"c_ijmk "<<i<<" "<<j<<" "<<k<<endl; 
 
     for (s = 0; s < 12; s++) {
         Uijkm_m[s] = reconstructed(xx, i, j, km, s, rfavg[i], theta[j], phih[kprime]);

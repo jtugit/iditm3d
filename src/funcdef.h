@@ -23,7 +23,7 @@ int forward_scheme(DM da, Vec X, Vec Xn, AppCtx *params);
 void array_allocate(PetscInt, PetscInt, PetscInt);
 void array_deallocate(PetscInt, PetscInt, PetscInt);
 
-int paramaters(DM, Field***, AppCtx *);
+int parameters(DM, Field***, AppCtx *);
 
 int grids(DM, AppCtx*);
 

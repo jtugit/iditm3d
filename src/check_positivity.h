@@ -7,7 +7,7 @@ using namespace std;
 inline int check_positivity(Field ***xx, int i, int j, int k, int num)
 {
     int  s, ngnp=0;
-    string  disp[2]={"Forward time advance", "Leap frog advance"};
+    string  disp[2]={"forward_scheme", "imex_leap_frog"};
 
 //check if any negative densit or temperature
     for (s = 0; s < sl; s++) {

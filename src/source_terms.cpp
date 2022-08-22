@@ -3,10 +3,10 @@
 
 /** evaluate source terms excluding collision terms */
 void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, int i, int j, int k,
-    int zk, int yj, int xi, double source[])
+    int zk, int yj, int xi, double source[], double Ls[])
 {
     int    s;
-    double Ps[14], Ls[14], Qee, Qeuv;
+    double Ps[14], Qee, Qeuv;
     const double n00=1.0e-6, two3rd=2.0/3.0;
     //double Ti_coll_coef = 0.0, inner_term = 0.0;
     //double Tn_coll_coef = 0.0, inner_term_n = 0.0;
@@ -34,8 +34,8 @@ void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, in
         rhon_j += ms[s]*reconstructed(xx, i, j, k, 12+s, rfavg[i], theta[j], phi[k]);      
 
         //source terms for ion and neutral continuity equations
-        source[s] = Ps[s] - Ls[s]*ns_jC[s];
-        source[12+s] = Ps[7+s] - Ls[7+s]*nn_jC;
+        source[s] = Ps[s]; // - Ls[s]*ns_jC[s];
+        source[12+s] = Ps[7+s]; // - Ls[7+s]*nn_jC;
     }
 
     //reconstructed quantities at (rfavg, thetaC, phi_k)
