@@ -73,7 +73,7 @@ const double e=1.6022e-19, ge=9.80665, Re=6371.2e3;
 const double kb=1.3807e-23, eps0=8.85e-12, mu0=1.25663706e-6;
 const double gm=3.984997527e14, cspd=3.0e8;
 const double w0=7.27220517e-5; //Earth's rotation rate
-const double cspeed2=9.0e16*9.0e-6;  //speed of light reduced by a factor of 0.002
+const double cspeed2=9.0e16*1.0e-6;  //speed of light reduced by a factor of 0.002
 
 const double mp = 1.6605390666e-27;
 
