@@ -227,7 +227,6 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
 
                 if(check_positivity(xx, i, j, k, 1) < 0) exit(-12);
 
-                if(i==28 && j==37 && k==73) cout<<params->ndt<<" "<< xx[k][j][i].fx[3]<<endl;
                 for (s = 0; s< nvar; s++) {
                     //Robert-Asselin time filter
                     if (params->ndt > params->npre && (params->ndt-params->npre) % 50 == 0)
@@ -249,10 +248,6 @@ int imex_leap_frog(DM da, Vec X, Vec Xn, Vec Xn1, AppCtx *params)
     DMDAVecRestoreArray(da, localV, &vv);
     DMDAVecRestoreArray(da, localW, &ww);
     DMDAVecRestoreArray(da, localZ, &zz);
-
-    //update gloabl vector Xn from local vector localXn
-    //DMLocalToGlobalBegin(da, localXn, INSERT_VALUES, Xn);
-    //DMLocalToGlobalEnd(da, localXn, INSERT_VALUES, Xn);
 
     DMRestoreLocalVector(da, &localXn);
     DMRestoreLocalVector(da, &localU);
