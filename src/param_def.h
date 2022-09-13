@@ -70,4 +70,6 @@ double **vt, **vp;
 
 double **Ftheta_Rface, ***Fphi_Rface;
 
+double ****Ps, ****Ls, ***Qee, ***Qeuv;
+
 #endif  /* INC PARAM_DEF */

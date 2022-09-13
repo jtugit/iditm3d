@@ -3,16 +3,12 @@
 
 /** evaluate source terms excluding collision terms */
 void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, int i, int j, int k,
-    int zk, int yj, int xi, double source[], double Ls[])
+    int zk, int yj, int xi, double source[])
 {
     int    s;
-    double Ps[14], Qee, Qeuv;
     const double n00=1.0e-6, two3rd=2.0/3.0;
     //double Ti_coll_coef = 0.0, inner_term = 0.0;
     //double Tn_coll_coef = 0.0, inner_term_n = 0.0;
-
-    //conservative or state vatiables are reconstructed and calculated at given (r, theta, phi)
-    prod_loss_rates(xx, uu, i, j, k, zk, yj, xi, Ps, Ls, Qee, Qeuv);
 
     double ns_jC[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0}, nn_jC;
     double rhoi_jC = 0.0, rhoi_j = 0.0, ne_jC=0.0;
@@ -34,8 +30,8 @@ void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, in
         rhon_j += ms[s]*reconstructed(xx, i, j, k, 12+s, rfavg[i], theta[j], phi[k]);      
 
         //source terms for ion and neutral continuity equations
-        source[s] = Ps[s]; // - Ls[s]*ns_jC[s];
-        source[12+s] = Ps[7+s]; // - Ls[7+s]*nn_jC;
+        source[s] = Ps[zk][yj][xi][s]; // - Ls[s]*ns_jC[s];
+        source[12+s] = Ps[zk][yj][xi][7+s]; // - Ls[7+s]*nn_jC;
     }
 
     //reconstructed quantities at (rfavg, thetaC, phi_k)
@@ -96,7 +92,7 @@ void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, in
     double uetheta_j = reconstructed(uu, i, j, k, 4, rfavg[i], theta[j], phi[k]);
 
     //Qee must be in unit of Joule cm^{-3} s^{-1}
-    source[11] =two3rd*(Qee-Pe_jC*(delta_uer+(2.0*uer_jC+delta_uetheta+delta_uephi/sinth[j])/rfavg[i])
+    source[11] =two3rd*(Qee[zk][yj][xi]-Pe_jC*(delta_uer+(2.0*uer_jC+delta_uetheta+delta_uephi/sinth[j])/rfavg[i])
                            -(Pe_j*uetheta_j)*cotth[j]/rfavg[i]);
 
     double untheta_j = reconstructed(uu, i, j, k, 20, rfavg[i], theta[j], phi[k]);
@@ -117,6 +113,7 @@ void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, in
     double delta_unphi = limited_slope_r(uu, i, j, k, 21);
     double Cn = neu_cooling_rate(xx, uu, i, j, k);
 
-    source[22] = two3rd*((Qeuv-Cn)-Pn_jC*(delta_unr+(2.0*unr_jC+delta_untheta+delta_unphi/sinth[j])/rfavg[i])
-                                  -(Pn_j*untheta_j)*cotth[j]/rfavg[i]);
+    source[22] = two3rd*( (Qeuv[zk][yj][xi]-Cn)
+                         -Pn_jC*(delta_unr+(2.0*unr_jC+delta_untheta+delta_unphi/sinth[j])/rfavg[i])
+                         -(Pn_j*untheta_j)*cotth[j]/rfavg[i]);
 }

@@ -17,13 +17,11 @@ int input_param(AppCtx*);
 void output_param(char **, int, int, int, AppCtx *);
 int initialize(DM, Vec, AppCtx*);
 void top_bc_vel(AppCtx *, PetscInt, PetscInt, PetscInt, PetscInt);
-int imex_leap_frog(DM, Vec, Vec, Vec, AppCtx *);
-int forward_scheme(DM da, Vec X, Vec Xn, AppCtx *params);
 
 void array_allocate(PetscInt, PetscInt, PetscInt);
 void array_deallocate(PetscInt, PetscInt, PetscInt);
 
-int parameters(DM, Field***, AppCtx *);
+int parameters(DM da, Vec X, AppCtx *params);
 
 int grids(DM, AppCtx*);
 
@@ -41,7 +39,7 @@ int output_solution(DM,Field***,AppCtx*);
 
 double neu_cooling_rate(Field ***, Field***, int, int, int);
 
-void prod_loss_rates(Field***, Field ***, int, int, int, int, int, int, double[], double[], double &, double &);
+void prod_loss_rates(Field***, Field ***, int, int, int, int, int, int);
 
 void solar_zenith(AppCtx*, PetscInt, PetscInt, PetscInt, PetscInt);
 
@@ -60,11 +58,16 @@ int print_auxiliary_hdf5(DM, Vec, Field ***, AppCtx *);
 
 double expon_integral(double z, int n);
 
-int rhsFunctions(TS ts, double ftime, Vec X, Vec F, void* ctx);
+int rhsfunctions(TS ts, double ftime, Vec X, Vec F, void* ctx);
+int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx);
+int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Amat, Mat Pmat, void *ctx);
 
 int boundary(DM da, Vec X, AppCtx *, int);
 void boundary_bc(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm, AppCtx *);
 void efd_boundary_bc(Field ***uu, int xs, int xm, int ys, int ym, int zs, int zm);
 void boundary_V_T(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm);
+
+int getMatNumberOfNonzero(TS ts);
+void setMatNonzeroPattern(TS ts, int *mrow, int *ncol);
 
 //#endif  /* INC FUNCDEF */

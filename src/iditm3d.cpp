@@ -16,13 +16,13 @@ using namespace std;
 
 int main(int argc,char **argv)
 {
-    Vec            X, Xn, Xn1;
+    Vec            X;
     Field          ***xx;
     DM             da;
     AppCtx         params;               /* user-defined work context */
 
     PetscMPIInt    nprocs, rank; //, i;
-    int            nprocx, nprocy, nprocz=1;
+    PetscInt       nprocx, nprocy, nprocz=1;
     PetscInt       xs, ys, zs, xm, ym, zm;
     char           buff[150];
     string         fname;
@@ -66,7 +66,7 @@ int main(int argc,char **argv)
 
     DMDAGetInfo(da, NULL, NULL, NULL, NULL, &nprocx, &nprocy, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
-    if (!rank) output_param(argv, nprocx, nprocy, nprocz, &params);
+    if (!rank) output_param(argv, (int)nprocx, (int)nprocy, (int)nprocz, &params);
 
     if(a1/nprocx < 5 || a2/nprocy < 5) {
         cout<<"Too few grids on r or theta coordinate a process owns!"
@@ -88,8 +88,6 @@ int main(int argc,char **argv)
      Extract global vectors from DMDA;
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
     DMCreateGlobalVector(da, &X);
-    VecDuplicate(X, &Xn);
-    VecDuplicate(X, &Xn1);
     VecDuplicate(X, &params.U);
     VecDuplicate(X, &params.V);
     VecDuplicate(X, &params.W);
@@ -98,26 +96,65 @@ int main(int argc,char **argv)
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
 
     /* set up grids and related geometric parameters. Input initial solution */
-    if (initialize(da, Xn1, &params) < 0) exit(-1);
+    if (initialize(da, X, &params) < 0) exit(-1);
 
-    /* using halftime step to get first step solution at tn + dt/2 */
-    forward_scheme(da, Xn, Xn1, &params);
+    TS    ts;
+    TSCreate(MPI_COMM_WORLD, &ts);
+    TSSetProblemType(ts, TS_NONLINEAR);
+    TSSetType(ts, TSROSW);
+
+    TSSetDM(ts, da);
+    TSSetSolution(ts, X);
+
+    TSSetTime(ts, params.sec);
+    TSSetTimeStep(ts, dt);
+    TSSetMaxSteps(ts, params.ntot);
+
+    TSSetFromOptions(ts);
+
+    Mat A;
+    /*int N=a1*a2*a3*a4;
+    MatCreate(MPI_COMM_WORLD, &A);
+    MatSetType(A, MATMPIAIJ);
+    MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, N, N);
+    MatMPIAIJSetPreallocation(A, 26, NULL, 26, NULL);
+    MatSetUp(A);*/
+
+    DMSetMatrixPreallocateOnly(da, PETSC_FALSE);
+    DMSetMatType(da, MATMPIAIJ);
+    DMDASetBlockFills(da, dfill, ofill);
+    DMCreateMatrix(da, &A);
+    //MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+
+    /*int nmat = getMatNumberOfNonzero(ts);
+    int *mrow = new int[nmat];
+    int *ncol = new int[nmat];
+    setMatNonzeroPattern(ts, mrow, ncol);
+    MatSetPreallocationCOO(A, nmat, mrow, ncol);
+    delete[] mrow; delete ncol;*/
+
+    TSSetRHSFunction(ts, NULL, rhsfunctions, &params);
+    TSSetIFunction(ts, NULL, stifffunction, &params);
+    TSSetIJacobian(ts, A, A, jacobian, &params);
 
     if (!rank) cout <<endl<< "Start time advancing ..." <<endl;
+
+    parameters(da, X, &params);
 
     params.ntot = params.ntot + params.npre;
     /*************** start time advancing *************************************/
     for (params.ndt = params.npre+1; params.ndt < params.ntot+1; params.ndt++) {
         if (params.sec >= 86400) update_timedate(&params);
 
-        imex_leap_frog(da, X, Xn, Xn1, &params);
+        TSStep(ts);
+
+        DMDAVecGetArray(da, X, &xx);
 
         // output in parallel to a hdf5 file at chosen time steps
-        if (params.ndt % params.nout ==0 || params.ndt==params.ntot) {
-            DMDAVecGetArray(da, X, &xx);
-            output_solution(da, xx, &params);
-            DMDAVecRestoreArray(da, X, &xx);
-        }
+        if (params.ndt % params.nout ==0 || params.ndt==params.ntot) output_solution(da, xx, &params);
+        DMDAVecRestoreArray(da, X, &xx);
+
+        parameters(da, X, &params);
 
         if (params.ndt % params.lognum ==0 || params.ndt==params.ntot) {
             end_t=time(NULL);
@@ -139,11 +176,11 @@ int main(int argc,char **argv)
     VecDestroy(&params.V);
     VecDestroy(&params.W);
     VecDestroy(&params.Z);
-    VecDestroy(&Xn1);
-    VecDestroy(&Xn);
     VecDestroy(&X);
 
+    MatDestroy(&A);
     DMDestroy(&da);
+    TSDestroy(&ts);
 
     if (!rank) {
         end_t=time(NULL);

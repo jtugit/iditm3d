@@ -18,7 +18,7 @@ using namespace std;
 #include "param.h"
 #include "funcdef.h"
 
-void nightflux(double ***, int, int, int);
+void nightflux(double ***, int, PetscInt, PetscInt);
 void print_top_bc_vel(AppCtx *, int, int, int, int, int);
 int input_iri_msis(DM da, Vec X, Field ***, AppCtx *params);
 

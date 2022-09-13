@@ -6,19 +6,25 @@
 
 void solar_zenith(AppCtx *params, int ys, int ym, int zs, int zm);
 
-int parameters(DM da, Field ***xx, AppCtx *params)
+/*----------------------------------------------------------------------
+ * Calculate various parameters and store in vectors U, V, W, Z.
+ * xx used is local array, corresponding to solution X.
+ * This routine must be called before declaring local uu, vv, ww, & zz
+ *---------------------------------------------------------------------*/
+
+int parameters(DM da, Vec X, AppCtx *params)
 {
-    Vec      localU;
+    Vec      localX, localU;
     int      i, j, k, s, m, tt;
     PetscInt xs, ys, zs, xm, ym, zm;
-    Field    ***uu, ***localuu, ***vv, ***ww, ***zz;
+    Field    ***xx, ***uu, ***localuu, ***vv, ***ww, ***zz;
 
     double Te, Te12, ne, ni[7], nn[7], Ti, Tn, fq;
     int    zk, yj, xi, s0;
     double Td, rhoi, rhon;
-    double qn[5], nqd, Dst, amt, Te2, nuss[7];
+    double qn[5], nqd, Dst, amt, Te2, nuss[7], nuin, lambdai, lambdan;
     double Br, Btheta, Bphi, uir, uitheta, uiphi, Pi, Pe, unr, untheta, unphi, Pn;
-    double lambdae, lambdai, lambdan, nuin;
+    double a_imjk[2], b_ijmk[2], c_ijkm[2];
 
     const double two3rdmu=2.0e-6/3.0;
 
@@ -27,6 +33,12 @@ int parameters(DM da, Field ***xx, AppCtx *params)
     double rrt=(rC[Nr]-rC[Nrm])/(rC[Nrm]-rC[Nrm2]);
     double y1, y2;
 
+    //------------- xx local array ---------------------
+    DMGetLocalVector(da, &localX);
+    DMGlobalToLocalBegin(da, X, INSERT_VALUES, localX);
+    DMGlobalToLocalEnd(da, X, INSERT_VALUES, localX);
+    DMDAVecGetArray(da, localX, &xx);
+
     /*------- uu, vv, ww, zz are global arrays -------------*/
     DMDAVecGetArray(da, params->U, &uu);
     DMDAVecGetArray(da, params->V, &vv);
@@ -34,7 +46,7 @@ int parameters(DM da, Field ***xx, AppCtx *params)
     DMDAVecGetArray(da, params->Z, &zz);
 
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
-    solar_zenith(params, ys, ym, zs, zm);
+    solar_zenith(params, (int)ys, (int)ym, (int)zs, (int)zm);
 
     /* compute point quantities at rfavg, thetaC, phi_k */
     for (k=zs; k<zs+zm; k++) {
@@ -46,20 +58,18 @@ int parameters(DM da, Field ***xx, AppCtx *params)
             yj=j-ys;
 
             for (i=xs; i<xs+xm; i++) {
-                if (i == Nr) continue;
-
                 xi=i-xs;
 
                 //cell averaged ne and Nn (~ those at rC, thetaC, phi_k)
-                rhoi=0.0; rhon=0.0; uu[k][j][i].fx[6]=0.0; uu[k][j][i].fx[18]=0.0;
+                rhoi=0.0; rhon=0.0; uu[k][j][i].fx[17]=0.0; uu[k][j][i].fx[18]=0.0;
                 for (s = 0; s < sl; s++) {
                     ni[s] = xx[k][j][i].fx[s];
-                    rhoi += ms[s]*ni[s];
-                    uu[k][j][i].fx[6] += ni[s];
+                    rhoi += ms[s]*ni[s];          //ion mass density
+                    uu[k][j][i].fx[17] += ni[s];  //electron density
 
                     nn[s] = xx[k][j][i].fx[12+s];
-                    rhon += ms[s]*nn[s];
-                    uu[k][j][i].fx[18] += nn[s];
+                    rhon += ms[s]*nn[s];          //neutral mass density
+                    uu[k][j][i].fx[18] += nn[s];  //neutral density
                 }
 
                 //cell averaged uir=(rhoi*uir)/rhoi, uitheta=(rhoi*uitheta)/rhoi, uiphi=(rhoi*uiphi)/rhoi
@@ -72,8 +82,8 @@ int parameters(DM da, Field ***xx, AppCtx *params)
                 }
 
                 //Ti = Pi/ne, Te = pe/ne (ne = ni), Tn = Pn/Nn
-                uu[k][j][i].fx[10] = xx[k][j][i].fx[10]/(uu[k][j][i].fx[6]*kb); 
-                uu[k][j][i].fx[11] = xx[k][j][i].fx[11]/(uu[k][j][i].fx[6]*kb);
+                uu[k][j][i].fx[10] = xx[k][j][i].fx[10]/(uu[k][j][i].fx[17]*kb); 
+                uu[k][j][i].fx[11] = xx[k][j][i].fx[11]/(uu[k][j][i].fx[17]*kb);
                 uu[k][j][i].fx[22] = xx[k][j][i].fx[22]/(uu[k][j][i].fx[18]*kb);
 
 /*--------------------------------------------------*/
@@ -81,13 +91,17 @@ int parameters(DM da, Field ***xx, AppCtx *params)
 /*--------------------------------------------------*/
                 collision_freq(xx, i, j, k, xi, yj, zk);
 
+                //production and loss rates
+                prod_loss_rates(xx, uu, i, j, k, zk, yj, xi);
+
+                //calculate ratio of ion-neutral coolision freqency over electron gyro-frequency
                 nuin = 0.0;
                 for (s = 0; s < sl; s++) {
                     for (m = 0; m < sm; m++) nuin += nust[zk][yj][xi][s*14+21+m];
                 }
                 zz[k][j][i].fx[23]=nuin/Omegae[zk][yj][xi];
 
-                ne=uu[k][j][i].fx[6];
+                ne=uu[k][j][i].fx[17];
 
                 uir=uu[k][j][i].fx[7];
                 uitheta=uu[k][j][i].fx[8];
@@ -108,7 +122,9 @@ int parameters(DM da, Field ***xx, AppCtx *params)
                     zz[k][j][i].fx[12+s]=nn[s]*unphi;
                 }
 
-                Br=reconstructed_Br(xx, i, j, k, rC[i], thetaC[j], phi[k])+ww[k][j][i].fx[23];
+                //assume Br(rC[Nr],theta, phi) = Br[rC[Nr-1], theta, phi)]
+                if (i==Nr) Br=reconstructed_Br(xx, i-1, j, k, rC[i-1], thetaC[j], phi[k])+ww[k][j][i].fx[23];
+                else Br=reconstructed_Br(xx, i, j, k, rC[i], thetaC[j], phi[k])+ww[k][j][i].fx[23];
                 Btheta=reconstructed_Btheta(xx, i, j, k, rC[i], thetaC[j], phi[k])+ww[k][j][i].fx[24];
                 Bphi=reconstructed_Bphi(xx, i, j, k, rC[i], thetaC[j], phi[k]);
 
@@ -155,27 +171,8 @@ int parameters(DM da, Field ***xx, AppCtx *params)
 /**-----------------------------------------------------------------------------------
  * -------------- cell volume averaged Electric field - reconstructed
  * -----------------------------------------------------------------------------------*/
-                //xx local arrays but ww global array. uu global to store efd at (rC, thetaC, phi_k)
-                if (i == 0) continue;
-
+                //xx local arrays but ww global array. uu global to store cell averaged efd at (rC, thetaC, phi_k)
                 electric_field(xx, ww, uu, i, j, k);
-            }
-
-            //bottom and top BCs for cell-averaged electric field, and fluxes
-            if (xs == 0) {
-                for (s = 0; s < 3; s++) {
-                    y1= uu[k][j][1].fx[s];
-                    y2= uu[k][j][2].fx[s];
-                    uu[k][j][0].fx[s]= y1 + rrb*(y2-y1);
-                }
-            }
-
-            if (xs+xm == a1) {
-                for (s = 0; s < 3; s++) {
-                    y1=uu[k][j][Nrm].fx[s];
-                    y2=uu[k][j][Nrm2].fx[s];
-                    uu[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
-                }
             }
         }
     }
@@ -204,13 +201,28 @@ int parameters(DM da, Field ***xx, AppCtx *params)
             //j = Nth is the grids on the other side (different k) of south pole so skip.
             if (j < Nth) {
                 for (i=xs; i<xs+xm; i++) {
-                    if (i == Nr) continue;
                     xi=i-xs;
+
+                    if (i > 0) { 
+                        //maximum speed at cell interfaces
+                        max_speed_r_face(xx, zz, i, j, k, rh[i], thetaC[j], phi[k], a_imjk);
+                        uu[k][j][i].fx[3] = a_imjk[0];
+                        uu[k][j][i].fx[4] = a_imjk[1];
+                    }
+                    if (i > 0 && i < Nr) {
+                        max_speed_theta_face(xx, zz, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
+                        max_speed_phi_face(xx, zz, i, j, k, rfavg[i], theta[j], phih[k], c_ijkm);
+
+                        uu[k][j][i].fx[5] = b_ijmk[0];
+                        uu[k][j][i].fx[6] = b_ijmk[1];
+                        uu[k][j][i].fx[15]= c_ijkm[0];
+                        uu[k][j][i].fx[16]= c_ijkm[1];
+                    }
 
 /*-----------------------------------------------------------------------------*/
 //--------------- thermal conductivities
 /*-----------------------------------------------------------------------------*/
-                    ne=uu[k][j][i].fx[6];
+                    ne=uu[k][j][i].fx[17];
                     Te=uu[k][j][i].fx[11];
                     Te12=sqrt(Te);
                     Te2=Te*Te;
@@ -231,12 +243,12 @@ int parameters(DM da, Field ***xx, AppCtx *params)
 
                     /* electron thermal conductivity */
                     nqd=nn[0]*qn[0]+nn[3]*qn[1]+nn[4]*qn[2]+nn[1]*qn[3]+nn[2]*qn[4];
-                    lambdae=1.233694e-17*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd);
+                    zz[k][j][i].fx[24]=1.233694e-11*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd);
 
                     /* electron heat flux */
-                    uu[k][j][i].fx[15] = -lambdae*limited_slope_r(localuu, i, j, k, 11);
-                    uu[k][j][i].fx[16] = -lambdae*limited_slope_theta(localuu, i, j, k, 11)/rC[i];
-                    uu[k][j][i].fx[17] = -lambdae*limited_slope_phi(localuu, i, j, k, 11)/rCsinC[j][i];
+                    //uu[k][j][i].fx[15] = -zz[k][j][i].fx[24]*limited_slope_r(localuu, i, j, k, 11);
+                    //uu[k][j][i].fx[16] = -zz[k][j][i].fx[24]*limited_slope_theta(localuu, i, j, k, 11)/rC[i];
+                    //uu[k][j][i].fx[17] = -zz[k][j][i].fx[24]*limited_slope_phi(localuu, i, j, k, 11)/rCsinC[j][i];
 
                     rhon = 0.0;
                     for (s = 0; s < sm; s++) rhon += xx[k][j][i].fx[12+s]*ms[s];
@@ -277,7 +289,7 @@ int parameters(DM da, Field ***xx, AppCtx *params)
                         uu[k][j][i].fx[14] -=lambdai;
                     }
 
-                    //heat flux vector of ions
+                    //ion heat flux vector
                     uu[k][j][i].fx[12] =uu[k][j][i].fx[14]*limited_slope_r(localuu, i, j, k, 10);
                     uu[k][j][i].fx[13] =uu[k][j][i].fx[14]*limited_slope_theta(localuu, i, j, k, 10)/rC[i];
                     uu[k][j][i].fx[14] =uu[k][j][i].fx[14]*limited_slope_phi(localuu, i, j, k, 10)/rCsinC[j][i];
@@ -299,15 +311,15 @@ int parameters(DM da, Field ***xx, AppCtx *params)
 
                     // now add heat fluxes to the pressure fluxes
                     vv[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[12];
-                    vv[k][j][i].fx[11] += two3rdmu*uu[k][j][i].fx[15];
+                    //vv[k][j][i].fx[11] += two3rdmu*uu[k][j][i].fx[15];
                     vv[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[23];
 
                     ww[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[13];
-                    ww[k][j][i].fx[11] += two3rdmu*uu[k][j][i].fx[16];
+                    //ww[k][j][i].fx[11] += two3rdmu*uu[k][j][i].fx[16];
                     ww[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[24];
 
                     zz[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[14];
-                    zz[k][j][i].fx[11] += two3rdmu*uu[k][j][i].fx[17];
+                    //zz[k][j][i].fx[11] += two3rdmu*uu[k][j][i].fx[17];
                     zz[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[25];
                 }
             }
@@ -321,7 +333,7 @@ int parameters(DM da, Field ***xx, AppCtx *params)
                 Estar(xx, localuu, localzz, i, j, k, vv);
             }
 
-            //bottom and top BCs for edge-averaged electric field
+            //bottom BC for edge-averaged electric field
             if (xs == 0) {
                 for (s = 0; s < 3; s++) {
                     y1= vv[k][j][1].fx[s];
@@ -330,15 +342,30 @@ int parameters(DM da, Field ***xx, AppCtx *params)
                 }
             }
 
+            //top BC for edge-averaged electric field, and max-speed
             if (xs+xm == a1) {
                 for (s = 0; s < 3; s++) {
                     y1=vv[k][j][Nrm].fx[s];
                     y2=vv[k][j][Nrm2].fx[s];
                     vv[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
                 }
+
+                for (s = 5; s < 7; s++) {
+                    y1=uu[k][j][Nrm].fx[s];
+                    y2=uu[k][j][Nrm2].fx[s];
+                    uu[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
+                }
+                for (s = 15; s < 16; s++) {
+                    y1=uu[k][j][Nrm].fx[s];
+                    y2=uu[k][j][Nrm2].fx[s];
+                    uu[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
+                }
             }
         }
     }
+
+    DMDAVecRestoreArray(da, localX, &xx);
+    DMRestoreLocalVector(da, &localX);
 
     DMDAVecRestoreArray(da,params->U,&uu);
     DMDAVecRestoreArray(da,params->V,&vv);

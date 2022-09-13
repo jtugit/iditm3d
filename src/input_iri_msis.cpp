@@ -23,10 +23,11 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
 {
     Vec      localX;
     Field    ***localxx;
-    int      i, j, k, s;
+    PetscInt i, j, k;
+    int      s;
     double   f20[14], ne, Nn;
     fstream  irifstr, msisfstr;
-    int      xs, ys, zs, xm, ym, zm;
+    PetscInt xs, ys, zs, xm, ym, zm;
     int      i0[7]={0,0,0,0,0,0,0}, im[7]={0,0,0,0,0,0,0};
 
     //yy=to_string(params->iyr);
@@ -210,6 +211,18 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
         for (j = Nth/3; j < ys+ym; j++) {
             for (i = xs; i < xs+xm; i++) {
                 for (s = 3; s < 7; s++) xx[k][j][i].fx[s]=xx[k][j-1][i].fx[s];
+            }
+        }
+    }
+
+    int kc;
+    if (ys+ym == a2) {
+        for (k = zs; k < zs+zm; k++) {
+            kc = (k+a3/2) % a3;
+
+            for (i = xs; i< xs+xm; i++) {
+                for (s = 0; s < nvar; s++)
+                    if (s != 24) xx[k][Nth][i].fx[s] = xx[kc][0][i].fx[s];
             }
         }
     }

@@ -125,30 +125,32 @@ inline void neu_max_speed_phi_face(Field ***xx, Field ***uu, int i, int j, int k
 }
 
 /* ------ r-face fluxes at intefaces (i-1/2, j, k) of the cell i ---------------*/
-inline void fluxes_r(Field ***xx, Field ***uu, Field ***vv, Field ***zz, int i, int j, int k, double flux_r[])
+inline void fluxes_r(Field ***xx, Field ***uu, Field ***vv, int i, int j, int k, double flux_r[])
 {
     int im=i-1, s;
 
     double fluxim_mjk, fluxim_pjk;
-    double Uim_mjk[nvar], Uim_pjk[nvar];
-    double a_imjk[2];
+    double Uim_mjk, Uim_pjk;
+    double a_imjk[2], drh_rCm=rh[i]-rC[im], drh_rC=rh[i]-rC[i];
 
-    max_speed_r_face(xx, zz, i, j, k, rh[i], thetaC[j], phi[k], a_imjk);
+    //max_speed_r_face(xx, zz, i, j, k, rh[i], thetaC[j], phi[k], a_imjk);
+    a_imjk[0]=uu[k][j][i].fx[3];
+    a_imjk[1]=uu[k][j][i].fx[4];
     double a_imjk_multi = a_imjk[0]*a_imjk[1], a_imjk_subtr = a_imjk[0]-a_imjk[1];
-    if (a_imjk[0] >5000.0e3 || fabs(a_imjk[1]) > 5000.0e3) std::cout<<"a_imjk "<<a_imjk[0]<<" "<<i<<" "<<j<<" "<<k<<endl; 
 
+    //for plasma equations, terms associated with fluxes are partially treated explicitly
     for (s = 0; s < 12; s++) {
-    //reconstructed conservative variables for plasma at im- and im+ sides of the interface im=i-1/2
-        Uim_mjk[s] = reconstructed(xx, im, j, k, s, rh[i], thetaC[j], phi[k]);
-        Uim_pjk[s] = reconstructed(xx, i, j, k, s, rh[i], thetaC[j], phi[k]);
+    //limited slope for plasma at im- and im+ sides of the interface im=i-1/2
+        Uim_mjk = limited_slope_r(xx, im, j, k, s)*drh_rCm;
+        Uim_pjk = limited_slope_r(xx, i, j, k, s)*drh_rC;
 
-    //**** reconstructed ion fluxes at interface (i-1/2, j, k) of the cell i *****************
+    //**** limited ion fluxe slope at interface (i-1/2, j, k) of the cell i *****************
         //first calcuated fluxes on -/+ sides of i-1/2
-        fluxim_mjk = reconstructed_flux(vv, im, j, k, s, rh[i], thetaC[j], phi[k]);
-        fluxim_pjk = reconstructed_flux(vv, i, j, k, s, rh[i], thetaC[j], phi[k]);
+        fluxim_mjk = vv[k][j][i].fx[s]+flux_limited_slope_r(vv, im, j, k, s)*drh_rCm;
+        fluxim_pjk = vv[k][j][i].fx[s]+flux_limited_slope_r(vv, i, j, k, s)*drh_rC;
 
         flux_r[s] = ( (a_imjk[0]*fluxim_mjk - a_imjk[1]*fluxim_pjk)
-                     -a_imjk_multi*(Uim_mjk[s] - Uim_pjk[s]))/a_imjk_subtr;
+                     -a_imjk_multi*(Uim_mjk - Uim_pjk))/a_imjk_subtr;
     }
 
 //********* flux for n_q (q=0, 1, 2... sm) equations *****************
@@ -156,47 +158,58 @@ inline void fluxes_r(Field ***xx, Field ***uu, Field ***vv, Field ***zz, int i, 
     neu_max_speed_r_face(xx, uu, i, j, k, an_imjk);
     double an_imjk_multi=an_imjk[0]*an_imjk[1], an_imjk_subtr=an_imjk[0]-an_imjk[1];
 
+    //for neutral equations terms associated with fluxes are completely treated explicitly
     for (s = 12; s < 23; s++) {
     //reconstructed conservative variables for neutrals at im- and im+ sides of the interface im=i-1/2
-        Uim_mjk[s] = reconstructed(xx, im, j, k, s, rh[i], thetaC[j], phi[k]);
-        Uim_pjk[s] = reconstructed(xx, i, j, k, s, rh[i], thetaC[j], phi[k]);
+        Uim_mjk = xx[k][j][i].fx[s]+limited_slope_r(xx, im, j, k, s)*drh_rCm;
+        Uim_pjk = xx[k][j][i].fx[s]+limited_slope_r(xx, i, j, k, s)*drh_rC;
 
     //**** reconstructed neutral fluxes at interface (i-1/2, j, k) of the cell i *****************
         //first calcuated fluxes on -/+ sides of i-1/2
-        fluxim_mjk = reconstructed_flux(vv, im, j, k, s, rh[i], thetaC[j], phi[k]);
-        fluxim_pjk = reconstructed_flux(vv, i, j, k, s, rh[i], thetaC[j], phi[k]);
+        fluxim_mjk = vv[k][j][i].fx[s]+flux_limited_slope_r(vv, im, j, k, s)*drh_rCm;
+        fluxim_pjk = vv[k][j][i].fx[s]+flux_limited_slope_r(vv, i, j, k, s)*drh_rC;
 
         flux_r[s] = ( (an_imjk[0]*fluxim_mjk - an_imjk[1]*fluxim_pjk)
-                     -an_imjk_multi*(Uim_mjk[s]-Uim_pjk[s]))/an_imjk_subtr;
+                     -an_imjk_multi*(Uim_mjk-Uim_pjk))/an_imjk_subtr;
     }
 }
 
 /* ------ theta-face fluxes at intefaces (i, j-1/2, k) i ------*/
-inline void fluxes_theta(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int i, int j, int k, double flux_theta[])
+inline void fluxes_theta(Field ***xx, Field ***uu, Field ***ww, int i, int j, int k, double flux_theta[])
 {
     int jm, kc, s;
 
     double fluxijm_mk, fluxijm_pk;
-    double Uijm_mk[nvar], Uijm_pk[nvar];
+    double Uijm_mk, Uijm_pk;
     double b_ijmk[2];
+    double drfavg_rC=rfavg[i]-rC[i], dth_thCm;
+    double dth_thC=thetah[j]-thetaC[j];
 
-    max_speed_theta_face(xx, zz, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
+    //max_speed_theta_face(xx, zz, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
+    b_ijmk[0]=uu[k][j][i].fx[5];
+    b_ijmk[1]=uu[k][j][i].fx[15];
     double b_ijmk_multi = b_ijmk[0]*b_ijmk[1], b_ijmk_subtr = b_ijmk[0] - b_ijmk[1];
-    if (b_ijmk[0] >5000.0e3 || fabs(b_ijmk[1]) > 5000.0e3) std::cout<<"b_ijmk "<<i<<" "<<j<<" "<<k<<endl; 
 
-    if (j == 0) {jm = 0; kc = (k+a3/2) % a3;}
-    else {jm = j-1; kc = k;}
+    if (j == 0) {
+        jm = 0; kc = (k+a3/2) % a3;
+        dth_thCm=2.0*thetah[j];
+    }
+    else {
+        jm = j-1; kc = k;
+        dth_thCm=thetah[j]-thetaC[jm];
+    }
 
     for (s = 0; s < 12; s++) {
-        Uijm_mk[s] = reconstructed(xx, i, jm, kc, s, rfavg[i], thetah[j], phi[kc]);
-        if (j == 0 && (s == 8 || s == 20)) Uijm_mk[s] = -Uijm_mk[s];
-        Uijm_pk[s] = reconstructed(xx, i, j, k, s, rfavg[i], thetah[j], phi[k]);
+        Uijm_mk = limited_slope_r(xx, i, jm, kc, s)*drfavg_rC + limited_slope_theta(xx, i, jm, kc, s)*dth_thCm;
+        Uijm_pk = limited_slope_r(xx, i, j, k, s)*drfavg_rC + limited_slope_theta(xx, i, j, kc, s)*dth_thC;
 
-        fluxijm_mk = reconstructed_flux(ww, i, jm, kc, s, rfavg[i], thetah[j], phi[kc]);
-        fluxijm_pk = reconstructed_flux(ww, i, j, k, s, rfavg[i], thetah[j], phi[k]);
+        fluxijm_mk = ww[k][j][i].fx[s]+flux_limited_slope_r(ww, i, jm, kc, s)*drfavg_rC
+                    +limited_slope_theta(ww, i, jm, kc, s)*dth_thCm;
+        fluxijm_pk = ww[k][j][i].fx[s]+flux_limited_slope_r(ww, i, j, k, s)*drfavg_rC
+                    +limited_slope_theta(ww, i, j, k, s)*dth_thC;
 
         flux_theta[s] = ( (b_ijmk[0]*fluxijm_mk - b_ijmk[1]*fluxijm_pk)
-                         -b_ijmk_multi*(Uijm_mk[s]-Uijm_pk[s]))/b_ijmk_subtr;
+                         -b_ijmk_multi*(Uijm_mk-Uijm_pk))/b_ijmk_subtr;
     }
 
 //********* flux for n_q (q=0, 1, 2... sm) equations *****************
@@ -205,43 +218,54 @@ inline void fluxes_theta(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int
     double bn_ijmk_multi = bn_ijmk[0]*bn_ijmk[1], bn_ijmk_subtr = bn_ijmk[0] - bn_ijmk[1];
 
     for (s = 12; s < 23; s++) {
-        Uijm_mk[s] = reconstructed(xx, i, jm, kc, s, rfavg[i], thetah[j], phi[kc]);
-        if (j == 0 && s == 20) Uijm_mk[s] = -Uijm_mk[s];
-        Uijm_pk[s] = reconstructed(xx, i, j, k, s, rfavg[i], thetah[j], phi[k]);
+        Uijm_mk = xx[k][j][i].fx[s]+limited_slope_r(xx, i, jm, kc, s)*drfavg_rC
+                 +limited_slope_theta(xx, i, jm, kc, s)*dth_thCm;
+        Uijm_pk = xx[k][j][i].fx[s]+limited_slope_r(xx, i, j, k, s)*drfavg_rC
+                 +limited_slope_theta(xx, i, j, kc, s)*dth_thC;
 
-        fluxijm_mk = reconstructed(ww, i, jm, kc, s, rfavg[i], thetah[j], phi[kc]);
-        fluxijm_pk = reconstructed(ww, i, j, k, s, rfavg[i], thetah[j], phi[k]);
+        fluxijm_mk = ww[k][j][i].fx[s]+flux_limited_slope_r(ww, i, jm, kc, s)*drfavg_rC
+                    +limited_slope_theta(ww, i, jm, kc, s)*dth_thCm;
+        fluxijm_pk = ww[k][j][i].fx[s]+flux_limited_slope_r(ww, i, j, k, s)*drfavg_rC
+                    +limited_slope_theta(ww, i, j, k, s)*dth_thC;
 
         flux_theta[s] = ( (b_ijmk[0]*fluxijm_mk - b_ijmk[1]*fluxijm_pk)
-                         -bn_ijmk_multi*(Uijm_mk[s] - Uijm_pk[s]))/bn_ijmk_subtr;
+                         -bn_ijmk_multi*(Uijm_mk - Uijm_pk))/bn_ijmk_subtr;
     }
 }
 
 /* ------ phi-face fluxes at intefaces (i, j-1/2, k) i ------*/
 inline void fluxes_phi(Field ***xx, Field ***uu, Field ***zz, int i, int j, int k, double flux_phi[])
 {
-    int km, kprime, s;
+    int km, s;
 
     double fluxijkm_m, fluxijkm_p;
-    double Uijkm_m[nvar], Uijkm_p[nvar];
+    double Uijkm_m, Uijkm_p;
     double c_ijkm[2];
+    double drfavg_rC=rfavg[i]-rC[i], dthh_thC=thetah[j]-thetaC[j], dphim_phikm, dphim_phi=phih[k]-phi[k];
+                                                           //    phi[Np] phih[Np+1]  phi[0]
+    if (k == 0) {km = Np; dphim_phikm = phih[Np+1]-phi[km];} // |      o      |          o   
+    else {km = k-1; dphim_phikm = phih[k]-phi[km];}          //      k=Np phi_Np+1/2    k=0
 
-    if (k == 0) {km = Np; kprime = a3;}
-    else {km = k-1; kprime = k;}
-
-    max_speed_phi_face(xx, zz, i, j, k, rfavg[i], theta[j], phih[k], c_ijkm);
+    //max_speed_phi_face(xx, zz, i, j, k, rfavg[i], theta[j], phih[k], c_ijkm);
+    c_ijkm[0]=uu[k][j][i].fx[16];
+    c_ijkm[1]=uu[k][j][i].fx[17];
     double c_ijkm_multi = c_ijkm[0]*c_ijkm[1], c_ijkm_subtr = c_ijkm[0]-c_ijkm[1];
-    if (c_ijkm[0] >5000.0e3 || fabs(c_ijkm[1]) > 5000.0e3) std::cout<<"c_ijmk "<<i<<" "<<j<<" "<<k<<endl; 
 
     for (s = 0; s < 12; s++) {
-        Uijkm_m[s] = reconstructed(xx, i, j, km, s, rfavg[i], theta[j], phih[kprime]);
-        Uijkm_p[s] = reconstructed(xx, i, j, k, s, rfavg[i], theta[j], phih[k]);
+        Uijkm_m = limited_slope_r(xx, i, j, km, s)*drfavg_rC + limited_slope_theta(xx, i, j, km, s)*dthh_thC
+                 +limited_slope_phi(xx, i, j, km, s)*dphim_phikm;
+        Uijkm_p = limited_slope_r(xx, i, j, k, s)*drfavg_rC + limited_slope_theta(xx, i, j, k, s)*dthh_thC
+                 +limited_slope_phi(xx, i, j, k, s)*dphim_phi;
 
-        fluxijkm_m = reconstructed(zz, i, j, km, s, rfavg[i], theta[j], phih[kprime]);
-        fluxijkm_p = reconstructed(zz, i, j, k, s, rfavg[i], theta[j], phih[k]);
+        fluxijkm_m = zz[km][j][i].fx[s]+flux_limited_slope_r(zz, i, j, km, s)*drfavg_rC
+                    +limited_slope_theta(zz, i, j, km, s)*dthh_thC
+                    +limited_slope_phi(zz, i, j, km, s)*dphim_phikm;
+        fluxijkm_p = zz[k][j][i].fx[s]+flux_limited_slope_r(zz, i, j, k, s)*drfavg_rC
+                    +limited_slope_theta(zz, i, j, k, s)*dthh_thC
+                    +limited_slope_phi(zz, i, j, k, s)*dphim_phi;
 
         flux_phi[s] = ( (c_ijkm[0]*fluxijkm_m - c_ijkm[1]*fluxijkm_p)
-                       -c_ijkm_multi*(Uijkm_m[s] - Uijkm_p[s]))/c_ijkm_subtr;
+                       -c_ijkm_multi*(Uijkm_m - Uijkm_p))/c_ijkm_subtr;
     }
 
 //********* flux for n_q (q=0, 1, 2... sm) equations *****************
@@ -250,13 +274,21 @@ inline void fluxes_phi(Field ***xx, Field ***uu, Field ***zz, int i, int j, int 
     double cn_ijkm_multi = cn_ijkm[0]*cn_ijkm[1], cn_ijkm_subtr = cn_ijkm[0]-cn_ijkm[1];
 
     for (s = 12; s < 23; s++) {
-        Uijkm_m[s] = reconstructed(xx, i, j, km, s, rfavg[i], theta[j], phih[kprime]);
-        Uijkm_p[s] = reconstructed(xx, i, j, k, s, rfavg[i], theta[j], phih[k]);
+        Uijkm_m = xx[k][j][i].fx[s]+limited_slope_r(xx, i, j, km, s)*drfavg_rC
+                 +limited_slope_theta(xx, i, j, km, s)*dthh_thC
+                 +limited_slope_phi(xx, i, j, km, s)*dphim_phikm;
+        Uijkm_p = xx[k][j][i].fx[s]+limited_slope_r(xx, i, j, k, s)*drfavg_rC
+                 +limited_slope_theta(xx, i, j, k, s)*dthh_thC
+                 +limited_slope_phi(xx, i, j, k, s)*dphim_phi;
 
-        fluxijkm_m = reconstructed(zz, i, j, km, s, rfavg[i], theta[j], phih[kprime]);
-        fluxijkm_p = reconstructed(zz, i, j, k, s, rfavg[i], theta[j], phih[k]);
+        fluxijkm_m = zz[k][j][i].fx[s]+flux_limited_slope_r(zz, i, j, km, s)*drfavg_rC
+                    +limited_slope_theta(zz, i, j, km, s)*dthh_thC
+                    +limited_slope_phi(zz, i, j, km, s)*dphim_phikm;
+        fluxijkm_p = zz[k][j][i].fx[s]+flux_limited_slope_r(zz, i, j, k, s)*drfavg_rC
+                    +limited_slope_theta(zz, i, j, k, s)*dthh_thC
+                    +limited_slope_phi(zz, i, j, k, s)*dphim_phi;
 
         flux_phi[s] = ( (c_ijkm[0]*fluxijkm_m - c_ijkm[1]*fluxijkm_p)
-                       -cn_ijkm_multi*(Uijkm_m[s] - Uijkm_p[s]))/cn_ijkm_subtr;
+                       -cn_ijkm_multi*(Uijkm_m - Uijkm_p))/cn_ijkm_subtr;
     }
 }

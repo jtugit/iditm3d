@@ -13,7 +13,7 @@ using namespace std;
 
 void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
 {
-    int  i, j, k;
+    PetscInt  i, j, k;
 
 //mean spherical coordinates, every process has a copy
     rr = new double[a1];
@@ -80,17 +80,36 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
 
     nust=new double***[zm];
     Omegae=new double**[zm];
+    Ps = new double***[zm];
+    Ls = new double***[zm];
+    Qee= new double**[zm];
+    Qeuv=new double**[zm];
 
     for (k = 0; k< zm; k++) {
         nust[k]=new double**[ym];
         Omegae[k]=new double*[ym];
 
+        Ps[k] = new double**[ym];
+        Ls[k] = new double**[ym];
+
+        Qee[k]= new double*[ym];
+        Qeuv[k]=new double*[ym];
+
         for (j = 0; j < ym; j++) {
             nust[k][j]=new double*[xm];
             Omegae[k][j]=new double[xm];
 
+            Ps[k][j] = new double*[xm];
+            Ls[k][j] = new double*[xm];
+
+            Qee[k][j]= new double[xm];
+            Qeuv[k][j]=new double[xm];
+
             for (i = 0 ; i < xm; i++) {
                 nust[k][j][i]=new double[112];
+
+                Ps[k][j][i] = new double[14];
+                Ls[k][j][i] = new double[14];
             }
         }
     }
@@ -141,7 +160,7 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
 
 void array_deallocate(PetscInt xm, PetscInt ym, PetscInt zm)
 {
-    int  i, j, k;
+    PetscInt i, j, k;
 
     delete[] rr;
     delete[] rh;
@@ -204,15 +223,32 @@ void array_deallocate(PetscInt xm, PetscInt ym, PetscInt zm)
         for (j = 0; j < ym; j++) {
             for (i = 0; i < xm; i++) {
                 delete[] nust[k][j][i];
+
+                delete[] Ps[k][j][i];
+                delete[] Ls[k][j][i];
             }
             delete[] nust[k][j];
             delete[] Omegae[k][j];
+
+            delete[] Ps[k][j];
+            delete[] Ls[k][j];
+            delete[] Qee[k][j];
+            delete[] Qeuv[k][j];
         }
         delete[] nust[k];
         delete[] Omegae[k];
+
+        delete[] Ps[k];
+        delete[] Ls[k];
+        delete[] Qee[k];
+        delete[] Qeuv[k];
     }
     delete[] nust;
     delete[] Omegae;
+    delete[] Ps;
+    delete[] Ls;
+    delete[] Qee;
+    delete[] Qeuv;
 
     for (j = 0; j < a2; j++) {
         delete[] rCsinC[j];

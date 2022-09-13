@@ -16,8 +16,7 @@ using namespace std;
 double pesimp(double ALT,double SZA,double F107,double TE,double TN,double XNE,
         double nO,double nO2,double nN2);
 
-void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int yj, int xi, double Ps[],
-    double Ls[], double &Qee, double &Qeuv)
+void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int yj, int xi)
 {
     int    m, s, isza;
     double Xp, euvf, Hn[5], Ch[5], Nnn[5], tao, CCi;
@@ -44,10 +43,10 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     for (m = 0; m < 8; m++) qi[m]=0.0;
 
     // ionization rates normalized by n0/t0
-    Qeuv=0.0;
+    Qeuv[zk][yj][xi]=0.0;
 
-    Tn=xx[k][j][i].fx[22]/(kb*uu[k][j][i].fx[18]);
-    ne =uu[k][j][i].fx[6];
+    Tn=uu[k][j][i].fx[22];
+    ne =uu[k][j][i].fx[17];
 
     /* day time photo-ionization */
     if (zenith[zk][yj] < pih) {
@@ -100,7 +99,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
 
             /* EUV heating of neutrals due to O, O2, N2 
              * absorption of EUV flux in J cm^-3 s^-1, assuming heating efficiency of 0.45 */
-            Qeuv += 0.45e-6*(segabs[s][0]*Nnn[0]+segabs[s][1]*Nnn[1]+segabs[s][3]*Nnn[2])*euvf*pene[s];
+            Qeuv[zk][yj][xi] += 0.45*(segabs[s][0]*Nnn[0]+segabs[s][1]*Nnn[1]+segabs[s][3]*Nnn[2])*euvf*pene[s];
         }
     }
     else  {
@@ -128,7 +127,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     kk[19]=3.7e-11;        // N+  + O2 --> O+ + NO
     kk[20]=2.0e-11;        // N+  + NO --> NO+ + N
 
-    Ti=xx[k][j][i].fx[10]/(ne*kb);
+    Ti=uu[k][j][i].fx[10];
 
     // O+ + N2 --> NO+ + N (note kk[0] not used)
     T1=(0.6363*Ti+0.3637*Tn);
@@ -285,118 +284,118 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
 
     /* production rates & loss coefficients */
     //O+
-    Ps[0]=photoIon[0] + photoIon[1]+ react[7] +react[11] + react[14] + react[19];
-    Ls[0]=kk[1]*nN2 + kk[2]*nO2 + kk[3]*nNO + kk[4]*nH + kk[21]*ne;
-    if (Ps[0] > 1.20*Ls[0]*niO || Ls[0]*niO > Ps[0]*1.20) {
-        if (Ps[0] > 1.20*Ls[0]*niO) Ps[0]=1.20*Ls[0]*niO; 
-        if (Ls[0]*niO > Ps[0]*1.20) Ls[0]=1.20*Ps[0]/niO;
+    Ps[zk][yj][xi][0]=photoIon[0] + photoIon[1]+ react[7] +react[11] + react[14] + react[19];
+    Ls[zk][yj][xi][0]=kk[1]*nN2 + kk[2]*nO2 + kk[3]*nNO + kk[4]*nH + kk[21]*ne;
+    if (Ps[zk][yj][xi][0] > 1.20*Ls[zk][yj][xi][0]*niO || Ls[zk][yj][xi][0]*niO > Ps[zk][yj][xi][0]*1.20) {
+        if (Ps[zk][yj][xi][0] > 1.20*Ls[zk][yj][xi][0]*niO) Ps[zk][yj][xi][0]=1.20*Ls[zk][yj][xi][0]*niO; 
+        if (Ls[zk][yj][xi][0]*niO > Ps[zk][yj][xi][0]*1.20) Ls[zk][yj][xi][0]=1.20*Ps[zk][yj][xi][0]/niO;
     }
 
     //H+
-    Ps[1]=react[4];
-    Ls[1]=kk[11]*nO + kk[12]*nNO + kk[24]*ne;
-    if (Ps[1] > 1.20*Ls[1]*niH || Ls[1]*niH > Ps[1]*1.20) {
-        if (Ps[1] > 1.20*Ls[1]*niH) Ps[1]=1.20*Ls[1]*niH; 
-        if (Ls[1]*niH > Ps[1]*1.20) Ls[1]=1.20*Ps[1]/niH;
+    Ps[zk][yj][xi][1]=react[4];
+    Ls[zk][yj][xi][1]=kk[11]*nO + kk[12]*nNO + kk[24]*ne;
+    if (Ps[zk][yj][xi][1] > 1.20*Ls[zk][yj][xi][1]*niH || Ls[zk][yj][xi][1]*niH > Ps[zk][yj][xi][1]*1.20) {
+        if (Ps[zk][yj][xi][1] > 1.20*Ls[zk][yj][xi][1]*niH) Ps[zk][yj][xi][1]=1.20*Ls[zk][yj][xi][1]*niH; 
+        if (Ls[zk][yj][xi][1]*niH > Ps[zk][yj][xi][1]*1.20) Ls[zk][yj][xi][1]=1.20*Ps[zk][yj][xi][1]/niH;
     }
 
     //He+
-    Ps[2]=photoIon[6];
-    Ls[2]=kk[13]*nN2 + kk[14]*nO2 + kk[15]*nNO + kk[25]*ne;
-    if (Ps[2] > 1.20*Ls[2]*niHe || Ls[2]*niHe > Ps[2]*1.20) {
-        if (Ps[2] > 1.20*Ls[2]*niHe) Ps[2]=1.20*Ls[2]*niHe; 
-        if (Ls[2]*niHe > Ps[2]*1.20) Ls[2]=1.20*Ps[2]/niHe;
+    Ps[zk][yj][xi][2]=photoIon[6];
+    Ls[zk][yj][xi][2]=kk[13]*nN2 + kk[14]*nO2 + kk[15]*nNO + kk[25]*ne;
+    if (Ps[zk][yj][xi][2] > 1.20*Ls[zk][yj][xi][2]*niHe || Ls[zk][yj][xi][2]*niHe > Ps[zk][yj][xi][2]*1.20) {
+        if (Ps[zk][yj][xi][2] > 1.20*Ls[zk][yj][xi][2]*niHe) Ps[zk][yj][xi][2]=1.20*Ls[zk][yj][xi][2]*niHe; 
+        if (Ls[zk][yj][xi][2]*niHe > Ps[zk][yj][xi][2]*1.20) Ls[zk][yj][xi][2]=1.20*Ps[zk][yj][xi][2]/niHe;
     }
 
     //O2+
-    Ps[3]=photoIon[2] + react[2] + react[9] + react[18];
-    Ls[3]=kk[5]*nNO + kk[6]*nN + kk[22]*ne;
-    if (Ps[3] > 1.20*Ls[3]*niO2 || Ls[3]*niO2 > Ps[3]*1.20) {
-        if (Ps[3] > 1.20*Ls[3]*niO2) Ps[3]=1.20*Ls[3]*niO2; 
-        if (Ls[3]*niO2 > Ps[3]*1.20) Ls[3]=1.20*Ps[3]/niO2;
+    Ps[zk][yj][xi][3]=photoIon[2] + react[2] + react[9] + react[18];
+    Ls[zk][yj][xi][3]=kk[5]*nNO + kk[6]*nN + kk[22]*ne;
+    if (Ps[zk][yj][xi][3] > 1.20*Ls[zk][yj][xi][3]*niO2 || Ls[zk][yj][xi][3]*niO2 > Ps[zk][yj][xi][3]*1.20) {
+        if (Ps[zk][yj][xi][3] > 1.20*Ls[zk][yj][xi][3]*niO2) Ps[zk][yj][xi][3]=1.20*Ls[zk][yj][xi][3]*niO2; 
+        if (Ls[zk][yj][xi][3]*niO2 > Ps[zk][yj][xi][3]*1.20) Ls[zk][yj][xi][3]=1.20*Ps[zk][yj][xi][3]/niO2;
     }
 
     //N2+
-    Ps[4]=photoIon[3] + react[13];
-    Ls[4]=(kk[7] + kk[8])*nO + kk[9]*nO2 + kk[10]*nNO + kk[23]*ne;
-    if (Ps[4] > 1.20*Ls[4]*niN2 || Ls[4]*niN2 > Ps[4]*1.20) {
-        if (Ps[4] > 1.20*Ls[4]*niN2) Ps[4]=1.20*Ls[4]*niN2; 
-        if (Ls[4]*niN2 > Ps[4]*1.20) Ls[4]=1.20*Ps[4]/niN2;
+    Ps[zk][yj][xi][4]=photoIon[3] + react[13];
+    Ls[zk][yj][xi][4]=(kk[7] + kk[8])*nO + kk[9]*nO2 + kk[10]*nNO + kk[23]*ne;
+    if (Ps[zk][yj][xi][4] > 1.20*Ls[zk][yj][xi][4]*niN2 || Ls[zk][yj][xi][4]*niN2 > Ps[zk][yj][xi][4]*1.20) {
+        if (Ps[zk][yj][xi][4] > 1.20*Ls[zk][yj][xi][4]*niN2) Ps[zk][yj][xi][4]=1.20*Ls[zk][yj][xi][4]*niN2; 
+        if (Ls[zk][yj][xi][4]*niN2 > Ps[zk][yj][xi][4]*1.20) Ls[zk][yj][xi][4]=1.20*Ps[zk][yj][xi][4]/niN2;
     }
 
     //NO+
-    Ps[5]=  react[1] + react[3] + react[5] + react[6] + react[8] + react[10] 
+    Ps[zk][yj][xi][5]=  react[1] + react[3] + react[5] + react[6] + react[8] + react[10] 
           + react[12] +react[16] + react[20];
-    Ls[5]=(kk[26] + kk[26])*ne;
-    if (Ps[5] > 1.20*Ls[5]*niNO || Ls[5]*niNO > Ps[5]*1.20) {
-        if (Ps[5] > 1.20*Ls[5]*niNO) Ps[5]=1.20*Ls[5]*niNO; 
-        if (Ls[5]*niNO > Ps[5]*1.20) Ls[5]=1.20*Ps[5]/niNO;
+    Ls[zk][yj][xi][5]=(kk[26] + kk[26])*ne;
+    if (Ps[zk][yj][xi][5] > 1.20*Ls[zk][yj][xi][5]*niNO || Ls[zk][yj][xi][5]*niNO > Ps[zk][yj][xi][5]*1.20) {
+        if (Ps[zk][yj][xi][5] > 1.20*Ls[zk][yj][xi][5]*niNO) Ps[zk][yj][xi][5]=1.20*Ls[zk][yj][xi][5]*niNO; 
+        if (Ls[zk][yj][xi][5]*niNO > Ps[zk][yj][xi][5]*1.20) Ls[zk][yj][xi][5]=1.20*Ps[zk][yj][xi][5]/niNO;
     }
 
-    Ps[6]= react[15];
-    Ls[6]= kk[16]*nNO +(kk[17]+kk[18]+kk[19])*nO2 + kk[20]*nNO + kk[28]*ne;
-    if (Ps[6] > 1.20*Ls[6]*niN || Ls[6]*niN > Ps[6]*1.20) {
-        if (Ps[6] > 1.20*Ls[6]*niN) Ps[6]=1.20*Ls[6]*niN; 
-        if (Ls[6]*niN > Ps[6]*1.20) Ls[6]=1.20*Ps[6]/niN;
+    Ps[zk][yj][xi][6]= react[15];
+    Ls[zk][yj][xi][6]= kk[16]*nNO +(kk[17]+kk[18]+kk[19])*nO2 + kk[20]*nNO + kk[28]*ne;
+    if (Ps[zk][yj][xi][6] > 1.20*Ls[zk][yj][xi][6]*niN || Ls[zk][yj][xi][6]*niN > Ps[zk][yj][xi][6]*1.20) {
+        if (Ps[zk][yj][xi][6] > 1.20*Ls[zk][yj][xi][6]*niN) Ps[zk][yj][xi][6]=1.20*Ls[zk][yj][xi][6]*niN; 
+        if (Ls[zk][yj][xi][6]*niN > Ps[zk][yj][xi][6]*1.20) Ls[zk][yj][xi][6]=1.20*Ps[zk][yj][xi][6]/niN;
     }
 
     //O
-    Ps[7]= photoIon[1] + react[2] + react[3] + react[4]+react[6] + react[14]
+    Ps[zk][yj][xi][7]= photoIon[1] + react[2] + react[3] + react[4]+react[6] + react[14]
           + react[15] + react[17] + react[21] + react[22] + react[26];
-    Ls[7]=qi[0] + (kk[7] + kk[8])*niN2 + kk[11]*niH;
-    if (Ps[7] > 1.20*Ls[7]*nO || Ls[7]*nO > Ps[7]*1.20) {
-        if (Ps[7] > 1.20*Ls[7]*nO) Ps[7]=1.20*Ls[7]*nO; 
-        if (Ls[7]*nO > Ps[7]*1.20) Ls[7]=1.20*Ps[7]/nO;
+    Ls[zk][yj][xi][7]=qi[0] + (kk[7] + kk[8])*niN2 + kk[11]*niH;
+    if (Ps[zk][yj][xi][7] > 1.20*Ls[zk][yj][xi][7]*nO || Ls[zk][yj][xi][7]*nO > Ps[zk][yj][xi][7]*1.20) {
+        if (Ps[zk][yj][xi][7] > 1.20*Ls[zk][yj][xi][7]*nO) Ps[zk][yj][xi][7]=1.20*Ls[zk][yj][xi][7]*nO; 
+        if (Ls[zk][yj][xi][7]*nO > Ps[zk][yj][xi][7]*1.20) Ls[zk][yj][xi][7]=1.20*Ps[zk][yj][xi][7]/nO;
     }
 
     //H
-    Ps[8]=react[11] + react[12] + react[24];
-    Ls[8]=kk[4]*niO;
-    if (Ps[8] > 1.20*Ls[8]*nH || Ls[8]*nH > Ps[8]*1.20) {
-        if (Ps[8] > 1.20*Ls[8]*nH) Ps[8]=1.20*Ls[8]*nH; 
-        if (Ls[8]*nH > Ps[8]*1.20) Ls[8]=1.20*Ps[8]/nH;
+    Ps[zk][yj][xi][8]=react[11] + react[12] + react[24];
+    Ls[zk][yj][xi][8]=kk[4]*niO;
+    if (Ps[zk][yj][xi][8] > 1.20*Ls[zk][yj][xi][8]*nH || Ls[zk][yj][xi][8]*nH > Ps[zk][yj][xi][8]*1.20) {
+        if (Ps[zk][yj][xi][8] > 1.20*Ls[zk][yj][xi][8]*nH) Ps[zk][yj][xi][8]=1.20*Ls[zk][yj][xi][8]*nH; 
+        if (Ls[zk][yj][xi][8]*nH > Ps[zk][yj][xi][8]*1.20) Ls[zk][yj][xi][8]=1.20*Ps[zk][yj][xi][8]/nH;
     }
 
     //He
-    Ps[9]=react[13] + react[14] + react[15] + react[25];
-    Ls[9]=qi[6];
-    if (Ps[9] > 1.20*Ls[9]*nHe || Ls[9]*nHe > Ps[9]*1.20) {
-        if (Ps[9] > 1.20*Ls[9]*nHe) Ps[9]=1.20*Ls[9]*nHe; 
-        if (Ls[9]*nHe > Ps[9]*1.20) Ls[9]=1.20*Ps[9]/nHe;
+    Ps[zk][yj][xi][9]=react[13] + react[14] + react[15] + react[25];
+    Ls[zk][yj][xi][9]=qi[6];
+    if (Ps[zk][yj][xi][9] > 1.20*Ls[zk][yj][xi][9]*nHe || Ls[zk][yj][xi][9]*nHe > Ps[zk][yj][xi][9]*1.20) {
+        if (Ps[zk][yj][xi][9] > 1.20*Ls[zk][yj][xi][9]*nHe) Ps[zk][yj][xi][9]=1.20*Ls[zk][yj][xi][9]*nHe; 
+        if (Ls[zk][yj][xi][9]*nHe > Ps[zk][yj][xi][9]*1.20) Ls[zk][yj][xi][9]=1.20*Ps[zk][yj][xi][9]/nHe;
     }
 
     //O2
-    Ps[10]=react[5];
-    Ls[10]= (qi[1] + qi[2]) + kk[2]*niO + kk[9]*niN2 +kk[14]*niHe +(kk[17]+kk[18]+kk[19])*niN;
-    if (Ps[10] > 1.20*Ls[10]*nO2 || Ls[10]*nO2 > Ps[10]*1.20) {
-        if (Ps[10] > 1.20*Ls[10]*nO2) Ps[10]=1.20*Ls[10]*nO2; 
-        if (Ls[10]*nO2 > Ps[10]*1.20) Ls[10]=1.20*Ps[10]/nO2;
+    Ps[zk][yj][xi][10]=react[5];
+    Ls[zk][yj][xi][10]= (qi[1] + qi[2]) + kk[2]*niO + kk[9]*niN2 +kk[14]*niHe +(kk[17]+kk[18]+kk[19])*niN;
+    if (Ps[zk][yj][xi][10] > 1.20*Ls[zk][yj][xi][10]*nO2 || Ls[zk][yj][xi][10]*nO2 > Ps[zk][yj][xi][10]*1.20) {
+        if (Ps[zk][yj][xi][10] > 1.20*Ls[zk][yj][xi][10]*nO2) Ps[zk][yj][xi][10]=1.20*Ls[zk][yj][xi][10]*nO2; 
+        if (Ls[zk][yj][xi][10]*nO2 > Ps[zk][yj][xi][10]*1.20) Ls[zk][yj][xi][10]=1.20*Ps[zk][yj][xi][10]/nO2;
     }
 
     //N2
-    Ps[11]=react[7] + react[9] + react[10];
-    Ls[11]=(qi[3]+qi[4]) + kk[1]*niO + kk[13]*niHe;
-    if (Ps[11] > 1.20*Ls[11]*nN2 || Ls[11]*nN2 > Ps[11]*1.20) {
-        if (Ps[11] > 1.20*Ls[11]*nN2) Ps[11]=1.20*Ls[11]*nN2; 
-        if (Ls[11]*nN2 > Ps[11]*1.20) Ls[11]=1.20*Ps[11]/nN2;
+    Ps[zk][yj][xi][11]=react[7] + react[9] + react[10];
+    Ls[zk][yj][xi][11]=(qi[3]+qi[4]) + kk[1]*niO + kk[13]*niHe;
+    if (Ps[zk][yj][xi][11] > 1.20*Ls[zk][yj][xi][11]*nN2 || Ls[zk][yj][xi][11]*nN2 > Ps[zk][yj][xi][11]*1.20) {
+        if (Ps[zk][yj][xi][11] > 1.20*Ls[zk][yj][xi][11]*nN2) Ps[zk][yj][xi][11]=1.20*Ls[zk][yj][xi][11]*nN2; 
+        if (Ls[zk][yj][xi][11]*nN2 > Ps[zk][yj][xi][11]*1.20) Ls[zk][yj][xi][11]=1.20*Ps[zk][yj][xi][11]/nN2;
     }
 
     //NO
-    Ps[12]=react[19] + react[27];
-    Ls[12]= qi[6] + kk[3]*niO + kk[5]*niO2 + kk[10]*niN2 + kk[12]*niH + kk[15]*niHe
+    Ps[zk][yj][xi][12]=react[19] + react[27];
+    Ls[zk][yj][xi][12]= qi[6] + kk[3]*niO + kk[5]*niO2 + kk[10]*niN2 + kk[12]*niH + kk[15]*niHe
            +(kk[16]+kk[20])*niN;
-    if (Ps[12] > 1.20*Ls[12]*nNO || Ls[12]*nNO > Ps[12]*1.20) {
-        if (Ps[12] > 1.20*Ls[12]*nNO) Ps[12]=1.20*Ls[12]*nNO; 
-        if (Ls[12]*nNO > Ps[12]*1.20) Ls[12]=1.20*Ps[12]/nNO;
+    if (Ps[zk][yj][xi][12] > 1.20*Ls[zk][yj][xi][12]*nNO || Ls[zk][yj][xi][12]*nNO > Ps[zk][yj][xi][12]*1.20) {
+        if (Ps[zk][yj][xi][12] > 1.20*Ls[zk][yj][xi][12]*nNO) Ps[zk][yj][xi][12]=1.20*Ls[zk][yj][xi][12]*nNO; 
+        if (Ls[zk][yj][xi][12]*nNO > Ps[zk][yj][xi][12]*1.20) Ls[zk][yj][xi][12]=1.20*Ps[zk][yj][xi][12]/nNO;
     }
 
     //N
-    Ps[13]= photoIon[4] + react[8] + 2.0*react[23] + react[26] + react[16] + react[20]
+    Ps[zk][yj][xi][13]= photoIon[4] + react[8] + 2.0*react[23] + react[26] + react[16] + react[20]
            +react[18] + react[28];
-    Ls[13]=qi[5] + kk[6]*niO2;
-    if (Ps[13] > 1.20*Ls[13]*nN || Ls[13]*nN > Ps[13]*1.20) {
-        if (Ps[13] > 1.20*Ls[13]*nN) Ps[13]=1.20*Ls[13]*nN; 
-        if (Ls[13]*nN > Ps[13]*1.20) Ls[13]=1.20*Ps[13]/nN;
+    Ls[zk][yj][xi][13]=qi[5] + kk[6]*niO2;
+    if (Ps[zk][yj][xi][13] > 1.20*Ls[zk][yj][xi][13]*nN || Ls[zk][yj][xi][13]*nN > Ps[zk][yj][xi][13]*1.20) {
+        if (Ps[zk][yj][xi][13] > 1.20*Ls[zk][yj][xi][13]*nN) Ps[zk][yj][xi][13]=1.20*Ls[zk][yj][xi][13]*nN; 
+        if (Ls[zk][yj][xi][13]*nN > Ps[zk][yj][xi][13]*1.20) Ls[zk][yj][xi][13]=1.20*Ps[zk][yj][xi][13]/nN;
     }
 
 /*-----------------------------------------------------------------------------*/
@@ -408,7 +407,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
         R2=R*R;
         epsl=exp(-(cc[0]+cc[1]*R+cc[2]*R2+cc[3]*R2*R+cc[4]*R2*R2));
 
-        Qee=e*epsl*( photoIon[0]+photoIon[1]+photoIon[2]+photoIon[3]
+        Qee[zk][yj][xi]=e*epsl*( photoIon[0]+photoIon[1]+photoIon[2]+photoIon[3]
                     +photoIon[4]+photoIon[5]+photoIon[6]+photoIon[7]);
     //}
     //else {

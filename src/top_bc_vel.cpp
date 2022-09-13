@@ -22,6 +22,7 @@ extern "C" void convection_veloc(int *, int *, int *, int *, int *, int *,
         float *, float *, float *, float *, float *, float *, float *, float *, 
         float *, int *, float*, float *, float *, float *, float *, float *);
 
+/* Top boundary BC for ion velocity evaluated at rC[Nr], thetaC[j], phi[k] */
 void top_bc_vel(AppCtx *params, PetscInt ys, PetscInt ym, PetscInt zs, PetscInt zm)
 {
     int     yr, mn, day, hr, imin, sec;
@@ -55,7 +56,7 @@ void top_bc_vel(AppCtx *params, PetscInt ys, PetscInt ym, PetscInt zs, PetscInt 
         for(j=ys; j<ys+ym; j++) {
             yj=j-ys;
 
-            mlat=(float)(90.0-theta[j]/rad);
+            mlat=(float)(90.0-thetaC[j]/rad);
 
             if (abs(mlat) < 50.0) {
                 vt[zk][yj]=-1.0e6;

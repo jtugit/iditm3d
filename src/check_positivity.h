@@ -4,7 +4,7 @@ using namespace std;
 
 #include "param.h"
 
-inline int check_positivity(Field ***xx, int i, int j, int k, int num)
+inline int check_positivity(Field ***xx, PetscInt i, PetscInt j, PetscInt k)
 {
     int  s, ngnp=0;
     string  disp[2]={"forward_scheme", "imex_leap_frog"};
@@ -40,10 +40,7 @@ inline int check_positivity(Field ***xx, int i, int j, int k, int num)
             <<" at (i, j, k) = (" << i << ", " << j << ", "<< k << ")" <<endl;
         ngnp=-3;
     }
-    if (ngnp < 0) {
-        cout<<"Exit from "<<disp[num]<<endl;
-        exit(ngnp);
-    }
+    if (ngnp < 0) exit(ngnp);
 
     return ngnp;
 }

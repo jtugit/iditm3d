@@ -11,7 +11,7 @@ using namespace std;
 
 int grids(DM da, AppCtx *params)
 {
-    int        i, j, k;
+    PetscInt   i, j, k;
     PetscInt   xs, ys, zs, xm, ym, zm;
     string     fname, ch1, tempstr;
     PetscMPIInt rank, nproc;
@@ -127,7 +127,7 @@ int grids(DM da, AppCtx *params)
     }
 
     for (j = 0; j < Nth; j++) {
-        for (i = 0; i < Nr; i++) {
+        for (i = 0; i < a1; i++) {
             rCsinC[j][i]=rC[i]*sin(thetaC[j]);
             rfavg_costh[j][i]=rfavg[i]*costh_hd[j];
             rfavg_costh_dth_dph[j][i]=rfavg_costh[j][i]*dph/dth;

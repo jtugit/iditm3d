@@ -356,8 +356,7 @@ inline double reconstructed_Br(Field ***xx, int i, int j, int k, double rg, doub
               +( limited_slope_Br_theta(xx, ip, j, k)*(rg-rh[i])
                 +limited_slope_Br_theta(xx, i, j, k)*(rh[ip]-rg))*(thetag - thetaC[j])
               +( limited_slope_Br_phi(xx, ip, j, k)*(rg-rh[i])
-                +limited_slope_Br_theta(xx, i, j, k)*(rh[ip]-rg))*(phig - phi[k]))/dr;
-
+                +limited_slope_Br_phi(xx, i, j, k)*(rh[ip]-rg))*(phig - phi[k]))/dr;
     return Brijk;
 }
 
@@ -367,7 +366,7 @@ inline double reconstructed_Btheta(Field ***xx, int i, int j, int k, double rg, 
     int jp=j+1;
     double Bthetaijk;
 
-    Bthetaijk = 0.5*(xx[k][j][i].fx[24] + xx[k][j][i].fx[24])
+    Bthetaijk = 0.5*(xx[k][jp][i].fx[24] + xx[k][j][i].fx[24])
             +( (xx[k][jp][i].fx[24] - xx[k][j][i].fx[24])*(thetag - theta[j])
               +( limited_slope_Btheta_r(xx, i, jp, k)*(thetag-thetah[j])
                 +limited_slope_Btheta_r(xx, i, j, k)*(thetah[j+1]-thetag))*(rg - rfavg[i])

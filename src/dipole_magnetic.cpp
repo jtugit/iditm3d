@@ -101,21 +101,6 @@ void dipole_magnetic(DM da, AppCtx *params)
                 xdata[s+1]=Bt;
                 xdata[s+2]=Bp;
 
-                /* dipole magnetic field in geomagnetic coordinates at (<r>^{phi}_i, theta_j, phi_{km}) */
-                // Note theta[Nth] = theta[Nth-1] on kc=(k+a3/2) % a3
-                r3=rfavg[i]*rfavg[i]*rfavg[i];
-                Br=-2.0*Mz*cos(theta[j])/r3;
-                Bt=-Mz*sin(theta[j])/r3;
-                ww[k][j][i].fx[25]=Br;
-                zz[k][j][i].fx[25]=Bt;
-
-                /* dipole magnetic field in geomagnetic coordinates at (<r>^{theta}_i, theta_{jm}, phi_k) */
-                // Note thetah[0] = 0 & theta[Nth]=pi
-                Br=-2.0*Mz*cos(thetah[j])/r3;
-                Bt=-Mz*sin(thetah[j])/r3;
-                zz[k][j][i].fx[23]=Br;
-                zz[k][j][i].fx[24]=Bt;
-
                 /* convert spherical coordinates to Cartesian coordinates */
                 SPHCAR_08(rC[i], thetaC[j], phi[k], xmag, ymag, zmag, 1);
                 BCARSP_08(xmag, ymag, zmag, wxm, wym, wzm, wr, wt, wp);

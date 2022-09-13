@@ -12,8 +12,14 @@ inline void electric_field(Field ***xx, Field ***ww, Field ***uu, int i, int j, 
 
     int ip=i+1, jp=j+1, kp=k+1;
 
-    arcoef=0.5*(xx[k][j][ip].fx[23]+xx[k][j][i].fx[23]);
-    brcoef=(xx[k][j][ip].fx[23]-xx[k][j][i].fx[23])/dr;
+    if (i==Nr) {
+        arcoef=0.5*(xx[k][j][i].fx[23]+xx[k][j][i-1].fx[23]);
+        brcoef=(xx[k][j][i].fx[23]-xx[k][j][i-1].fx[23])/dr;
+    }
+    else {
+        arcoef=0.5*(xx[k][j][ip].fx[23]+xx[k][j][i].fx[23]);
+        brcoef=(xx[k][j][ip].fx[23]-xx[k][j][i].fx[23])/dr;
+    }
     Br = ww[k][j][i].fx[23] + arcoef +brcoef*(rC[i]-rr[i]);
 
     atheta=0.5*(xx[k][jp][i].fx[24]+xx[k][j][i].fx[24]);
@@ -31,16 +37,16 @@ inline void electric_field(Field ***xx, Field ***ww, Field ***uu, int i, int j, 
           +limited_slope_Bphi_theta(xx, i, j, k)*(phih[k+1]-phi[k]))/dph;
     Bphi = aphi + bphi*(rC[i]-rfavg[i]) + cphi*(thetaC[j]-theta[j]);
 
-    double ene = e*uu[k][j][i].fx[6];
+    double ene = e*uu[k][j][i].fx[17];
 
     // Er at (rC, thetaC, phi_k) (V/m)
-    uu[k][j][i].fx[0]= uu[k][j][i].fx[5]*Btheta-uu[k][j][i].fx[4]*Bphi-limited_slope_r(xx,i,j,k,11)/ene;
+    uu[k][j][i].fx[0]= uu[k][j][i].fx[9]*Btheta-uu[k][j][i].fx[8]*Bphi-limited_slope_r(xx,i,j,k,11)/ene;
 
     // Etheta at (rC, thetaC, phi_k)
-    uu[k][j][i].fx[1]= uu[k][j][i].fx[3]*Bphi-uu[k][j][i].fx[5]*Br-limited_slope_theta(xx,i,j,k,11)/(rC[i]*ene);
+    uu[k][j][i].fx[1]= uu[k][j][i].fx[7]*Bphi-uu[k][j][i].fx[9]*Br-limited_slope_theta(xx,i,j,k,11)/(rC[i]*ene);
 
     // Ephi at (rC, thetaC, phi_k)
-    uu[k][j][i].fx[2]= uu[k][j][i].fx[4]*Br-uu[k][j][i].fx[3]*Btheta-limited_slope_phi(xx,i,j,k,11)/(rCsinC[j][i]*ene);
+    uu[k][j][i].fx[2]= uu[k][j][i].fx[8]*Br-uu[k][j][i].fx[7]*Btheta-limited_slope_phi(xx,i,j,k,11)/(rCsinC[j][i]*ene);
 }
 
 /*------------------------------------------------------------------------------
