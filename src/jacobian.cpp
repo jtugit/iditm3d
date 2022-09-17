@@ -68,21 +68,37 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
       for (j = ys; j < ys+ym; j++) {
         row.j=j; yj=j-ys;
 
-        if (j == Nth) {
+        if (j == 0) {
             for (i = xs; i< xs+xm; i++) {
                 row.i = i;
 
                 for (ir = 0; ir < nvar; ir++) {
                     row.c=ir; nv=0;
 
-                    if (ir == 24) {
+                    col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
+                    vals[nv]=1.0;
+                    nv++;
+
+                    MatSetValuesStencil(Jac,1,&row,nv,col,vals,INSERT_VALUES);
+                }
+            }
+            continue;
+        }
+        else if (j == Nth) {
+            for (i = xs; i< xs+xm; i++) {
+                row.i = i;
+
+                for (ir = 0; ir < nvar; ir++) {
+                    row.c=ir; nv=0;
+
+                    if (ir != 24) {
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
-                        vals[nv]=a;
+                        vals[nv]=1.0;
                         nv++;
                     }
                     else {
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
-                        vals[nv]=1.0;
+                        vals[nv]=a;
                         nv++;
                     }
 
@@ -391,7 +407,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     }
                     else {
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
-                        vals[nv]=a;
+                        vals[nv]=1.0;
                         nv++;
                     }
 

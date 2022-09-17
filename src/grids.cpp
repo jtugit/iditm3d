@@ -22,7 +22,7 @@ int grids(DM da, AppCtx *params)
     DMDAGetCorners(da,&xs,&ys,&zs,&xm,&ym,&zm);
 
     dr=(params->ru-params->rb)/(double)Nr;
-    dth = 180.0 / (double)Nth;
+    dth = 180.0 / (double)(Nth-1);
     dph= 360.0 / (double)a3;
 
 /* --------- start run from the scratch: first set up grid points */
@@ -30,9 +30,9 @@ int grids(DM da, AppCtx *params)
     for (i = 0; i < a1; i++) rr[i] = dr/2.0+params->rb + dr*(double)i; 
 
     /* theta_{j} in deg*/
-    theta[0] = dth/2.0;
-    for (j = 1; j < Nth; j++) theta[j] = theta[0] + dth*double(j);
-    theta[Nth]=theta[Nthm];  //ghost grid on the other side of southern pole
+    theta[0]=dth/2.0; theta[1] = dth/2.0;
+    for (j = 2; j < Nth; j++) theta[j] = theta[1] + dth*double(j-1);
+    theta[Nth]=theta[Nthm];
 
     /* phi_{k} in deg */
     phi[0] = dph/2.0;
@@ -78,34 +78,32 @@ int grids(DM da, AppCtx *params)
     rfavgm1 = 2.0/3.0*(pow(rh[0], 3.0)-pow(rhm, 3.0))/(rh[0]*rh[0]-rhm*rhm);
     rC[a1]=0.75*(pow(rhup,4.0)-pow(rh[a1],4.0))/(pow(rhup,3.0)-pow(rh[a1],3.0));    
 
-/***************************************************************************
-*thetah[0]=0 theta[0]  theath[1]   theta[1]  thetah[2]...theta[Nthm] thetah[Nth]=pi
-*      |----------x-----------|----------X----------| ........ X----------|---------X
-*                                                                                   | ghost grid
-*                                                                theta[Nth]=theta[Nthm] kc=(k+a3/3) mod a3
-* thetah[j] is the left interface of the grid theta[j] (geometric venter thetac[j])
-* thetah[j+1] is the right interface of the same grid
-****************************************************************************/
+/**************************************************************************************
+*thetah[1]=0 theta[1]  theath[2]   theta[2]  thetah[3]...theta[Nthm] thetah[Nth]=pi
+*      |----------x-----------|----------X----------| ........ X----------|
+* thetah[j] is the left interface of the grid theta[j] (geometric center thetac[j])
+* thetah[j+1] is the right interface of the same grid. Internal grids are in [1:Nth-1]
+**************************************************************************************/
     double *costh_h = new double[a2+1];
     double *costh_hd = new double[a2];
 
-    thetah[0] = 0.0;
-    sinth_h[0]=sin(thetah[0]); sinth[0]=sin(theta[0]); costh_h[0]=cos(thetah[0]);
-    for (j = 1; j <= Nthm; j++) {
+    thetah[0] = -dth;
+    for (j = 1; j < Nth; j++) {
         thetah[j]=0.5*(theta[j]+theta[j-1]);
         sinth_h[j]=sin(thetah[j]);
         sinth[j]=sin(theta[j]);
 
         costh_h[j]=cos(thetah[j]);
     }
-    thetah[Nth]=pi; sinth_h[Nth]=0.0; costh_h[Nth]=-1.0;
+    thetah[1] = 0.0; sinth_h[1] = 0.0; costh_h[1] = 1.0; //j=1/2 is the northern pole with theta = 0
+    thetah[Nth]=pi; sinth_h[Nth]=0.0; costh_h[Nth]=-1.0; //j=Nth-1/2 is the southern pole with theta = pi
 
-    for (j = 0; j <= Nthm; j++) {
+    for (j = 1; j < Nth; j++) {
         costh_hd[j] = costh_h[j] - costh_h[j+1];
         thetaC[j] = (thetah[j]*costh_h[j]-thetah[j+1]*costh_h[j+1]+sinth_h[j+1]-sinth_h[j])/costh_hd[j];
         cotth[j] = cos(theta[j])/sin(theta[j]);
     }
-    thetaC[Nth]=thetaC[Nthm]; //geometric center of the ghost cell on the other side of the pole
+    thetaC[0]=thetaC[1]; thetaC[Nth]=thetaC[Nthm];
 
 /***************************************************************************
 *phih[0]=0 phi[0]  phih[1]   phi[1]  phih[2]...phi[Np-1] phih[Np]=2pi
@@ -126,7 +124,7 @@ int grids(DM da, AppCtx *params)
         gr[i-xs]=ge*pow(Re/(rC[i]), 2.0);
     }
 
-    for (j = 0; j < Nth; j++) {
+    for (j = 1; j < Nth; j++) {
         for (i = 0; i < a1; i++) {
             rCsinC[j][i]=rC[i]*sin(thetaC[j]);
             rfavg_costh[j][i]=rfavg[i]*costh_hd[j];

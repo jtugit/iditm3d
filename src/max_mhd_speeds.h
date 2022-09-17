@@ -85,7 +85,7 @@ inline void max_speed_theta_face(Field ***xx, Field ***zz, int i, int j, int k, 
 
     int jm, jj, k_0_c, k_Nth_c;
 
-    if (j == 0) {k_0_c=(k+a3/2) % a3; jm=0;} else {k_0_c=k; jm=j-1;}
+    if (j == 1) {k_0_c=(k+a3/2) % a3; jm=j;} else {k_0_c=k; jm=j-1;}
     if (j < Nth) {k_Nth_c=k; jj=j;} else {k_Nth_c=(k+a3/2) % a3; jj=Nthm;}
 
     ambient_mfd(rg, thetag, Br0, Btheta0);
@@ -154,7 +154,7 @@ inline void max_speed_phi_face(Field ***xx, Field ***zz, int i, int j, int k, do
     const double five3rd=5.0/3.0;
 
     int km;
-    if (k == 0) {km = Np; phig_m=phih[km];} else {km = k-1; phig_m=phig;}
+    if (k == 0) {km = Np; phig_m=pi2-phig;} else {km = k-1; phig_m=phig;}
 
     ambient_mfd(rg, thetag, Br0, Btheta0);
 

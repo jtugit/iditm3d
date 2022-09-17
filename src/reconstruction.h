@@ -9,7 +9,7 @@ using namespace std;
 
 #include "param.h"
 
-inline void ambient_mfd(double rg, double thetag, double &Br0, double &Btheta0) 
+inline void ambient_mfd(double rg, double thetag, double &Br0, double &Btheta0)
 {
     const double Mz=8.0e15;
     double r3;
@@ -75,21 +75,30 @@ inline double limited_slope_theta(Field ***xx, int i, int j, int k, int s)
     if (s == 8 || s ==20) sgn = -1.0;
     else sgn = 1.0;
 
+    //when calculating gradient in theta, here treat theta as increase
     if (j == 0) {
         kc = (k+a3/2) % a3;
 
-        cc = (xx[k][j+1][i].fx[s]-xx[k][j][i].fx[s])/(thetaC[j+1]-thetaC[j]);
-        dd = (xx[k][j][i].fx[s]-sgn*xx[kc][0][i].fx[s])/(2.0*thetaC[j]);
+        cc = (xx[k][j+1][i].fx[s]-sgn*xx[kc][1][i].fx[s])/(2.0*thetaC[1]);
+        dd = sgn*(xx[kc][1][i].fx[s]-xx[kc][2][i].fx[s])/(thetaC[2]-thetaC[1]);
     }
-    else if (j > 0 && j < Nthm) {
+    else if (j == 1) {
         cc = (xx[k][j+1][i].fx[s]-xx[k][j][i].fx[s])/(thetaC[j+1]-thetaC[j]);
+        dd = (xx[k][j][i].fx[s]-sgn*xx[(k+a3/2) % a3][j][i].fx[s])/(2.0*thetaC[j]);
+    }
+    else if (j > 1 && j < Nthm) {
+        cc = (xx[k][j+1][i].fx[s]-xx[k][j][i].fx[s])/(thetaC[j+1]-thetaC[j]);
+        dd = (xx[k][j][i].fx[s]-xx[k][j-1][i].fx[s])/(thetaC[j]-thetaC[j-1]);
+    }
+    else if (j == Nthm) {
+        cc = (xx[(k+a3/2) % a3][Nthm][i].fx[s]-xx[k][j][i].fx[s])/(2.0*(pi-thetaC[Nthm]));
         dd = (xx[k][j][i].fx[s]-xx[k][j-1][i].fx[s])/(thetaC[j]-thetaC[j-1]);
     }
     else {
         kc = (k+a3/2) % a3;
 
-        cc = (sgn*xx[kc][Nthm][i].fx[s]-xx[k][j][i].fx[s])/(2.0*thetaC[j]);
-        dd = (xx[k][j][i].fx[s]-xx[k][j-1][i].fx[s])/(thetaC[j]-thetaC[j-1]);
+        cc = sgn*(xx[kc][Nthm-1][i].fx[s]-xx[kc][Nthm][i].fx[s])/(thetaC[Nthm]=thetaC[Nthm-1]);
+        dd = (sgn*xx[kc][Nthm][i].fx[s]-xx[k][j-1][i].fx[s])/(2.0*(pi-thetaC[Nthm]));
     }
 
     return minmod(cc, dd);
@@ -97,14 +106,10 @@ inline double limited_slope_theta(Field ***xx, int i, int j, int k, int s)
 
 inline double limited_slope_phi(Field ***xx, int i, int j, int k, int s)
 {
-    int km, kp;
     double ee, ff;
 
-    if (k == 0) km = Np; else km = k-1;
-    if (k < Np) kp = k+1; else kp = 0;
-
-    ee = (xx[kp][j][i].fx[s]-xx[k][j][i].fx[s])/dph;
-    ff = (xx[k][j][i].fx[s]-xx[km][j][i].fx[s])/dph;
+    ee = (xx[k+1][j][i].fx[s]-xx[k][j][i].fx[s])/dph;
+    ff = (xx[k][j][i].fx[s]-xx[k-1][j][i].fx[s])/dph;
 
     return minmod(ee, ff);
 }
@@ -164,24 +169,189 @@ inline double reconstructed_flux(Field ***vv, int i, int j, int k, int s, double
 /* limited slopes for Br, Btheta, and Bphi */
 inline double limited_slope_Br_theta(Field ***xx, int i, int j, int k)
 {
+    int    kc;
     double cc, dd;
 
     if (j == 0) {
-        cc = (xx[k][j+1][i].fx[23]-xx[k][j][i].fx[23])/(thetaC[j+1]-thetaC[j]);
-        dd = (xx[k][j][i].fx[23]-xx[(k+a3/2) % a3][0][i].fx[23])/(2.0*thetaC[j]);
+        kc = (k+a3/2) % a3;
+
+        cc = (xx[k][j+1][i].fx[23]-xx[kc][1][i].fx[23])/(2.0*thetaC[1]);
+        dd = (xx[kc][1][i].fx[23]-xx[kc][2][i].fx[23])/(thetaC[2]-thetaC[1]);
     }
-    else if (j > 0 && j < Nthm) {
+    else if (j == 1) {
         cc = (xx[k][j+1][i].fx[23]-xx[k][j][i].fx[23])/(thetaC[j+1]-thetaC[j]);
+        dd = (xx[k][j][i].fx[23]-xx[(k+a3/2) % a3][j][i].fx[23])/(2.0*thetaC[j]);
+    }
+    else if (j > 1 && j < Nthm) {
+        cc = (xx[k][j+1][i].fx[23]-xx[k][j][i].fx[23])/(thetaC[j+1]-thetaC[j]);
+        dd = (xx[k][j][i].fx[23]-xx[k][j-1][i].fx[23])/(thetaC[j]-thetaC[j-1]);
+    }
+    else if (j == Nthm) {
+        cc = (xx[(k+a3/2) % a3][Nthm][i].fx[23]-xx[k][j][i].fx[23])/(2.0*(pi-thetaC[Nthm]));
         dd = (xx[k][j][i].fx[23]-xx[k][j-1][i].fx[23])/(thetaC[j]-thetaC[j-1]);
     }
     else {
-        cc = (xx[(k+a3/2) % a3][Nthm][i].fx[23]-xx[k][j][i].fx[23])/(2.0*thetaC[j]);
-        dd = (xx[k][j][i].fx[23]-xx[k][j-1][i].fx[23])/(thetaC[j]-thetaC[j-1]);
+        kc = (k+a3/2) % a3;
+
+        cc = (xx[kc][Nthm-1][i].fx[23]-xx[kc][Nthm][i].fx[23])/(thetaC[Nthm]-thetaC[Nthm-1]);
+        dd = (xx[kc][Nthm][i].fx[23]-xx[k][Nthm][i].fx[23])/(2.0*(pi-thetaC[Nthm]));
     }
 
     return minmod(cc, dd);
 }
 
+inline double limited_slope_Br_phi(Field ***xx, int i, int j, int k)
+{
+    int km =k-1, kp = k+1;
+    double ee, ff;
+
+    ee = (xx[kp][j][i].fx[23]-xx[k][j][i].fx[23])/dph;
+    ff = (xx[k][j][i].fx[23]-xx[km][j][i].fx[23])/dph;
+
+    return minmod(ee, ff);
+}
+
+inline double limited_slope_Btheta_r(Field ***xx, int i, int j, int k)
+{
+    double cc, dd, rrb;
+
+    if (i < Nr) cc = (xx[k][j][i+1].fx[24]-xx[k][j][i].fx[24])/(rfavg[i+1]-rfavg[i]);
+    else cc = (xx[k][j][i].fx[24]-xx[k][j][i-1].fx[24])/(rfavg[i]-rfavg[i-1]);
+    if (i == 0) {
+        rrb=(rfavgm1-rC[1])/(rC[2]-rC[1]);
+
+        //y1=xx[k][j][1].fx[24];
+        //y2=xx[k][j][2].fx[24];
+        //xx[k][j][i-1].fx[24] = y1+rrb*(y2-y1);
+        dd = (xx[k][j][i].fx[24]-(xx[k][j][1].fx[24]+rrb*(xx[k][j][2].fx[24]-xx[k][j][1].fx[24])))
+             /(rfavg[i]-rfavgm1);
+    }
+    else dd = (xx[k][j][i].fx[24]-xx[k][j][i-1].fx[24])/(rfavg[i]-rfavg[i-1]);
+
+    return minmod(cc, dd);
+}
+
+inline double limited_slope_Btheta_phi(Field ***xx, int i, int j, int k)
+{
+    int km = k-1, kp = k+1;
+    double ee, ff;
+
+    ee = (xx[kp][j][i].fx[24]-xx[k][j][i].fx[24])/dph;
+    ff = (xx[k][j][i].fx[24]-xx[km][j][i].fx[24])/dph;
+
+    return minmod(ee, ff);
+}
+//#include <iostream> 
+inline double limited_slope_Bphi_r(Field ***xx, int i, int j, int k)
+{
+    double cc, dd, rrb;
+
+    if (i < Nr) cc = (xx[k][j][i+1].fx[25]-xx[k][j][i].fx[25])/(rfavg[i+1]-rfavg[i]);
+    else cc = (xx[k][j][i].fx[25]-xx[k][j][i-1].fx[25])/(rfavg[i]-rfavg[i-1]);
+    if (i == 0) {
+        rrb=(rfavgm1-rC[1])/(rC[2]-rC[1]);
+
+        //y1=xx[k][j][1].fx[25];
+        //y2=xx[k][j][2].fx[25];
+        //xx[k][j][i-1].fx[25] = y1+rrb*(y2-y1);
+        dd = (xx[k][j][i].fx[25]-(xx[k][j][1].fx[25]+rrb*(xx[k][j][2].fx[25]-xx[k][j][1].fx[25])))
+             /(rfavg[i]-rfavgm1);
+    }
+    else dd = (xx[k][j][i].fx[25]-xx[k][j][i-1].fx[25])/(rfavg[i]-rfavg[i-1]);
+
+    return minmod(cc, dd);
+}
+
+inline double limited_slope_Bphi_theta(Field ***xx, int i, int j, int k)
+{
+    int kc;
+    double cc, dd;
+
+    if (j == 0) {
+        kc = (k+a3/2) % a3;
+
+        cc = (xx[k][j+1][i].fx[25]-xx[kc][1][i].fx[25])/(2.0*thetaC[1]);
+        dd = (xx[kc][1][i].fx[25]-xx[kc][2][i].fx[25])/(thetaC[2]-thetaC[1]);
+    }
+    if (j == 1) {
+        cc = (xx[k][j+1][i].fx[25]-xx[k][j][i].fx[25])/(thetaC[j+1]-thetaC[j]);
+        dd = (xx[k][j][i].fx[25]-xx[(k+a3/2) % a3][1][i].fx[25])/(2.0*thetaC[j]);
+    }
+    else if (j > 1 && j < Nthm) {
+        cc = (xx[k][j+1][i].fx[25]-xx[k][j][i].fx[25])/(thetaC[j+1]-thetaC[j]);
+        dd = (xx[k][j][i].fx[25]-xx[k][j-1][i].fx[25])/(thetaC[j]-thetaC[j-1]);
+    }
+    else if (j == Nthm) {
+        cc = (xx[(k+a3/2) % a3][Nthm][i].fx[25]-xx[k][j][i].fx[25])/(2.0*(pi-thetaC[Nthm]));
+        dd = (xx[k][j][i].fx[25]-xx[k][j-1][i].fx[25])/(thetaC[j]-thetaC[j-1]);
+    }
+    else {
+        kc = (k+a3/2) % a3;
+
+        cc = (xx[kc][Nthm-1][i].fx[25]-xx[kc][Nthm][i].fx[25])/(thetaC[Nthm]-thetaC[Nthm-1]);
+        dd = (xx[kc][Nthm][i].fx[25]-xx[k][Nthm][i].fx[25])/(2.0*(pi-thetaC[Nthm]));
+    }
+
+    return minmod(cc, dd);
+}
+
+/*-----------------------------------------------------------------------------------------*/
+/*** reconstruction point Br, Btheta, Bphi with surface averaged <Br>, <Btheta>, <Bphi> ****/
+/*-----------------------------------------------------------------------------------------*/
+
+/* reconstructed Br within a cell (i, j, k). Used to calculate Br at faces of the cell */
+inline double reconstructed_Br(Field ***xx, int i, int j, int k, double rg, double thetag, double phig)
+{
+     int ip = i+1;
+     double Brijk;
+
+     Brijk = 0.5*(xx[k][j][ip].fx[23] + xx[k][j][i].fx[23])
+            +( (xx[k][j][ip].fx[23] - xx[k][j][i].fx[23])*(rg - rr[i])
+              +( limited_slope_Br_theta(xx, ip, j, k)*(rg-rh[i])
+                +limited_slope_Br_theta(xx, i, j, k)*(rh[ip]-rg))*(thetag - thetaC[j])
+              +( limited_slope_Br_phi(xx, ip, j, k)*(rg-rh[i])
+                +limited_slope_Br_phi(xx, i, j, k)*(rh[ip]-rg))*(phig - phi[k]))/dr;
+    return Brijk;
+}
+
+/* reconstructed Btheta within a cell (i, j, k). Used to calculate Btheta at faces of the cell */
+inline double reconstructed_Btheta(Field ***xx, int i, int j, int k, double rg, double thetag, double phig)
+{
+    int jp, kcp;
+    double Bthetaijk, sgn;
+
+    if (j < Nth) {jp=j+1; kcp=k; sgn=1.0;}
+    else {jp=Nthm; kcp=(k+a3/2) % a3; sgn=-1.0;}
+
+    Bthetaijk = 0.5*(xx[kcp][jp][i].fx[24] + xx[k][j][i].fx[24])
+            +( (xx[kcp][jp][i].fx[24] - xx[k][j][i].fx[24])*(thetag - theta[j])
+              +( limited_slope_Btheta_r(xx, i, jp, kcp)*(thetag-thetah[j])*sgn
+                +limited_slope_Btheta_r(xx, i, j, k)*fabs(thetah[jp]-thetag))*(rg - rfavg[i])
+              +( limited_slope_Btheta_phi(xx, i, jp, kcp)*(thetag-thetah[j])*sgn
+                +limited_slope_Btheta_phi(xx, i, j, k)*fabs(thetah[jp]-thetag))*(phig - phi[k]))/dth;
+
+    return Bthetaijk;
+}
+
+/* reconstructed Bphi within a cell (i, j, k). Used to calculate Bphi at faces of the cell */
+inline double reconstructed_Bphi(Field ***xx, int i, int j, int k, double rg, double thetag, double phig)
+{
+    int kp;
+    double Bphiijk;
+
+    if (k < Np) kp = k+1; else kp = 0;
+
+    Bphiijk = 0.5*(xx[kp][j][i].fx[25] + xx[k][j][i].fx[25])
+            +( (xx[kp][j][i].fx[25] - xx[k][j][i].fx[25])*(phig - phi[k])
+              +( limited_slope_Bphi_r(xx, i, j, kp)*(phig-phih[k])
+                +limited_slope_Bphi_r(xx, i, j, k)*(phih[k+1]-phig))*(rg - rfavg[i])
+              +( limited_slope_Bphi_theta(xx, i, j, kp)*(phig-phih[k])
+                +limited_slope_Bphi_theta(xx, i, j, k)*(phih[k+1]-phig))*(thetag - theta[j]))/dph;
+
+    return Bphiijk;
+}
+
+/*------------------- contrunction of electric field ---------------------------------------*/
 inline double efd_limited_slope_r(Field ***xx, int i, int j, int k, int s)
 {
     double aa=0.0, bb=0.0, rrb, rrt;
@@ -213,30 +383,35 @@ inline double efd_limited_slope_theta(Field ***xx, int i, int j, int k, int s)
     int kc;
     double cc, dd, sgn;
 
+    if (s == 1) sgn = -1.0; else sgn = 1.0;
+
     if (j == 0) {
         kc = (k+a3/2) % a3;
 
-        if (s == 1) sgn = -1.0; else sgn = 1.0;
-
-        cc = (xx[k][j+1][i].fx[s]-xx[k][j][i].fx[s])/(thetaC[j+1]-thetaC[j]);
-        dd = (xx[k][j][i].fx[s]-sgn*xx[kc][0][i].fx[s])/(2.0*thetaC[j]);
+        cc = (xx[k][1][i].fx[s]-sgn*xx[kc][1][i].fx[s])/(2.0*thetaC[1]);
+        dd = sgn*(xx[kc][1][i].fx[s]-xx[kc][2][i].fx[s])/(thetaC[2]-thetaC[1]);
     }
-    else if (j > 0 && j < Nth) {
+    else if (j == 1) {
         cc = (xx[k][j+1][i].fx[s]-xx[k][j][i].fx[s])/(thetaC[j+1]-thetaC[j]);
+        dd = (xx[k][j][i].fx[s]-sgn*xx[(k+a3/2) %a3][1][i].fx[s])/(2.0*thetaC[j]);
+    }
+    else if (j > 1 && j < Nth) {
+        cc = (xx[k][j+1][i].fx[s]-xx[k][j][i].fx[s])/(thetaC[j+1]-thetaC[j]);
+        dd = (xx[k][j][i].fx[s]-xx[k][j-1][i].fx[s])/(thetaC[j]-thetaC[j-1]);
+    }
+    else if (j == Nthm) {
+        cc = (sgn*xx[(k+a3/2) %a3][j][i].fx[s]-xx[k][j][i].fx[s])/(2.0*(pi-thetaC[j]));
         dd = (xx[k][j][i].fx[s]-xx[k][j-1][i].fx[s])/(thetaC[j]-thetaC[j-1]);
     }
     else {
         kc = (k+a3/2) % a3;
 
-        if (s == 1) sgn = -1.0; else sgn = 1.0;
-
-        cc = (sgn*xx[kc][Nthm][i].fx[s]-xx[k][j][i].fx[s])/(2.0*thetaC[j]);
-        dd = (xx[k][j][i].fx[s]-xx[k][j-1][i].fx[s])/(thetaC[j]-thetaC[j-1]);
+        cc = sgn*(xx[kc][Nthm-1][i].fx[s]-xx[kc][Nthm][i].fx[s])/(thetaC[Nthm]-thetaC[Nthm-1]);
+        dd = (sgn*xx[kc][Nthm][i].fx[s]-xx[k][j-1][i].fx[s])/(2.0*(pi-thetaC[Nthm]));
     }
 
     return minmod(cc, dd);
 }
-
 
 /* reconstructed electric field within the cell (i, j, k) */
 inline double reconstructed_efd(Field ***uu, int i, int j, int k, int s, double rg, double thetag, double phig)
@@ -250,148 +425,6 @@ inline double reconstructed_efd(Field ***uu, int i, int j, int k, int s, double 
     efd = uu[k][j][i].fx[s] + slope_r + slope_theta + slope_phi;
 
     return efd;
-}
-
-
-inline double limited_slope_Br_phi(Field ***xx, int i, int j, int k)
-{
-    int km, kp;
-    double ee, ff;
-
-    if (k == 0) km = Np; else km = k-1;
-    if (k < Np) kp = k+1; else kp = 0;
-
-    ee = (xx[kp][j][i].fx[23]-xx[k][j][i].fx[23])/dph;
-    ff = (xx[k][j][i].fx[23]-xx[km][j][i].fx[23])/dph;
-
-    return minmod(ee, ff);
-}
-
-inline double limited_slope_Btheta_r(Field ***xx, int i, int j, int k)
-{
-    double cc, dd, rrb;
-
-    if (i < Nr) cc = (xx[k][j][i+1].fx[24]-xx[k][j][i].fx[24])/(rfavg[i+1]-rfavg[i]);
-    else cc = (xx[k][j][i].fx[24]-xx[k][j][i-1].fx[24])/(rfavg[i]-rfavg[i-1]);
-    if (i == 0) {
-        rrb=(rfavgm1-rC[1])/(rC[2]-rC[1]);
-
-        //y1=xx[k][j][1].fx[24];
-        //y2=xx[k][j][2].fx[24];
-        //xx[k][j][i-1].fx[24] = y1+rrb*(y2-y1);
-        dd = (xx[k][j][i].fx[24]-(xx[k][j][1].fx[24]+rrb*(xx[k][j][2].fx[24]-xx[k][j][1].fx[24])))
-             /(rfavg[i]-rfavgm1);
-    }
-    else dd = (xx[k][j][i].fx[24]-xx[k][j][i-1].fx[24])/(rfavg[i]-rfavg[i-1]);
-
-    return minmod(cc, dd);
-}
-
-inline double limited_slope_Btheta_phi(Field ***xx, int i, int j, int k)
-{
-    int km, kp;
-    double ee, ff;
-
-    if (k == 0) km = Np; else km = k-1;
-    if (k < Np) kp = k+1; else kp = 0;
-
-    ee = (xx[kp][j][i].fx[24]-xx[k][j][i].fx[24])/dph;
-    ff = (xx[k][j][i].fx[24]-xx[km][j][i].fx[24])/dph;
-
-    return minmod(ee, ff);
-}
-#include <iostream> 
-inline double limited_slope_Bphi_r(Field ***xx, int i, int j, int k)
-{
-    double cc, dd, rrb;
-
-    if (i < Nr) cc = (xx[k][j][i+1].fx[25]-xx[k][j][i].fx[25])/(rfavg[i+1]-rfavg[i]);
-    else cc = (xx[k][j][i].fx[25]-xx[k][j][i-1].fx[25])/(rfavg[i]-rfavg[i-1]);
-    if (i == 0) {
-        rrb=(rfavgm1-rC[1])/(rC[2]-rC[1]);
-
-        //y1=xx[k][j][1].fx[25];
-        //y2=xx[k][j][2].fx[25];
-        //xx[k][j][i-1].fx[25] = y1+rrb*(y2-y1);
-        dd = (xx[k][j][i].fx[25]-(xx[k][j][1].fx[25]+rrb*(xx[k][j][2].fx[25]-xx[k][j][1].fx[25])))
-             /(rfavg[i]-rfavgm1);
-    }
-    else dd = (xx[k][j][i].fx[25]-xx[k][j][i-1].fx[25])/(rfavg[i]-rfavg[i-1]);
-
-    return minmod(cc, dd);
-}
-
-inline double limited_slope_Bphi_theta(Field ***xx, int i, int j, int k)
-{
-    double cc, dd;
-
-    if (j == 0) {
-        cc = (xx[k][j+1][i].fx[25]-xx[k][j][i].fx[25])/(thetaC[j+1]-thetaC[j]);
-        dd = (xx[k][j][i].fx[25]-xx[(k+a3/2) % a3][0][i].fx[25])/(2.0*thetaC[j]);
-    }
-    else if (j > 0 && j < Nthm) {
-        cc = (xx[k][j+1][i].fx[25]-xx[k][j][i].fx[25])/(thetaC[j+1]-thetaC[j]);
-        dd = (xx[k][j][i].fx[25]-xx[k][j-1][i].fx[25])/(thetaC[j]-thetaC[j-1]);
-    }
-    else {
-        cc = (xx[(k+a3/2) % a3][Nthm][i].fx[25]-xx[k][j][i].fx[25])/(2.0*thetaC[j]);
-        dd = (xx[k][j][i].fx[25]-xx[k][j-1][i].fx[25])/(thetaC[j]-thetaC[j-1]);
-    }
-
-    return minmod(cc, dd);
-}
-
-/*-----------------------------------------------------------------------------------------*/
-/*** reconstruction point Br, Btheta, Bphi with surface averaged <Br>, <Btheta>, <Bphi> ****/
-/*-----------------------------------------------------------------------------------------*/
-
-/* reconstructed Br within a cell (i, j, k). Used to calculate Br at faces of the cell */
-inline double reconstructed_Br(Field ***xx, int i, int j, int k, double rg, double thetag, double phig)
-{
-     int ip = i+1;
-     double Brijk;
-
-     Brijk = 0.5*(xx[k][j][ip].fx[23] + xx[k][j][i].fx[23])
-            +( (xx[k][j][ip].fx[23] - xx[k][j][i].fx[23])*(rg - rr[i])
-              +( limited_slope_Br_theta(xx, ip, j, k)*(rg-rh[i])
-                +limited_slope_Br_theta(xx, i, j, k)*(rh[ip]-rg))*(thetag - thetaC[j])
-              +( limited_slope_Br_phi(xx, ip, j, k)*(rg-rh[i])
-                +limited_slope_Br_phi(xx, i, j, k)*(rh[ip]-rg))*(phig - phi[k]))/dr;
-    return Brijk;
-}
-
-/* reconstructed Btheta within a cell (i, j, k). Used to calculate Btheta at faces of the cell */
-inline double reconstructed_Btheta(Field ***xx, int i, int j, int k, double rg, double thetag, double phig)
-{
-    int jp=j+1;
-    double Bthetaijk;
-
-    Bthetaijk = 0.5*(xx[k][jp][i].fx[24] + xx[k][j][i].fx[24])
-            +( (xx[k][jp][i].fx[24] - xx[k][j][i].fx[24])*(thetag - theta[j])
-              +( limited_slope_Btheta_r(xx, i, jp, k)*(thetag-thetah[j])
-                +limited_slope_Btheta_r(xx, i, j, k)*(thetah[j+1]-thetag))*(rg - rfavg[i])
-              +( limited_slope_Btheta_phi(xx, i, jp, k)*(thetag-thetah[j])
-                +limited_slope_Btheta_phi(xx, i, j, k)*(thetah[j+1]-thetag))*(phig - phi[k]))/dth;
-
-    return Bthetaijk;
-}
-
-/* reconstructed Bphi within a cell (i, j, k). Used to calculate Bphi at faces of the cell */
-inline double reconstructed_Bphi(Field ***xx, int i, int j, int k, double rg, double thetag, double phig)
-{
-    int kp;
-    double Bphiijk;
-
-    if (k < Np) kp = k+1; else kp = 0;
-
-    Bphiijk = 0.5*(xx[kp][j][i].fx[25] + xx[k][j][i].fx[25])
-            +( (xx[kp][j][i].fx[25] - xx[k][j][i].fx[25])*(phig - phi[k])
-              +( limited_slope_Bphi_r(xx, i, j, kp)*(phig-phih[k])
-                +limited_slope_Bphi_r(xx, i, j, k)*(phih[k+1]-phig))*(rg - rfavg[i])
-              +( limited_slope_Bphi_theta(xx, i, j, kp)*(phig-phih[k])
-                +limited_slope_Bphi_theta(xx, i, j, k)*(phih[k+1]-phig))*(thetag - theta[j]))/dph;
-
-    return Bphiijk;
 }
 
 #endif

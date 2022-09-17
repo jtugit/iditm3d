@@ -15,9 +15,9 @@ void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, in
     double rhon_jC=0.0, rhon_j=0.0;;
     for (s = 0; s < sl; s++) {
         //reconstructed ion mass density at (rfavg, thetaC, phi)
-        ns_jC[s] += reconstructed(xx, i, j, k, s, rfavg[i], thetaC[j], phi[k]);
+        ns_jC[s] = reconstructed(xx, i, j, k, s, rfavg[i], thetaC[j], phi[k]);
         rhoi_jC += ms[s]*ns_jC[s];
-        ne_jC += reconstructed(xx, i, j, k, s, rfavg[i], thetaC[j], phi[k]);
+        ne_jC += ns_jC[s];
 
         //reconstructed ion mass density at (rfavg, theta, phi)
         rhoi_j += ms[s]*reconstructed(xx, i, j, k, s, rfavg[i], theta[j], phi[k]);

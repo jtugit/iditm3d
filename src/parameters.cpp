@@ -23,7 +23,7 @@ int parameters(DM da, Vec X, AppCtx *params)
     int    zk, yj, xi, s0;
     double Td, rhoi, rhon;
     double qn[5], nqd, Dst, amt, Te2, nuss[7], nuin, lambdai, lambdan;
-    double Br, Btheta, Bphi, uir, uitheta, uiphi, Pi, Pe, unr, untheta, unphi, Pn;
+    double Br, Btheta, Bphi, uir, uitheta, uiphi, PiPe, unr, untheta, unphi;
     double a_imjk[2], b_ijmk[2], c_ijkm[2];
 
     const double two3rdmu=2.0e-6/3.0;
@@ -53,7 +53,7 @@ int parameters(DM da, Vec X, AppCtx *params)
         zk=k-zs;
 
         for (j=ys; j<ys+ym; j++) {
-            if (j == Nth) continue;
+            if (j == 0 || j == Nth) continue;
 
             yj=j-ys;
 
@@ -128,45 +128,43 @@ int parameters(DM da, Vec X, AppCtx *params)
                 Btheta=reconstructed_Btheta(xx, i, j, k, rC[i], thetaC[j], phi[k])+ww[k][j][i].fx[24];
                 Bphi=reconstructed_Bphi(xx, i, j, k, rC[i], thetaC[j], phi[k]);
 
-                Pi=xx[k][j][i].fx[10];
-                Pe=xx[k][j][i].fx[11];
-                Pn=xx[k][j][i].fx[22];
+                PiPe=xx[k][j][i].fx[10]+xx[k][j][i].fx[11];
 
                 //flux F_r(rC, thetaC, phi_k)
-                vv[k][j][i].fx[7]= xx[k][j][i].fx[7]*uir+Pi+Pe+0.5e-6*(Btheta*Btheta-Br*Br+Bphi*Bphi);
+                vv[k][j][i].fx[7]= xx[k][j][i].fx[7]*uir+PiPe+0.5e-6*(Btheta*Btheta-Br*Br+Bphi*Bphi);
                 vv[k][j][i].fx[8]= xx[k][j][i].fx[8]*uir-1.0e-6*Br*Btheta;
                 vv[k][j][i].fx[9]= xx[k][j][i].fx[9]*uir-1.0e-6*Br*Bphi;
-                vv[k][j][i].fx[10]=Pi*uir;               //heat flux has to be calculated and included later
-                vv[k][j][i].fx[11]=Pe*uu[k][j][i].fx[3]; //heat flux has to be calculated and included later
+                vv[k][j][i].fx[10]=xx[k][j][i].fx[10]*uir; //heat flux has to be calculated and included later
+                vv[k][j][i].fx[11]=xx[k][j][i].fx[11]*uu[k][j][i].fx[7];
 
-                vv[k][j][i].fx[19]=xx[k][j][i].fx[19]*unr+Pn;
+                vv[k][j][i].fx[19]=xx[k][j][i].fx[19]*unr+xx[k][j][i].fx[22];
                 vv[k][j][i].fx[20]=xx[k][j][i].fx[20]*unr;
                 vv[k][j][i].fx[21]=xx[k][j][i].fx[21]*unr;
-                vv[k][j][i].fx[22]=Pn*unr;   //heat flux has to be calculated and included later
+                vv[k][j][i].fx[22]=xx[k][j][i].fx[22]*unr;   //heat flux has to be calculated and included later
 
                 //flux F_theta(rC, thetaC, phi_k)
                 ww[k][j][i].fx[7]= xx[k][j][i].fx[7]*uitheta-1.0e-6*Br*Btheta;
-                ww[k][j][i].fx[8]= xx[k][j][i].fx[8]*uitheta+Pi+Pe+0.5e-6*(Br*Br-Btheta*Btheta+Bphi*Bphi);
+                ww[k][j][i].fx[8]= xx[k][j][i].fx[8]*uitheta+PiPe+0.5e-6*(Br*Br-Btheta*Btheta+Bphi*Bphi);
                 ww[k][j][i].fx[9]= xx[k][j][i].fx[9]*uitheta-1.0e-6*Btheta*Bphi;
-                ww[k][j][i].fx[10]=Pi*uitheta;           //heat flux has to be calculated and included later
-                ww[k][j][i].fx[11]=Pe*uu[k][j][i].fx[4]; //heat flux has to be calculated and included later
+                ww[k][j][i].fx[10]=xx[k][j][i].fx[10]*uitheta; //heat flux has to be calculated and included later
+                ww[k][j][i].fx[11]=xx[k][j][i].fx[11]*uu[k][j][i].fx[8];
 
                 ww[k][j][i].fx[19]=xx[k][j][i].fx[19]*untheta;
-                ww[k][j][i].fx[20]=xx[k][j][i].fx[20]*untheta+Pn;
+                ww[k][j][i].fx[20]=xx[k][j][i].fx[20]*untheta+xx[k][j][i].fx[22];
                 ww[k][j][i].fx[21]=xx[k][j][i].fx[21]*untheta;
-                ww[k][j][i].fx[22]=Pn*untheta;   //heat flux has to be calculated and included later
+                ww[k][j][i].fx[22]=xx[k][j][i].fx[22]*untheta;   //heat flux has to be calculated and included later
 
                 //flux F_phi(rC, thetaC, phi_k)
                 zz[k][j][i].fx[7]= xx[k][j][i].fx[7]*uiphi-1.0e-6*Br*Bphi;
                 zz[k][j][i].fx[8]= xx[k][j][i].fx[8]*uiphi-1.0e-6*Btheta*Bphi;
-                zz[k][j][i].fx[9]= xx[k][j][i].fx[9]*uiphi+Pi+Pe+0.5e-6*(Br*Br+Btheta*Btheta-Bphi*Bphi);
-                zz[k][j][i].fx[10]=Pi*uiphi;             //heat flux has to be calculated and included later
-                zz[k][j][i].fx[11]=Pe*uu[k][j][i].fx[5]; //heat flux has to be calculated and included later
+                zz[k][j][i].fx[9]= xx[k][j][i].fx[9]*uiphi+PiPe+0.5e-6*(Br*Br+Btheta*Btheta-Bphi*Bphi);
+                zz[k][j][i].fx[10]=xx[k][j][i].fx[10]*uiphi;     //heat flux has to be calculated and included later
+                zz[k][j][i].fx[11]=xx[k][j][i].fx[11]*uu[k][j][i].fx[9];
 
                 zz[k][j][i].fx[19]=xx[k][j][i].fx[19]*unphi;
                 zz[k][j][i].fx[20]=xx[k][j][i].fx[20]*unphi;
-                zz[k][j][i].fx[21]=xx[k][j][i].fx[21]*unphi+Pn;
-                zz[k][j][i].fx[22]=Pn*unphi;  //heat flux has to be calculated and included later
+                zz[k][j][i].fx[21]=xx[k][j][i].fx[21]*unphi+xx[k][j][i].fx[22];
+                zz[k][j][i].fx[22]=xx[k][j][i].fx[22]*unphi;  //heat flux has to be calculated and included later
 
 /**-----------------------------------------------------------------------------------
  * -------------- cell volume averaged Electric field - reconstructed
@@ -196,23 +194,23 @@ int parameters(DM da, Vec X, AppCtx *params)
         zk=k-zs;
 
         for (j=ys; j<ys+ym; j++) {
+            if (j == 0) continue;
+
             yj=j-ys;
 
             //j = Nth is the grids on the other side (different k) of south pole so skip.
-            if (j < Nth) {
-                for (i=xs; i<xs+xm; i++) {
+            for (i=xs; i<xs+xm; i++) {
+                if (j > 0 && j < Nth) {
                     xi=i-xs;
 
-                    if (i > 0) { 
+                    if (i > 0 && i < Nr) {
                         //maximum speed at cell interfaces
-                        max_speed_r_face(xx, zz, i, j, k, rh[i], thetaC[j], phi[k], a_imjk);
+                        max_speed_r_face(xx, localzz, i, j, k, rh[i], thetaC[j], phi[k], a_imjk);
+                        max_speed_theta_face(xx, localzz, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
+                        max_speed_phi_face(xx, localzz, i, j, k, rfavg[i], theta[j], phih[k], c_ijkm);
+
                         uu[k][j][i].fx[3] = a_imjk[0];
                         uu[k][j][i].fx[4] = a_imjk[1];
-                    }
-                    if (i > 0 && i < Nr) {
-                        max_speed_theta_face(xx, zz, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
-                        max_speed_phi_face(xx, zz, i, j, k, rfavg[i], theta[j], phih[k], c_ijkm);
-
                         uu[k][j][i].fx[5] = b_ijmk[0];
                         uu[k][j][i].fx[6] = b_ijmk[1];
                         uu[k][j][i].fx[15]= c_ijkm[0];
@@ -244,11 +242,6 @@ int parameters(DM da, Vec X, AppCtx *params)
                     /* electron thermal conductivity */
                     nqd=nn[0]*qn[0]+nn[3]*qn[1]+nn[4]*qn[2]+nn[1]*qn[3]+nn[2]*qn[4];
                     zz[k][j][i].fx[24]=1.233694e-11*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd);
-
-                    /* electron heat flux */
-                    //uu[k][j][i].fx[15] = -zz[k][j][i].fx[24]*limited_slope_r(localuu, i, j, k, 11);
-                    //uu[k][j][i].fx[16] = -zz[k][j][i].fx[24]*limited_slope_theta(localuu, i, j, k, 11)/rC[i];
-                    //uu[k][j][i].fx[17] = -zz[k][j][i].fx[24]*limited_slope_phi(localuu, i, j, k, 11)/rCsinC[j][i];
 
                     rhon = 0.0;
                     for (s = 0; s < sm; s++) rhon += xx[k][j][i].fx[12+s]*ms[s];
@@ -309,28 +302,95 @@ int parameters(DM da, Vec X, AppCtx *params)
                     uu[k][j][i].fx[24] =-lambdan*limited_slope_theta(localuu, i, j, k, 22)/rC[i];
                     uu[k][j][i].fx[25] =-lambdan*limited_slope_phi(localuu, i, j, k, 22)/rCsinC[j][i];
 
-                    // now add heat fluxes to the pressure fluxes
+                    // now add heat fluxes to the ion and neutral pressure fluxes
                     vv[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[12];
-                    //vv[k][j][i].fx[11] += two3rdmu*uu[k][j][i].fx[15];
                     vv[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[23];
 
                     ww[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[13];
-                    //ww[k][j][i].fx[11] += two3rdmu*uu[k][j][i].fx[16];
                     ww[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[24];
 
                     zz[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[14];
-                    //zz[k][j][i].fx[11] += two3rdmu*uu[k][j][i].fx[17];
                     zz[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[25];
+                }
+                else {
+                    if (i > 0 && i < Nr) {
+                        //maximum speed at cell interfaces j=Nth-1/2, thetah[Nth]=180 deg
+                        max_speed_theta_face(xx, localzz, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
+
+                        uu[k][j][i].fx[15]= c_ijkm[0];
+                        uu[k][j][i].fx[16]= c_ijkm[1];
+                    }
                 }
             }
 
+
+            //bottom BC for maximum/minimum speeds at r- and phi-intefaces
+            if (j > 0 && j < Nth) {
+                if (xs == 0) {
+                    for (s = 3; s < 7; s++) {
+                        y1= uu[k][j][1].fx[s];
+                        y2= uu[k][j][2].fx[s];
+                        uu[k][j][0].fx[s]= y1 + rrb*(y2-y1);
+                    }
+                }
+
+                //top BC for maximum/minimum speeds at r- and phi-intefaces
+                if (xs+xm == a1) {
+                    for (s = 3; s < 7; s++) {
+                        y1=uu[k][j][Nrm].fx[s];
+                        y2=uu[k][j][Nrm2].fx[s];
+                        uu[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
+                    }
+                }
+            }
+
+            //bottom BC for maximum/minimum speeds at theta interfaces
+            if (xs == 0) {
+                for (s = 15; s < 17; s++) {
+                    y1= uu[k][j][1].fx[s];
+                    y2= uu[k][j][2].fx[s];
+                    uu[k][j][0].fx[s]= y1 + rrb*(y2-y1);
+                }
+            }
+
+            //top BC for maximum/minimum speeds at theta-interfaces
+            if (xs+xm == a1) {
+                for (s = 15; s < 17; s++) {
+                    y1=uu[k][j][Nrm].fx[s];
+                    y2=uu[k][j][Nrm2].fx[s];
+                    uu[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
+                }
+            }
+        }
+    }
+
+    DMDAVecRestoreArray(da,params->U,&uu);
+    DMDAVecRestoreArray(da,params->W,&ww);
+    DMDAVecRestoreArray(da,params->Z,&zz);
+
+    // restore local arrays and local vectors
+    DMDAVecRestoreArray(da,localU,&localuu);
+    DMRestoreLocalVector(da,&localU);
+
+    DMDAVecRestoreArray(da,localZ,&localzz);
+    DMRestoreLocalVector(da,&localZ);
+
+    DMGetLocalVector(da, &localU);
+    DMGlobalToLocalBegin(da,params->U,INSERT_VALUES,localU);
+    DMGlobalToLocalEnd(da,params->U,INSERT_VALUES,localU);
+    DMDAVecGetArray(da, localU, &localuu);
+
 /**-----------------------------------------------------------------------------------
- * -------------- Electric field at edges - reconstructed stored in Field vv
+ * ---------- Electric field at edges - reconstructed and stored in Field vv
  * -----------------------------------------------------------------------------------*/
+    for (k=zs; k<zs+zm; k++) {
+        for (j=ys; j<ys+ym; j++) {
+            if (j == 0) continue;
+
             for (i=xs; i<xs+xm; i++) {
                 if (i == 0 || i == Nr) continue;
 
-                Estar(xx, localuu, localzz, i, j, k, vv);
+                Estar(xx, localuu, i, j, k, vv);
             }
 
             //bottom BC for edge-averaged electric field
@@ -342,42 +402,25 @@ int parameters(DM da, Vec X, AppCtx *params)
                 }
             }
 
-            //top BC for edge-averaged electric field, and max-speed
+            //top BC for edge-averaged electric field
             if (xs+xm == a1) {
                 for (s = 0; s < 3; s++) {
                     y1=vv[k][j][Nrm].fx[s];
                     y2=vv[k][j][Nrm2].fx[s];
                     vv[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
                 }
-
-                for (s = 5; s < 7; s++) {
-                    y1=uu[k][j][Nrm].fx[s];
-                    y2=uu[k][j][Nrm2].fx[s];
-                    uu[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
-                }
-                for (s = 15; s < 16; s++) {
-                    y1=uu[k][j][Nrm].fx[s];
-                    y2=uu[k][j][Nrm2].fx[s];
-                    uu[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
-                }
             }
         }
     }
 
+    DMDAVecRestoreArray(da,params->V,&vv);
+
+    // restore local arrays and local vectors
     DMDAVecRestoreArray(da, localX, &xx);
     DMRestoreLocalVector(da, &localX);
 
-    DMDAVecRestoreArray(da,params->U,&uu);
-    DMDAVecRestoreArray(da,params->V,&vv);
-    DMDAVecRestoreArray(da,params->W,&ww);
-    DMDAVecRestoreArray(da,params->Z,&zz);
-
-    // restore local arrays and local vectors
     DMDAVecRestoreArray(da,localU,&localuu);
     DMRestoreLocalVector(da,&localU);
-
-    DMDAVecRestoreArray(da,localZ,&localzz);
-    DMRestoreLocalVector(da,&localZ);
 
     return 0;
 }

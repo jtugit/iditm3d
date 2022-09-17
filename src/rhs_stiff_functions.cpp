@@ -67,8 +67,127 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
         for (j = ys; j< ys+ym; j++) {
             yj=j-ys; jm=j-1; jp=j+1;
 
-            if (j == Nth) {
+            if (j == 0) {
+                kc = (k+a3/2) % a3;
+
                 for (i = xs; i < xs+xm; i++) {
+                    for (s = 0; s < nvar; s++) {
+                        if (s != 24) gg[k][j][i].fx[s]= xx[kc][1][i].fx[s];
+                        else gg[k][j][i].fx[s]= xx[kc][2][i].fx[s];
+                    }
+                }
+            }
+            else if (j > 0 && j < Nth) { // j in range [1, Nth-1]
+                for (i = xs; i < xs+xm; i++) {
+                    xi=i-xs; ip=i+1;
+
+                    if (i == 0 || i == Nr) continue;
+
+                    source_terms(xx, uu, ww, zz, xs, i, j, k, zk, yj, xi, source);
+
+                    /*-------numerical fluxes at the bottom face i-1/2 of the cell i
+                     *-------------------------------------------------------------------*/
+                    if (i==1 || (i==xs && i > 0)) {
+                        fluxes_r(xx, uu, vv, i, j, k, flux_rthph);
+                        for (s=0; s< nvarm3; s++) Fr_atfaces[0][s]=flux_rthph[s];
+                    }
+                    else {
+                        for (s=0; s< nvarm3; s++) Fr_atfaces[0][s]=Fr_atfaces[1][s];
+                    }
+
+                    //numerical fluxes at the top face i+1/2 of the cell (i, j, k)
+                    fluxes_r(xx, uu, vv, ip, j, k, flux_rthph);
+                    for (s=0; s< nvarm3; s++) Fr_atfaces[1][s]=flux_rthph[s];
+
+                    /*--------numerical fluxes at the left face j-1/2 of the cell (i, j, k)
+                     *-------------------------------------------------------------------*/
+                    if (j == 1) for (s=0; s<nvarm3; s++) Ftheta_Lface[s] = 0.0;
+                    else if (j == ys && j >1) {
+                        fluxes_theta(xx, uu, ww, i, j, k, flux_rthph);
+                        for (s=0; s<nvarm3; s++) Ftheta_Lface[s]=flux_rthph[s];
+                    }
+                    else {
+                        for (s=0; s<nvarm3; s++) Ftheta_Lface[s]=Ftheta_Rface[xi][s];
+                    }
+
+                    //numerical fluxes at the right face j+1/2 of the cell (i, j, k)
+                    if (j < Nthm) {
+                        fluxes_theta(xx, uu, ww, i, jp, k, flux_rthph);
+                        for (s=0; s<nvarm3; s++) Ftheta_Rface[xi][s]=flux_rthph[s];
+                    }
+                    else for (s=0; s<nvarm3; s++) Ftheta_Rface[xi][s]=0.0;
+
+                    /*---------numerical fluxes at the back face k-1/2 of the cell (i, j, k)
+                     *---------------------------------------------------------------------*/
+                    if (k == zs) {
+                        fluxes_phi(xx, uu, zz, i, j, k, flux_rthph);
+                        for (s=0; s<nvarm3; s++) Fphi_Lface[s]=flux_rthph[s];
+                    }
+                    else {
+                        for (s=0; s<nvarm3; s++) Fphi_Lface[s]=Fphi_Rface[yj][xi][s];
+                    }
+
+                    //numerical fluxes at the front face k+1/2 of the cell (i, j, k)
+                    fluxes_phi(xx, uu, zz, i, j, kp, flux_rthph);
+                    for (s=0; s<nvarm3; s++) Fphi_Rface[yj][xi][s]=flux_rthph[s];
+
+                    //RHS of fluid equations
+                    for (s=0; s<nvarm3; s++) {
+                        gg[k][j][i].fx[s]= source[s]-(rh2[ip]*Fr_atfaces[1][s]-rh2[i]*Fr_atfaces[0][s])/rh_d3[i]
+                                          -(sinth_h[jp]*Ftheta_Rface[xi][s]-sinth_h[j]*Ftheta_Lface[s])/rfavg_costh[j][i]
+                                          -(Fphi_Rface[yj][xi][s]-Fphi_Lface[s])/rfavg_costh_dth_dph[j][i];
+                    }
+
+                    //right hand side of magnetic equation component Br with j = [1, Nthm]
+                    gg[k][j][i].fx[23]= (vv[kp][j][i].fx[24]-vv[k][j][i].fx[24])/rh_costh_dth_dph[j][i]
+                                       -(sinth_h[jp]*vv[k][jp][i].fx[25]-sinth_h[j]*vv[k][j][i].fx[25])/rh_costh[j][i];
+
+                    if (j == 1) { //Btheta at north pole (j-1/2 = 1/2)
+                        kc = (k+a3/2) % a3;
+                        if (kc + 1 > Np) kprime=0; else kprime=kc+1;
+
+                        gg[k][j][i].fx[24]= (rh[ip]*vv[k][j][ip].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i]
+                                           -( vv[kp][jp][i].fx[23]-vv[kprime][jp][i].fx[23]-vv[k][jp][i].fx[23]
+                                             +vv[kc][jp][i].fx[23])/(2.0*rfavg_dth[i]*dph);
+
+                        Erss = 0.0;
+                        for (s = 0; s < a3; s++) Erss += vv[s][j][i].fx[23];
+                        Erss = Erss/(double)a3;
+
+                        gg[k][j][i].fx[25]= (vv[k][jp][i].fx[23]-Erss)/rfavg_dth[i]
+                                           -(rh[ip]*vv[k][j][ip].fx[24]-rh[i]*vv[k][j][i].fx[24])/rh_d2[i];
+                    }
+                    else if (j > 1 && j < Nthm) {
+                        gg[k][j][i].fx[24]= (rh[ip]*vv[k][j][ip].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i]
+                                           -(vv[kp][j][i].fx[23]-vv[k][j][i].fx[23])/rfavg_sinth_dph[j][i];
+
+                        gg[k][j][i].fx[25]= (vv[k][jp][i].fx[23]-vv[k][j][i].fx[23])/rfavg_dth[i]
+                                           -(rh[ip]*vv[k][j][ip].fx[24]-rh[i]*vv[k][j][i].fx[24])/rh_d2[i];
+                    }
+                    else {
+                        gg[k][j][i].fx[24]= (rh[ip]*vv[k][j][ip].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i]
+                                           -(vv[kp][j][i].fx[23]-vv[k][j][i].fx[23])/rfavg_sinth_dph[j][i];
+
+                        Erss = 0.0;
+                        for (s = 0; s < a3; s++) Erss += vv[s][jm][i].fx[23];
+                        Erss = Erss/(double)a3;
+
+                        gg[k][j][i].fx[25]= (Erss - vv[k][jm][i].fx[23])/rfavg_dth[i]
+                                           -(rh[ip]*vv[k][j][ip].fx[24]-rh[i]*vv[k][j][i].fx[24])/rh_d2[i];
+                    }
+                }
+
+                for (s=0; s<nvar; s++) {
+                    if (isnan(gg[k][j][i].fx[s]) || isinf(gg[k][j][i].fx[s])) {
+                        cout<<"function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s<<") in rhsfunctions"<<endl;
+                        exit(-1);
+                    }
+                }
+            }
+            else if (j == Nth) {
+                for (i = xs; i < xs+xm; i++) {
+                    if (i == 0 || i == Nr) continue;
+
                     for (s=0; s<nvar; s++) {
                         if (s != 24) gg[k][j][i].fx[s] = xx[(k+a3/2) % a3][Nthm][i].fx[s];
                     }
@@ -81,127 +200,14 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                                        +(rh[i+1]*vv[k][j][i+1].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i];
 
                     if (isnan(xx[k][j][i].fx[24]) || isinf(xx[k][j][i].fx[24])) {
-                        cout<<"Solution is Nan or inf at ("<<i<<", "<<j<<", "<<k
-                            <<", "<<24<<") in leap_frog advace"<<endl;
-                        exit(-1);
-                    }
-                }
-
-                continue;
-            }
-
-            for (i = xs; i < xs+xm; i++) {
-                xi=i-xs; ip=i+1;
-
-                if (i == 0) {
-                    lower_boundary_bc(xx, gg, j, k);
-                    continue;
-                }
-                else if (i == Nr) {
-                    upper_boundary_bc(xx, gg, j, k, yj, zk);
-                    continue;
-                }
-
-                source_terms(xx, uu, ww, zz, xs, i, j, k, zk, yj, xi, source);
-
-                /*-------numerical fluxes at the bottom face i-1/2 of the cell i
-                 *-------------------------------------------------------------------*/
-                if (i==1 || (i==xs && i > 0)) {
-                    fluxes_r(xx, uu, vv, i, j, k, flux_rthph);
-                    for (s=0; s< nvarm3; s++) Fr_atfaces[0][s]=flux_rthph[s];
-                }
-                else {
-                    for (s=0; s< nvarm3; s++) Fr_atfaces[0][s]=Fr_atfaces[1][s];
-                }
-
-                //numerical fluxes at the top face i+1/2 of the cell (i, j, k)
-                fluxes_r(xx, uu, vv, ip, j, k, flux_rthph);
-                for (s=0; s< nvarm3; s++) Fr_atfaces[1][s]=flux_rthph[s];
-
-                /*--------numerical fluxes at the left face j-1/2 of the cell (i, j, k)
-                 *-------------------------------------------------------------------*/
-                if (j == ys) {
-                    if (j == 0) for (s=0; s<nvarm3; s++) Ftheta_Lface[s] = 0.0;
-                    else {
-                        fluxes_theta(xx, uu, ww, i, j, k, flux_rthph);
-                        for (s=0; s<nvarm3; s++) Ftheta_Lface[s]=flux_rthph[s];
-                    }
-                }
-                else {
-                    for (s=0; s<nvarm3; s++) Ftheta_Lface[s]=Ftheta_Rface[xi][s];
-                }
-
-                //numerical fluxes at the right face j+1/2 of the cell (i, j, k)
-                if (j < Nthm) {
-                    fluxes_theta(xx, uu, ww, i, jp, k, flux_rthph);
-                    for (s=0; s<nvarm3; s++) Ftheta_Rface[xi][s]=flux_rthph[s];
-                }
-                else for (s=0; s<nvarm3; s++) Ftheta_Rface[xi][s]=0.0;
-
-                /*---------numerical fluxes at the back face k-1/2 of the cell (i, j, k)
-                 *---------------------------------------------------------------------*/
-                if (k == zs) {
-                    fluxes_phi(xx, uu, zz, i, j, k, flux_rthph);
-                    for (s=0; s<nvarm3; s++) Fphi_Lface[s]=flux_rthph[s];
-                }
-                else {
-                    for (s=0; s<nvarm3; s++) Fphi_Lface[s]=Fphi_Rface[yj][xi][s];
-                }
-
-                //numerical fluxes at the front face k+1/2 of the cell (i, j, k)
-                fluxes_phi(xx, uu, zz, i, j, kp, flux_rthph);
-                for (s=0; s<nvarm3; s++) Fphi_Rface[yj][xi][s]=flux_rthph[s];
-
-                //RHS of fluid equations
-                for (s=0; s<nvarm3; s++) {
-                    gg[k][j][i].fx[s]= source[s]-(rh2[ip]*Fr_atfaces[1][s]-rh2[i]*Fr_atfaces[0][s])/rh_d3[i]
-                                      -(sinth_h[jp]*Ftheta_Rface[xi][s]-sinth_h[j]*Ftheta_Lface[s])/rfavg_costh[j][i]
-                                      -(Fphi_Rface[yj][xi][s]-Fphi_Lface[s])/rfavg_costh_dth_dph[j][i];
-                }
-
-                //right hand side of magnetic equation
-                gg[k][j][i].fx[23]= (vv[kp][j][i].fx[24]-vv[k][j][i].fx[24])/rh_costh_dth_dph[j][i]
-                                   -(sinth_h[jp]*vv[k][jp][i].fx[25]-sinth_h[j]*vv[k][j][i].fx[25])/rh_costh[j][i];
-
-                if (j == 0) {
-                    kc = (k+a3/2) % a3;
-                    if (kc + 1 > Np) kprime=0; else kprime=kc+1;
-                    gg[k][j][i].fx[24]= (rh[ip]*vv[k][j][ip].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i]
-                                       -( vv[kp][j][i].fx[23]-vv[kprime][j][i].fx[23]-vv[k][j][i].fx[23]
-                                         +vv[kc][j][i].fx[23])/(2.0*rfavg_dth[i]*dph);
-
-                    Erss = 0.0;
-                    for (s = 0; s < a3; s++) Erss += vv[s][j][i].fx[23];
-                    Erss = Erss/(double)a3;
-
-                    gg[k][j][i].fx[25]= (vv[k][jp][i].fx[23]-Erss)/rfavg_dth[i]
-                                       -(rh[ip]*vv[k][j][ip].fx[24]-rh[i]*vv[k][j][i].fx[24])/rh_d2[i];
-                }
-                else {
-                    gg[k][j][i].fx[24]= (rh[ip]*vv[k][j][ip].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i]
-                                       -(vv[kp][j][i].fx[23]-vv[k][j][i].fx[23])/rfavg_sinth_dph[j][i];
-
-                    if (j < Nthm)
-                        gg[k][j][i].fx[25]= (vv[k][jp][i].fx[23]-vv[k][j][i].fx[23])/rfavg_dth[i]
-                                           -(rh[ip]*vv[k][j][ip].fx[24]-rh[i]*vv[k][j][i].fx[24])/rh_d2[i];
-                    else {
-                        Erss = 0.0;
-                        for (s = 0; s < a3; s++) Erss += vv[s][jm][i].fx[23];
-                        Erss = Erss/(double)a3;
-
-                        gg[k][j][i].fx[25]= (Erss - vv[k][jm][i].fx[23])/rfavg_dth[i]
-                                           -(rh[ip]*vv[k][j][ip].fx[24]-rh[i]*vv[k][j][i].fx[24])/rh_d2[i];
-                    }
-                }
-
-                for (s=0; s<nvar; s++) {
-                    if (isnan(gg[k][j][i].fx[s]) || isinf(gg[k][j][i].fx[s])) {
-                        cout<<"function is Nan or inf at ("<<i<<", "<<j<<", "<<k
-                            <<", "<<s<<") in rhsfunctions"<<endl;
+                        cout<<"Solution is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<24<<") in rhsfunctions"<<endl;
                         exit(-1);
                     }
                 }
             }
+
+            if (xs == 0) lower_boundary_bc(xx, gg, j, k);
+            if (xs+xm == a1) upper_boundary_bc(xx, gg, j, k, yj, zk);
         }
     }
 
@@ -237,7 +243,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
     AppCtx *params = (AppCtx*)ctx;
     Field  ***xx, ***dxdt, ***uu, ***zz, ***ff;
     DM     da;
-    PetscInt xs, xm, ys, ym, zs, zm, zk, yj, xi, i, j, k, im, ip, jm, kcm, jp, kcp, km, kp;
+    PetscInt xs, xm, ys, ym, zs, zm, zk, yj, xi, i, j, k, im, ip, jm, jp, km, kp;
     double fsf_imjk, fsf_ipjk;
     double a_imjk[2], a_imjk_multi_a_imjk_subtr, a_ipjk[2], a_ipjk_multi_a_ipjk_subtr;
     double fsf_ijmk, fsf_ijpk;
@@ -281,22 +287,28 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
         for (j = ys; j < ys+ym; j++) {
             yj=j-ys;
 
-            if (j == Nth) {
+            if (j == 0) {
+                for (i = xs; i < xs+xm; i++) {
+                    for (s = 0; s< nvar; s++) ff[k][j][i].fx[s] = xx[k][j][i].fx[s];
+                }
+
+                continue;
+            }
+            else if (j == Nth) {
                 for (i = xs; i < xs+xm; i++) {
                     for (s = 0; s< nvar; s++) {
                         if (s != 24) ff[k][j][i].fx[s] = xx[k][j][i].fx[s];
+                        else {
+                            if (i == 0 || i == Nr) ff[k][j][i].fx[s] = xx[k][j][i].fx[s];
+                            else ff[k][j][i].fx[s] = dxdt[k][j][i].fx[s];
+                        }
                     }
-
-                    ff[k][j][i].fx[24]=dxdt[k][j][i].fx[24];
                 }
 
                 continue;
             }
 
-            if (j == 0) {jm = j; kcm = (k+a3/2) % a3;}
-            else {jm = j-1; kcm = k;}
-            if (j < Nthm) {jp = j+1; kcp = k;}
-            else {jp = Nthm; kcp = (k+a3/2) % a3;}
+            jm = j-1; jp = j+1;
 
             for (i = xs; i < xs+xm; i++) {
                 if (i == 0 or i == Nr) {
@@ -317,8 +329,8 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 b_ijmk[0]=uu[k][j][i].fx[5];
                 b_ijmk[1]=uu[k][j][i].fx[6];
                 b_ijmk_multi_b_ijmk_subtr = b_ijmk[0]*b_ijmk[1]/(b_ijmk[0]-b_ijmk[1]);
-                b_ijpk[0]=uu[kcp][jp][i].fx[5];
-                b_ijpk[1]=uu[kcp][jp][i].fx[6];
+                b_ijpk[0]=uu[k][jp][i].fx[5];
+                b_ijpk[1]=uu[k][jp][i].fx[6];
                 b_ijpk_multi_b_ijpk_subtr = b_ijpk[0]*b_ijpk[1]/(b_ijpk[0]-b_ijpk[1]);
 
                 c_ijkm[0]=uu[k][j][i].fx[15];
@@ -337,8 +349,8 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                     fsf_imjk = a_imjk_multi_a_imjk_subtr*(xx[k][j][i].fx[s]-xx[k][j][im].fx[s]);
                     fsf_ipjk = a_ipjk_multi_a_ipjk_subtr*(xx[k][j][ip].fx[s]-xx[k][j][i].fx[s]);
 
-                    fsf_ijmk = b_ijmk_multi_b_ijmk_subtr*(xx[k][j][i].fx[s]-xx[kcm][jm][i].fx[s]);
-                    fsf_ijpk = b_ijpk_multi_b_ijpk_subtr*(xx[kcp][jp][i].fx[s]-xx[k][j][i].fx[s]);
+                    fsf_ijmk = b_ijmk_multi_b_ijmk_subtr*(xx[k][j][i].fx[s]-xx[k][jm][i].fx[s]);
+                    fsf_ijpk = b_ijpk_multi_b_ijpk_subtr*(xx[k][jp][i].fx[s]-xx[k][j][i].fx[s]);
 
                     fsf_ijkm = c_ijkm_multi_c_ijkm_subtr*(xx[k][j][i].fx[s]-xx[km][j][i].fx[s]);
                     fsf_ijkp = c_ijkp_multi_c_ijkp_subtr*(xx[kp][j][i].fx[s]-xx[k][j][i].fx[s]);
@@ -373,41 +385,53 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                     sum_nueq_div_mq =+ nust[zk][yj][xi][7+s]/ms[s];
                 }
 
-                uer=xx[k][j][i].fx[7]/rhoi; uet=xx[k][j][i].fx[8]/rhoi; uep=xx[k][j][i].fx[9]/rhoi;
-                uir=uer; uit=uet; uip=uep;
-                unr=xx[k][j][i].fx[19]/rhon; unt=xx[k][j][i].fx[20]/rhon; unp=xx[k][j][i].fx[21]/rhon;
+                for (s = 7; s < 12; s++) {
+                    fsf_imjk = a_imjk_multi_a_imjk_subtr*(xx[k][j][i].fx[s]-xx[k][j][im].fx[s]);
+                    fsf_ipjk = a_ipjk_multi_a_ipjk_subtr*(xx[k][j][ip].fx[s]-xx[k][j][i].fx[s]);
 
-                ff[k][j][i].fx[7] = dxdt[k][j][i].fx[7]-sum_nues*(uer-uir)-sum_rhonusq*(unr-uir);
-                ff[k][j][i].fx[8] = dxdt[k][j][i].fx[8]-sum_nues*(uet-uit)-sum_rhonusq*(unt-uit);
-                ff[k][j][i].fx[9] = dxdt[k][j][i].fx[9]-sum_nues*(uep-uip)-sum_rhonusq*(unp-uip);
+                    fsf_ijmk = b_ijmk_multi_b_ijmk_subtr*(xx[k][j][i].fx[s]-xx[k][jm][i].fx[s]);
+                    fsf_ijpk = b_ijpk_multi_b_ijpk_subtr*(xx[k][jp][i].fx[s]-xx[k][j][i].fx[s]);
+
+                    fsf_ijkm = c_ijkm_multi_c_ijkm_subtr*(xx[k][j][i].fx[s]-xx[km][j][i].fx[s]);
+                    fsf_ijkp = c_ijkp_multi_c_ijkp_subtr*(xx[kp][j][i].fx[s]-xx[k][j][i].fx[s]);
+
+                    ff[k][j][i].fx[s] = dxdt[k][j][i].fx[s] + (rh2[ip]*fsf_ipjk - rh2[i]*fsf_imjk)/rh_d3[i]
+                                        +(sinth_h[jp]*fsf_ijpk - sinth_h[j]*fsf_ijmk)/rfavg_costh[j][i]
+                                        +(fsf_ijkp - fsf_ijkm)/rfavg_costh_dth_dph[j][i];
+                }
+
+                ff[k][j][i].fx[7] += sum_nues*(uir-uer) + sum_rhonusq*(uir-unr);
+                ff[k][j][i].fx[8] += sum_nues*(uit-uet) + sum_rhonusq*(uit-unt);
+                ff[k][j][i].fx[9] += sum_nues*(uip-uep) + sum_rhonusq*(uip-unp);
 
                 rhoe=ne*me;
                 rhoe_sum_nues=rhoe*sum_nues;
                 rhoe_sum_nueq=rhoe*sum_nueq;
 
+                uer=xx[k][j][i].fx[7]/rhoi; uet=xx[k][j][i].fx[8]/rhoi; uep=xx[k][j][i].fx[9]/rhoi;
+                uir=uer; uit=uet; uip=uep;
+                unr=xx[k][j][i].fx[19]/rhon; unt=xx[k][j][i].fx[20]/rhon; unp=xx[k][j][i].fx[21]/rhon;
+
                 uiminusun_sq=(uir-unr)*(uir-unr)+(uit-unt)*(uit-unt)+(uip-unp)*(uip-unp);
                 Qifric=two3rd*rhos_nusqmq_msmq*uiminusun_sq;
-                Qefric=two3rd*( rhoe_sum_nues*((uer-uir)*(uer-uir)+(uet-uit)*(uet-uit)+(uep-uip)*(uep-uip))
-                   +rhoe_sum_nueq*((uer-unr)*(uer-unr)+(uet-unt)*(uet-unt)+(uep-unp)*(uep-unp)));
+                Qefric=two3rd*rhoe_sum_nueq*((uer-unr)*(uer-unr)+(uet-unt)*(uet-unt)+(uep-unp)*(uep-unp));
                 Qnfric=two3rd*rhos_nusqms_msmq*uiminusun_sq;
 
-                ff[k][j][i].fx[10] = dxdt[k][j][i].fx[10]
-                                    +2.0*( me*sum_nues_div_ms*(xx[k][j][i].fx[10]-xx[k][j][i].fx[11])
-                                          +rhos_nusq_msmq*(xx[k][j][i].fx[10]/ne-xx[k][j][i].fx[22]/Nn))
-                                    +two3rd*Qifric;
+                ff[k][j][i].fx[10] += 2.0*( me*sum_nues_div_ms*(xx[k][j][i].fx[10]-xx[k][j][i].fx[11])
+                                           +rhos_nusq_msmq*(xx[k][j][i].fx[10]/ne-xx[k][j][i].fx[22]/Nn))
+                                     -two3rd*Qifric;
 
                 Te=xx[k][j][i].fx[11]/(ne*kb);
                 Tn=xx[k][j][i].fx[22]/(Nn*kb);
-                ff[k][j][i].fx[11] = dxdt[k][j][i].fx[11]
-                                    +2.0*me*( sum_nues_div_ms*(xx[k][j][i].fx[11]-xx[k][j][i].fx[10])
+                ff[k][j][i].fx[11] = 2.0*me*( sum_nues_div_ms*(xx[k][j][i].fx[11]-xx[k][j][i].fx[10])
                                              +sum_nueq_div_mq*(xx[k][j][i].fx[11]-ne/Nn*xx[k][j][i].fx[22]))
                                     -two3rd*(Qefric+ele_cooling_rate(xx, Te, Tn, ne, i, j, k))
                                     +one6th/kb*( (zz[k][j][ip].fx[24]-zz[k][j][im].fx[24])/dr2
                                                  *( xx[k][j][ip].fx[11]/uu[k][j][ip].fx[17]
                                                    -xx[k][j][im].fx[11]/uu[k][j][im].fx[17])
-                                                +(zz[kcp][jp][i].fx[24]-zz[kcm][jm][i].fx[24])/(rfavg_dth[i]*rfavg_dth[i])
-                                                 *( xx[kcp][jp][i].fx[11]/uu[kcp][jp][i].fx[17]
-                                                   -xx[kcm][jm][i].fx[11]/uu[kcm][jm][i].fx[17])
+                                                +(zz[k][jp][i].fx[24]-zz[k][jm][i].fx[24])/(rfavg_dth[i]*rfavg_dth[i])
+                                                 *( xx[k][jp][i].fx[11]/uu[k][jp][i].fx[17]
+                                                   -xx[k][jm][i].fx[11]/uu[k][jm][i].fx[17])
                                                 +(zz[kp][j][i].fx[24]-zz[km][j][i].fx[24])
                                                  /(rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i])
                                                  *( xx[kp][j][i].fx[11]/uu[kp][j][i].fx[17]
@@ -416,39 +440,24 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                                               *( ( xx[k][j][ip].fx[11]/uu[k][j][ip].fx[17]
                                                   -xx[k][j][im].fx[11]/uu[k][j][im].fx[17])/(rfavg[i]*dr)
                                                 +( xx[k][j][ip].fx[11]/uu[k][j][ip].fx[17]
-                                                  -2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[11]
+                                                  -2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
                                                   +xx[k][j][im].fx[11]/uu[k][j][im].fx[17])/dr2
-                                                +cotth[j]*( xx[kcp][jp][i].fx[11]/uu[kcp][jp][i].fx[11]
-                                                           -xx[kcm][jm][i].fx[11]/uu[kcm][jm][i].fx[11])
+                                                +cotth[j]*( xx[k][jp][i].fx[11]/uu[k][jp][i].fx[17]
+                                                           -xx[k][jm][i].fx[11]/uu[k][jm][i].fx[17])
                                                           /(rfavg_dth[i]*rfavg[i])
-                                                +( xx[kcp][jp][i].fx[11]/uu[kcp][jp][i].fx[17]
-                                                  -2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[11]
-                                                  +xx[kcm][jm][i].fx[11]/uu[kcm][jm][i].fx[17])
+                                                +( xx[k][jp][i].fx[11]/uu[k][jp][i].fx[17]
+                                                  -2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
+                                                  +xx[k][jm][i].fx[11]/uu[k][jm][i].fx[17])
                                                  /(rfavg_dth[i]*rfavg_dth[i])
                                                 +( xx[kp][j][i].fx[11]/uu[kp][j][i].fx[17]
-                                                  -2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[11]
+                                                  -2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
                                                   +xx[km][j][i].fx[11]/uu[km][j][i].fx[17])
                                                  /(rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i]));
 
-                for (s = 7; s < 12; s++) {
-                    fsf_imjk = a_imjk_multi_a_imjk_subtr*(xx[k][j][i].fx[s]-xx[k][j][im].fx[s]);
-                    fsf_ipjk = a_ipjk_multi_a_ipjk_subtr*(xx[k][j][ip].fx[s]-xx[k][j][i].fx[s]);
-
-                    fsf_ijmk = b_ijmk_multi_b_ijmk_subtr*(xx[k][j][i].fx[s]-xx[kcm][jm][i].fx[s]);
-                    fsf_ijpk = b_ijpk_multi_b_ijpk_subtr*(xx[kcp][jp][i].fx[s]-xx[k][j][i].fx[s]);
-
-                    fsf_ijkm = c_ijkm_multi_c_ijkm_subtr*(xx[k][j][i].fx[s]-xx[km][j][i].fx[s]);
-                    fsf_ijkp = c_ijkp_multi_c_ijkp_subtr*(xx[kp][j][i].fx[s]-xx[k][j][i].fx[s]);
-
-                    ff[k][j][i].fx[s] += (rh2[ip]*fsf_ipjk - rh2[i]*fsf_imjk)/rh_d3[i]
-                                        +(sinth_h[jp]*fsf_ijpk - sinth_h[j]*fsf_ijmk)/rfavg_costh[j][i]
-                                        +(fsf_ijkp - fsf_ijkm)/rfavg_costh_dth_dph[j][i];
-                }
-
-                ff[k][j][i].fx[19] = dxdt[k][j][i].fx[19]-rhoe*sum_nueq*(uer-unr)-sum_rhonusq*(uir-unr);
-                ff[k][j][i].fx[20] = dxdt[k][j][i].fx[20]-rhoe*sum_nueq*(uet-unt)-sum_rhonusq*(uit-unt);
-                ff[k][j][i].fx[21] = dxdt[k][j][i].fx[21]-rhoe*sum_nueq*(uep-unp)-sum_rhonusq*(uip-unp);
-                ff[k][j][i].fx[22] = dxdt[k][j][i].fx[22] + two3rd*Qnfric
+                ff[k][j][i].fx[19] = dxdt[k][j][i].fx[19]+rhoe*sum_nueq*(unr-uer)+sum_rhonusq*(unr-uir);
+                ff[k][j][i].fx[20] = dxdt[k][j][i].fx[20]+rhoe*sum_nueq*(unt-uet)+sum_rhonusq*(unt-uit);
+                ff[k][j][i].fx[21] = dxdt[k][j][i].fx[21]+rhoe*sum_nueq*(unp-uep)+sum_rhonusq*(unp-uip);
+                ff[k][j][i].fx[22] = dxdt[k][j][i].fx[22] - two3rd*Qnfric
                                     +2.0*rhos_nusq_msmq*(xx[k][j][i].fx[22]/Nn-xx[k][j][i].fx[10]/ne);
 
                 for (s = 23; s< 26; s++) ff[k][j][i].fx[s] = dxdt[k][j][i].fx[s];

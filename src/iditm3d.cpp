@@ -100,7 +100,7 @@ int main(int argc,char **argv)
 
     TS    ts;
     TSCreate(MPI_COMM_WORLD, &ts);
-    TSSetProblemType(ts, TS_NONLINEAR);
+    TSSetProblemType(ts, TS_LINEAR);
     TSSetType(ts, TSROSW);
 
     TSSetDM(ts, da);
@@ -113,25 +113,11 @@ int main(int argc,char **argv)
     TSSetFromOptions(ts);
 
     Mat A;
-    /*int N=a1*a2*a3*a4;
-    MatCreate(MPI_COMM_WORLD, &A);
-    MatSetType(A, MATMPIAIJ);
-    MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, N, N);
-    MatMPIAIJSetPreallocation(A, 26, NULL, 26, NULL);
-    MatSetUp(A);*/
-
     DMSetMatrixPreallocateOnly(da, PETSC_FALSE);
     DMSetMatType(da, MATMPIAIJ);
     DMDASetBlockFills(da, dfill, ofill);
     DMCreateMatrix(da, &A);
     //MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-
-    /*int nmat = getMatNumberOfNonzero(ts);
-    int *mrow = new int[nmat];
-    int *ncol = new int[nmat];
-    setMatNonzeroPattern(ts, mrow, ncol);
-    MatSetPreallocationCOO(A, nmat, mrow, ncol);
-    delete[] mrow; delete ncol;*/
 
     TSSetRHSFunction(ts, NULL, rhsfunctions, &params);
     TSSetIFunction(ts, NULL, stifffunction, &params);

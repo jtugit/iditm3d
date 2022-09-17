@@ -28,8 +28,6 @@ inline void electric_field(Field ***xx, Field ***ww, Field ***uu, int i, int j, 
     ctheta=(xx[k][jp][i].fx[24]-xx[k][j][i].fx[24])/dth;
     Btheta = ww[k][j][i].fx[24] + atheta +btheta*(rC[i]-rfavg[i]) + ctheta*(thetaC[j]-theta[j]);
 
-    if (k < Np) kp = k+1; else kp = 0;
-
     aphi=0.5*(xx[kp][j][i].fx[25]+xx[k][j][i].fx[25]);
     bphi=( limited_slope_Bphi_r(xx, i, j, kp)*(phi[k]-phih[k])
           +limited_slope_Bphi_r(xx, i, j, k)*(phih[k+1]-phi[k]))/dph;
@@ -52,12 +50,9 @@ inline void electric_field(Field ***xx, Field ***ww, Field ***uu, int i, int j, 
 /*------------------------------------------------------------------------------
  *   Edge averaged electric field E*_r, E*_theta, E*_phi
  *------------------------------------------------------------------------------*/
-inline void Estar(Field ***xx, Field ***uu, Field ***zz, int i, int j, int k, Field ***vv)
+inline void Estar(Field ***xx, Field ***uu, int i, int j, int k, Field ***vv)
 {
-    int im=i-1, jm, km, kc, kmc, kkc, kh;
-
-    double a_imjk[2], b_ijmk[2], c_ijkm[2];
-    double a_imj1k[2], a_imjk1[2], b_i1jmk[2], b_ijmk1[2], c_i1jkm[2], c_ij1km[2];
+    int im=i-1, jm, km=k-1, kc, kh, kcm;
 
     double a_imjmk[2], a_imjkm[2];
     double b_imjmk[2], b_ijmkm[2];
@@ -71,30 +66,31 @@ inline void Estar(Field ***xx, Field ***uu, Field ***zz, int i, int j, int k, Fi
     double Etheta_impjkmp, Etheta_immjkmp, Etheta_impjkmm, Etheta_immjkmm;
     double Ephi_impjmpk, Ephi_immjmpk, Ephi_impjmmk, Ephi_immjmmk;
 
-    if (j == 0) {kc=(k+a3/2) % a3; jm = 0;}
-    else{kc = k; jm = j-1;}
-
-    if (k == 0) {km = Np; kh = Np+1;}
-    else {km = k-1; kh = k;}
+    if (k == 0) {km=Np; kh=km+1;} 
+    else {km=k-1; kh=k;}
 
     if (j < Nth) {
-        max_speed_r_face(xx, zz, i, j, k, rh[i], theta[j], phi[k], a_imjk);
-        max_speed_r_face(xx, zz, i, jm, kc, rh[i], theta[jm], phi[kc], a_imj1k);
-        max_speed_r_face(xx, zz, i, j, km, rh[i], theta[j], phi[km], a_imjk1);
+        if (j == 1) {
+            kc=(k+a3/2) % a3; jm = j; kcm = (k-1+a3/2) % a3;
+        }
+        else{
+            kc = k; jm = j-1; kcm=k-1;
+        }
 
-        max_speed_theta_face(xx, zz, i, j, k, rr[i], thetah[j], phi[k], b_ijmk);
-        max_speed_theta_face(xx, zz, im, j, k, rr[im], thetah[j], phi[k], b_i1jmk);
-        max_speed_theta_face(xx, zz, i, j, km, rr[i], thetah[j], phi[km], b_ijmk1);
+        a_imjmk[0]=max(uu[k][j][i].fx[3], uu[kc][jm][i].fx[3]);
+        a_imjmk[1]=min(uu[k][j][i].fx[4], uu[kc][jm][i].fx[4]);
+        a_imjkm[0]=max(uu[k][j][i].fx[3], uu[km][j][i].fx[3]);
+        a_imjkm[1]=min(uu[k][j][i].fx[4], uu[km][j][i].fx[4]);
 
-        max_speed_phi_face(xx, zz, i, j, k, rr[i], theta[j], phih[k], c_ijkm);
-        max_speed_phi_face(xx, zz, im, j, k, rr[im], theta[j], phih[k], c_i1jkm);
-        max_speed_phi_face(xx, zz, i, jm, kc, rr[i], theta[jm], phih[kc], c_ij1km);
+        b_imjmk[0]=max(uu[k][j][i].fx[5], uu[k][j][im].fx[5]);
+        b_imjmk[1]=min(uu[k][j][i].fx[6], uu[k][j][im].fx[6]);
+        b_ijmkm[0]=max(uu[k][j][i].fx[5], uu[km][j][i].fx[5]);
+        b_ijmkm[1]=min(uu[k][j][i].fx[6], uu[km][j][i].fx[6]);
 
-        a_imjkm[0]=max(a_imjk[0], a_imjk1[0]);
-        a_imjkm[1]=min(a_imjk[1], a_imjk1[1]);
-
-        c_imjkm[0]=max(c_ijkm[0], c_i1jkm[0]);
-        c_imjkm[1]=min(c_ijkm[1], c_i1jkm[1]);
+        c_imjkm[0]=max(uu[k][j][i].fx[15], uu[k][j][im].fx[15]);
+        c_imjkm[1]=min(uu[k][j][i].fx[16], uu[k][j][im].fx[16]);
+        c_ijmkm[0]=max(uu[k][j][i].fx[15], uu[kc][jm][i].fx[15]);
+        c_ijmkm[1]=min(uu[k][j][i].fx[16], uu[kc][jm][i].fx[16]);
 
         //reconstructed Br, and Bphi
         Br_imjkmp=reconstructed_Br(xx, i, j, k, rh[i], theta[j], phih[k]);
@@ -104,22 +100,18 @@ inline void Estar(Field ***xx, Field ***uu, Field ***zz, int i, int j, int k, Fi
 
         Btheta_ijmkmp=reconstructed_Btheta(xx, i, j, k, rr[i], thetah[j], phih[k]);
         Btheta_ijmkmm=reconstructed_Btheta(xx, i, j, km, rr[i], thetah[j], phih[kh]);
-        Btheta_impjmk=reconstructed_Bphi(xx, i, j, k, rh[i], thetah[j], phi[k]);
-        Btheta_immjmk=reconstructed_Bphi(xx, im, j, k, rh[i], thetah[j], phi[k]);
+        Btheta_impjmk=reconstructed_Btheta(xx, i, j, k, rh[i], thetah[j], phi[k]);
+        Btheta_immjmk=reconstructed_Btheta(xx, im, j, k, rh[i], thetah[j], phi[k]);
 
         Bphi_ijmpkm=reconstructed_Bphi(xx, i, j, k, rr[i], thetah[j], phih[k]);
         Bphi_ijmmkm=reconstructed_Bphi(xx, i, jm, kc, rr[i], thetah[j], phih[kc]);
         Bphi_impjkm=reconstructed_Bphi(xx, i, j, k, rh[i], theta[j], phih[k]);
         Bphi_immjkm=reconstructed_Bphi(xx, im, j, k, rh[i], theta[j], phih[k]);
 
-        //reconstructed Er
-        if (j == 0) kmc = (km+a3/2) % a3;
-        else kmc=km;
-
         Er_ijmpkmp=reconstructed_efd(uu, i, j, k, 0, rr[i], thetah[j], phih[k]);
         Er_ijmmkmp=reconstructed_efd(uu, i, jm, kc, 0, rr[i], thetah[j], phih[kc]);
         Er_ijmpkmm=reconstructed_efd(uu, i, j, km, 0, rr[i], thetah[j], phih[kh]);
-        Er_ijmmkmm=reconstructed_efd(uu, i, jm, kmc, 0, rr[i], thetah[j], phih[kmc]);
+        Er_ijmmkmm=reconstructed_efd(uu, i, jm, kcm, 0, rr[i], thetah[j], phih[kcm+1]);
 
         Etheta_impjkmp=reconstructed_efd(uu, i, j, k, 1, rh[i], theta[j], phih[k]);
         Etheta_immjkmp=reconstructed_efd(uu, im, j, k, 1, rh[i], theta[j], phih[k]);
@@ -138,55 +130,43 @@ inline void Estar(Field ***xx, Field ***uu, Field ***zz, int i, int j, int k, Fi
                             /((a_imjkm[0]-a_imjkm[1])*(c_imjkm[0]-c_imjkm[1]));
     }
     else {
-        kkc=(k+a3/2) % a3; kmc = (km+a3/2) % a3;
+        jm=j-1; 
+        int kcp=(k+a3/2) % a3;
+        kcm=(k-1+a3/2) % a3;
 
-        max_speed_r_face(xx, zz, i, Nthm, kkc, rh[i], theta[Nthm], phi[kkc], a_imjk);
-        max_speed_r_face(xx, zz, i, jm, k, rh[i], theta[jm], phi[k], a_imj1k);
-        //a_imjk1 at j=Nth is not needed
+        a_imjmk[0]=max(uu[kcp][jm][i].fx[3], uu[k][jm][i].fx[3]);
+        a_imjmk[1]=min(uu[kcp][jm][i].fx[4], uu[k][jm][i].fx[4]);
 
-        max_speed_theta_face(xx, zz, i, j, k, rr[i], thetah[j], phi[k], b_ijmk);
-        max_speed_theta_face(xx, zz, im, j, k, rr[im], thetah[j], phi[k], b_i1jmk);
-        max_speed_theta_face(xx, zz, i, j, km, rr[i], thetah[j], phi[km], b_ijmk1);
+        b_imjmk[0]=max(uu[kcp][jm][i].fx[5], uu[kcp][jm][im].fx[5]);
+        b_imjmk[1]=min(uu[kcp][jm][i].fx[6], uu[kcp][jm][im].fx[6]);
+        b_ijmkm[0]=max(uu[kcp][jm][i].fx[5], uu[kcm][jm][i].fx[5]);
+        b_ijmkm[1]=min(uu[kcp][jm][i].fx[6], uu[kcm][jm][i].fx[6]);
 
-        max_speed_phi_face(xx, zz, i, Nthm, kkc, rr[i], theta[Nthm], phih[kkc], c_ijkm);
-        //c_i1jkm at j=Nth is not needed;
-        max_speed_phi_face(xx, zz, i, jm, k, rr[i], theta[jm], phih[k], c_ij1km);
+        c_ijmkm[0]=max(uu[kcp][jm][i].fx[15], uu[k][jm][i].fx[15]);
+        c_ijmkm[1]=min(uu[kcp][jm][i].fx[16], uu[k][jm][i].fx[16]);
 
-        //We don't need Br_imjkmp and Br_imjkmm at j=Nth
-        Br_imjmpk=reconstructed_Br(xx, i, Nthm, kkc, rh[i], thetah[j], phi[kkc]);
+        //reconstructed Br, and Bphi
+        Br_imjmpk=reconstructed_Br(xx, i, jm, kcp, rh[i], thetah[j], phi[kcp]);
         Br_imjmmk=reconstructed_Br(xx, i, jm, k, rh[i], thetah[j], phi[k]);
 
-        Btheta_ijmkmp=reconstructed_Btheta(xx, i, Nthm, kkc, rr[i], thetah[j], phih[kkc]);
-        Btheta_ijmkmm=reconstructed_Btheta(xx, i, Nthm, kmc, rr[i], thetah[j], phih[kmc]);
-        Btheta_impjmk=reconstructed_Bphi(xx, i, Nthm, kkc, rh[i], thetah[j], phi[kkc]);
-        Btheta_immjmk=reconstructed_Bphi(xx, im, Nthm, kkc, rh[i], thetah[j], phi[kkc]);
+        Btheta_ijmkmp=reconstructed_Btheta(xx, i, j, k, rr[i], thetah[j], phih[k]);
+        Btheta_ijmkmm=reconstructed_Btheta(xx, i, j, km, rr[i], thetah[j], phih[kh]);
+        Btheta_impjmk=reconstructed_Btheta(xx, i, j, k, rh[i], thetah[j], phi[k]);
+        Btheta_immjmk=reconstructed_Btheta(xx, im, j, k, rh[i], thetah[j], phi[k]);
 
-        //We don't need Bphi_impjkm and Bphi_immjkm at j=Nth
-        Bphi_ijmpkm=reconstructed_Bphi(xx, i, Nthm, kkc, rr[i], thetah[j], phih[kkc]);
+        Bphi_ijmpkm=reconstructed_Bphi(xx, i, jm, kcp, rr[i], thetah[j], phih[kcp]);
         Bphi_ijmmkm=reconstructed_Bphi(xx, i, jm, k, rr[i], thetah[j], phih[k]);
 
-        Er_ijmpkmp=reconstructed_efd(uu, i, Nthm, kkc, 0, rr[i], thetah[j], phih[kkc]);
+        Er_ijmpkmp=reconstructed_efd(uu, i, jm, kcp, 0, rr[i], thetah[j], phih[kcp]);
         Er_ijmmkmp=reconstructed_efd(uu, i, jm, k, 0, rr[i], thetah[j], phih[k]);
-        Er_ijmpkmm=reconstructed_efd(uu, i, Nthm, kmc, 0, rr[i], thetah[j], phih[kmc]);
+        Er_ijmpkmm=reconstructed_efd(uu, i, jm, kcm, 0, rr[i], thetah[j], phih[kcp]);
         Er_ijmmkmm=reconstructed_efd(uu, i, jm, km, 0, rr[i], thetah[j], phih[kh]);
 
-        //All E^start_theta are not needed at j=Nth
-        Ephi_impjmpk=reconstructed_efd(uu, i, Nthm, kkc, 2, rh[i], thetah[j], phi[kkc]);
-        Ephi_immjmpk=reconstructed_efd(uu, im, Nthm, kkc, 2, rh[i], thetah[j], phi[kkc]);
+        Ephi_impjmpk=reconstructed_efd(uu, i, jm, kcp, 2, rh[i], thetah[j], phi[kcp]);
+        Ephi_immjmpk=reconstructed_efd(uu, im, jm, kcp, 2, rh[i], thetah[j], phi[kcp]);
         Ephi_impjmmk=reconstructed_efd(uu, i, jm, k, 2, rh[i], thetah[j], phi[k]);
         Ephi_immjmmk=reconstructed_efd(uu, im, jm, k, 2, rh[i], thetah[j], phi[k]);
     }
-
-    a_imjmk[0]=max(a_imjk[0], a_imj1k[0]);
-    a_imjmk[1]=min(a_imjk[1], a_imj1k[1]);
-
-    b_imjmk[0]=max(b_ijmk[0], b_i1jmk[0]);
-    b_imjmk[1]=min(b_ijmk[1], b_i1jmk[1]);
-    b_ijmkm[0]=max(b_ijmk[0], b_ijmk1[0]);
-    b_ijmkm[1]=min(b_ijmk[1], b_ijmk1[1]);
-
-    c_ijmkm[0]=max(c_ijkm[0], c_ij1km[0]);
-    c_ijmkm[1]=min(c_ijkm[1], c_ij1km[1]);
 
     vv[k][j][i].fx[23]= c_ijmkm[1]*c_ijmkm[0]/(c_ijmkm[0]-c_ijmkm[1])*(Btheta_ijmkmp-Btheta_ijmkmm)
                        -b_ijmkm[1]*b_ijmkm[0]/(b_ijmkm[0]-b_ijmkm[1])*(Bphi_ijmpkm-Bphi_ijmmkm)
