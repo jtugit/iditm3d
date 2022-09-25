@@ -67,6 +67,6 @@ void boundary_bc(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm, Ap
 void efd_boundary_bc(Field ***uu, int xs, int xm, int ys, int ym, int zs, int zm);
 void boundary_V_T(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm);
 
-int check_positivity(Field ***xx);
+int check_positivity(DM, Field ***xx);
 
 //#endif  /* INC FUNCDEF */

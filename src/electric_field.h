@@ -1,4 +1,4 @@
-#include "max_mhd_speeds.h"
+#include "reconstruction.h"
 
 /*-------------------------------------------------------------------------------------------------------
  *  Cell vaolume averaged electric field components at (rC, thetaC, phi_k)
@@ -50,17 +50,9 @@ inline void electric_field(Field ***xx, Field ***ww, Field ***uu, int i, int j, 
 /*------------------------------------------------------------------------------
  *   Edge averaged electric field E*_r, E*_theta, E*_phi
  *------------------------------------------------------------------------------*/
-inline void Estar(Field ***xx, Field ***uu, int i, int j, int k, Field ***vv)
+inline void Estar(Field ***uu, int i, int j, int k, Field ***vv)
 {
     int im=i-1, jm, km=k-1, kc, kh, kcm;
-
-    double a_imjmk[2], a_imjkm[2];
-    double b_imjmk[2], b_ijmkm[2];
-    double c_imjkm[2], c_ijmkm[2];
-
-    double Br_imjkmp, Br_imjkmm, Br_imjmpk, Br_imjmmk;
-    double Btheta_ijmkmp, Btheta_ijmkmm, Btheta_impjmk, Btheta_immjmk;
-    double Bphi_ijmpkm, Bphi_ijmmkm, Bphi_impjkm, Bphi_immjkm;
 
     double Er_ijmpkmp, Er_ijmmkmp, Er_ijmpkmm, Er_ijmmkmm;
     double Etheta_impjkmp, Etheta_immjkmp, Etheta_impjkmm, Etheta_immjkmm;
@@ -74,39 +66,9 @@ inline void Estar(Field ***xx, Field ***uu, int i, int j, int k, Field ***vv)
             kc=(k+a3/2) % a3; jm = j; kcm = (k-1+a3/2) % a3;
         }
         else{
-            kc = k; jm = j-1; kcm=k-1;
+            kc = k; jm = j-1;
+            if (k == 0) kcm=Np; else kcm=k-1;
         }
-
-        a_imjmk[0]=max(uu[k][j][i].fx[3], uu[kc][jm][i].fx[3]);
-        a_imjmk[1]=min(uu[k][j][i].fx[4], uu[kc][jm][i].fx[4]);
-        a_imjkm[0]=max(uu[k][j][i].fx[3], uu[km][j][i].fx[3]);
-        a_imjkm[1]=min(uu[k][j][i].fx[4], uu[km][j][i].fx[4]);
-
-        b_imjmk[0]=max(uu[k][j][i].fx[5], uu[k][j][im].fx[5]);
-        b_imjmk[1]=min(uu[k][j][i].fx[6], uu[k][j][im].fx[6]);
-        b_ijmkm[0]=max(uu[k][j][i].fx[5], uu[km][j][i].fx[5]);
-        b_ijmkm[1]=min(uu[k][j][i].fx[6], uu[km][j][i].fx[6]);
-
-        c_imjkm[0]=max(uu[k][j][i].fx[15], uu[k][j][im].fx[15]);
-        c_imjkm[1]=min(uu[k][j][i].fx[16], uu[k][j][im].fx[16]);
-        c_ijmkm[0]=max(uu[k][j][i].fx[15], uu[kc][jm][i].fx[15]);
-        c_ijmkm[1]=min(uu[k][j][i].fx[16], uu[kc][jm][i].fx[16]);
-
-        //reconstructed Br, and Bphi
-        Br_imjkmp=reconstructed_Br(xx, i, j, k, rh[i], theta[j], phih[k]);
-        Br_imjkmm=reconstructed_Br(xx, i, j, km, rh[i], theta[j], phih[kh]);
-        Br_imjmpk=reconstructed_Br(xx, i, j, k, rh[i], thetah[j], phi[k]);
-        Br_imjmmk=reconstructed_Br(xx, i, jm, kc, rh[i], thetah[j], phi[kc]);
-
-        Btheta_ijmkmp=reconstructed_Btheta(xx, i, j, k, rr[i], thetah[j], phih[k]);
-        Btheta_ijmkmm=reconstructed_Btheta(xx, i, j, km, rr[i], thetah[j], phih[kh]);
-        Btheta_impjmk=reconstructed_Btheta(xx, i, j, k, rh[i], thetah[j], phi[k]);
-        Btheta_immjmk=reconstructed_Btheta(xx, im, j, k, rh[i], thetah[j], phi[k]);
-
-        Bphi_ijmpkm=reconstructed_Bphi(xx, i, j, k, rr[i], thetah[j], phih[k]);
-        Bphi_ijmmkm=reconstructed_Bphi(xx, i, jm, kc, rr[i], thetah[j], phih[kc]);
-        Bphi_impjkm=reconstructed_Bphi(xx, i, j, k, rh[i], theta[j], phih[k]);
-        Bphi_immjkm=reconstructed_Bphi(xx, im, j, k, rh[i], theta[j], phih[k]);
 
         Er_ijmpkmp=reconstructed_efd(uu, i, j, k, 0, rr[i], thetah[j], phih[k]);
         Er_ijmmkmp=reconstructed_efd(uu, i, jm, kc, 0, rr[i], thetah[j], phih[kc]);
@@ -123,39 +85,12 @@ inline void Estar(Field ***xx, Field ***uu, int i, int j, int k, Field ***vv)
         Ephi_impjmmk=reconstructed_efd(uu, i, jm, kc, 2, rh[i], thetah[j], phi[kc]);
         Ephi_immjmmk=reconstructed_efd(uu, im, jm, kc, 2, rh[i], thetah[j], phi[kc]);
 
-        vv[k][j][i].fx[24]= a_imjkm[1]*c_imjkm[0]/(a_imjkm[0]-a_imjkm[1])*(Bphi_impjkm-Bphi_immjkm)
-                           -c_imjkm[1]*c_imjkm[0]/(c_imjkm[0]-c_imjkm[1])*(Br_imjkmp-Br_imjkmm)
-                           -( a_imjkm[0]*c_imjkm[1]*Etheta_immjkmp-a_imjkm[1]*c_imjkm[1]*Etheta_impjkmp
-                             -a_imjkm[0]*c_imjkm[0]*Etheta_immjkmm+a_imjkm[1]*c_imjkm[0]*Etheta_impjkmm)
-                            /((a_imjkm[0]-a_imjkm[1])*(c_imjkm[0]-c_imjkm[1]));
+        vv[k][j][i].fx[24]= 0.25*(Etheta_immjkmp+Etheta_impjkmp+Etheta_immjkmm+Etheta_impjkmm);
     }
     else {
         jm=j-1; 
         int kcp=(k+a3/2) % a3;
         kcm=(k-1+a3/2) % a3;
-
-        a_imjmk[0]=max(uu[kcp][jm][i].fx[3], uu[k][jm][i].fx[3]);
-        a_imjmk[1]=min(uu[kcp][jm][i].fx[4], uu[k][jm][i].fx[4]);
-
-        b_imjmk[0]=max(uu[kcp][jm][i].fx[5], uu[kcp][jm][im].fx[5]);
-        b_imjmk[1]=min(uu[kcp][jm][i].fx[6], uu[kcp][jm][im].fx[6]);
-        b_ijmkm[0]=max(uu[kcp][jm][i].fx[5], uu[kcm][jm][i].fx[5]);
-        b_ijmkm[1]=min(uu[kcp][jm][i].fx[6], uu[kcm][jm][i].fx[6]);
-
-        c_ijmkm[0]=max(uu[kcp][jm][i].fx[15], uu[k][jm][i].fx[15]);
-        c_ijmkm[1]=min(uu[kcp][jm][i].fx[16], uu[k][jm][i].fx[16]);
-
-        //reconstructed Br, and Bphi
-        Br_imjmpk=reconstructed_Br(xx, i, jm, kcp, rh[i], thetah[j], phi[kcp]);
-        Br_imjmmk=reconstructed_Br(xx, i, jm, k, rh[i], thetah[j], phi[k]);
-
-        Btheta_ijmkmp=reconstructed_Btheta(xx, i, j, k, rr[i], thetah[j], phih[k]);
-        Btheta_ijmkmm=reconstructed_Btheta(xx, i, j, km, rr[i], thetah[j], phih[kh]);
-        Btheta_impjmk=reconstructed_Btheta(xx, i, j, k, rh[i], thetah[j], phi[k]);
-        Btheta_immjmk=reconstructed_Btheta(xx, im, j, k, rh[i], thetah[j], phi[k]);
-
-        Bphi_ijmpkm=reconstructed_Bphi(xx, i, jm, kcp, rr[i], thetah[j], phih[kcp]);
-        Bphi_ijmmkm=reconstructed_Bphi(xx, i, jm, k, rr[i], thetah[j], phih[k]);
 
         Er_ijmpkmp=reconstructed_efd(uu, i, jm, kcp, 0, rr[i], thetah[j], phih[kcp]);
         Er_ijmmkmp=reconstructed_efd(uu, i, jm, k, 0, rr[i], thetah[j], phih[k]);
@@ -168,15 +103,7 @@ inline void Estar(Field ***xx, Field ***uu, int i, int j, int k, Field ***vv)
         Ephi_immjmmk=reconstructed_efd(uu, im, jm, k, 2, rh[i], thetah[j], phi[k]);
     }
 
-    vv[k][j][i].fx[23]= c_ijmkm[1]*c_ijmkm[0]/(c_ijmkm[0]-c_ijmkm[1])*(Btheta_ijmkmp-Btheta_ijmkmm)
-                       -b_ijmkm[1]*b_ijmkm[0]/(b_ijmkm[0]-b_ijmkm[1])*(Bphi_ijmpkm-Bphi_ijmmkm)
-                       -( b_ijmkm[0]*c_ijmkm[1]*Er_ijmmkmp-b_ijmkm[1]*c_ijmkm[1]*Er_ijmpkmp
-                         -b_ijmkm[0]*c_ijmkm[0]*Er_ijmmkmm+b_ijmkm[1]*c_ijmkm[0]*Er_ijmpkmm)
-                        /((b_ijmkm[0]-b_ijmkm[1])*(c_ijmkm[0]-c_ijmkm[1]));
+    vv[k][j][i].fx[23]= 0.25*(Er_ijmmkmp+Er_ijmpkmp+Er_ijmmkmm+Er_ijmpkmm);
 
-    vv[k][j][i].fx[25]= b_imjmk[1]*b_imjmk[0]/(b_imjmk[0]-b_imjmk[1])*(Br_imjmpk-Br_imjmmk)
-                       -a_imjmk[1]*a_imjmk[0]/(a_imjmk[0]-a_imjmk[1])*(Btheta_impjmk-Btheta_immjmk)
-                       -( a_imjmk[0]*b_imjmk[1]*Ephi_immjmpk-a_imjmk[1]*b_imjmk[1]*Ephi_impjmpk
-                         -a_imjmk[0]*b_imjmk[0]*Ephi_immjmmk+a_imjmk[1]*b_imjmk[0]*Ephi_impjmmk)
-                        /((a_imjmk[0]-a_imjmk[1])*(b_imjmk[0]-b_imjmk[1]));
+    vv[k][j][i].fx[25]= 0.25*(Ephi_immjmpk+Ephi_impjmpk+Ephi_immjmmk+Ephi_impjmmk);
 }

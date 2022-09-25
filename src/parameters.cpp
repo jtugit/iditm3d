@@ -24,7 +24,6 @@ int parameters(DM da, Vec X, AppCtx *params)
     double Td, rhoi, rhon;
     double qn[5], nqd, Dst, amt, Te2, nuss[7], nuin, lambdai, lambdan;
     double Br, Btheta, Bphi, uir, uitheta, uiphi, PiPe, unr, untheta, unphi;
-    double a_imjk[2], b_ijmk[2], c_ijkm[2];
 
     const double two3rdmu=2.0e-6/3.0;
 
@@ -203,20 +202,6 @@ int parameters(DM da, Vec X, AppCtx *params)
                 if (j > 0 && j < Nth) {
                     xi=i-xs;
 
-                    if (i > 0 && i < Nr) {
-                        //maximum speed at cell interfaces
-                        max_speed_r_face(xx, localzz, i, j, k, rh[i], thetaC[j], phi[k], a_imjk);
-                        max_speed_theta_face(xx, localzz, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
-                        max_speed_phi_face(xx, localzz, i, j, k, rfavg[i], theta[j], phih[k], c_ijkm);
-
-                        uu[k][j][i].fx[3] = a_imjk[0];
-                        uu[k][j][i].fx[4] = a_imjk[1];
-                        uu[k][j][i].fx[5] = b_ijmk[0];
-                        uu[k][j][i].fx[6] = b_ijmk[1];
-                        uu[k][j][i].fx[15]= c_ijkm[0];
-                        uu[k][j][i].fx[16]= c_ijkm[1];
-                    }
-
 /*-----------------------------------------------------------------------------*/
 //--------------- thermal conductivities
 /*-----------------------------------------------------------------------------*/
@@ -312,54 +297,6 @@ int parameters(DM da, Vec X, AppCtx *params)
                     zz[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[14];
                     zz[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[25];
                 }
-                else {
-                    if (i > 0 && i < Nr) {
-                        //maximum speed at cell interfaces j=Nth-1/2, thetah[Nth]=180 deg
-                        max_speed_theta_face(xx, localzz, i, j, k, rfavg[i], thetah[j], phi[k], b_ijmk);
-
-                        uu[k][j][i].fx[15]= c_ijkm[0];
-                        uu[k][j][i].fx[16]= c_ijkm[1];
-                    }
-                }
-            }
-
-
-            //bottom BC for maximum/minimum speeds at r- and phi-intefaces
-            if (j > 0 && j < Nth) {
-                if (xs == 0) {
-                    for (s = 3; s < 7; s++) {
-                        y1= uu[k][j][1].fx[s];
-                        y2= uu[k][j][2].fx[s];
-                        uu[k][j][0].fx[s]= y1 + rrb*(y2-y1);
-                    }
-                }
-
-                //top BC for maximum/minimum speeds at r- and phi-intefaces
-                if (xs+xm == a1) {
-                    for (s = 3; s < 7; s++) {
-                        y1=uu[k][j][Nrm].fx[s];
-                        y2=uu[k][j][Nrm2].fx[s];
-                        uu[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
-                    }
-                }
-            }
-
-            //bottom BC for maximum/minimum speeds at theta interfaces
-            if (xs == 0) {
-                for (s = 15; s < 17; s++) {
-                    y1= uu[k][j][1].fx[s];
-                    y2= uu[k][j][2].fx[s];
-                    uu[k][j][0].fx[s]= y1 + rrb*(y2-y1);
-                }
-            }
-
-            //top BC for maximum/minimum speeds at theta-interfaces
-            if (xs+xm == a1) {
-                for (s = 15; s < 17; s++) {
-                    y1=uu[k][j][Nrm].fx[s];
-                    y2=uu[k][j][Nrm2].fx[s];
-                    uu[k][j][Nr].fx[s] = y1+rrt*(y1-y2);
-                }
             }
         }
     }
@@ -390,7 +327,7 @@ int parameters(DM da, Vec X, AppCtx *params)
             for (i=xs; i<xs+xm; i++) {
                 if (i == 0 || i == Nr) continue;
 
-                Estar(xx, localuu, i, j, k, vv);
+                Estar(localuu, i, j, k, vv);
             }
 
             //bottom BC for edge-averaged electric field

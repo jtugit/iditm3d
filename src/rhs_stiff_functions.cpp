@@ -230,7 +230,7 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
 
 int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 {
-    int  s, t, kc, kcm, jcm, kcp, jcp;
+    int  s, t, kcm, jcm, kcp, jcp;
     double rhos, rhoi, rhon, sum_nues, sum_nueq, sum_rhonusq, sum_nues_div_ms, sum_nueq_div_mq;
     double rhos_nusq_msmq, rhos_nusqmq_msmq, rhos_nusqms_msmq, temp;
     double ne, rhoe, Nn; //ne = ni
@@ -244,12 +244,6 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
     Field  ***xx, ***dxdt, ***uu, ***zz, ***ff;
     DM     da;
     PetscInt xs, xm, ys, ym, zs, zm, zk, yj, xi, i, j, k, im, ip, jm, jp, km, kp;
-    double fsf_imjk, fsf_ipjk;
-    double a_imjk[2], a_imjk_multi_a_imjk_subtr, a_ipjk[2], a_ipjk_multi_a_ipjk_subtr;
-    double fsf_ijmk, fsf_ijpk;
-    double b_ijmk[2], b_ijmk_multi_b_ijmk_subtr, b_ijpk[2], b_ijpk_multi_b_ijpk_subtr;
-    double fsf_ijkm, fsf_ijkp;
-    double c_ijkm[2], c_ijkm_multi_c_ijkm_subtr, c_ijkp[2], c_ijkp_multi_c_ijkp_subtr;
 
     params->ftime = ftime;
     TSGetDM(ts, &da);
@@ -325,55 +319,15 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 xi=i-xs;
                 im = i-1; ip = i+1;
 
-                a_imjk[0]=uu[k][j][i].fx[3];
-                a_imjk[1]=uu[k][j][i].fx[4];
-                a_imjk_multi_a_imjk_subtr = a_imjk[0]*a_imjk[1]/(a_imjk[0]-a_imjk[1]);
-                a_ipjk[0]=uu[k][j][ip].fx[3];
-                a_ipjk[1]=uu[k][j][ip].fx[4];
-                a_ipjk_multi_a_ipjk_subtr = a_ipjk[0]*a_ipjk[1]/(a_ipjk[0]-a_ipjk[1]);
-
-                b_ijmk[0]=uu[k][j][i].fx[5];
-                b_ijmk[1]=uu[k][j][i].fx[6];
-                b_ijmk_multi_b_ijmk_subtr = b_ijmk[0]*b_ijmk[1]/(b_ijmk[0]-b_ijmk[1]);
-                if (jp < Nth) {
-                    b_ijpk[0]=uu[k][jp][i].fx[5];
-                    b_ijpk[1]=uu[k][jp][i].fx[6];
-                }
-                else {
-                    kc=(k+a3/2) % a3;
-                    b_ijpk[0]=uu[kc][Nthm][i].fx[5];
-                    b_ijpk[1]=uu[kc][Nthm][i].fx[6];
-                }
-                b_ijpk_multi_b_ijpk_subtr = b_ijpk[0]*b_ijpk[1]/(b_ijpk[0]-b_ijpk[1]);
-
-                c_ijkm[0]=uu[k][j][i].fx[15];
-                c_ijkm[1]=uu[k][j][i].fx[16];
-                c_ijkm_multi_c_ijkm_subtr = c_ijkm[0]*c_ijkm[1]/(c_ijkm[0]-c_ijkm[1]);
-                c_ijkp[0]=uu[kp][j][i].fx[15];
-                c_ijkp[1]=uu[kp][j][i].fx[16];
-                c_ijkp_multi_c_ijkp_subtr = c_ijkp[0]*c_ijkp[1]/(c_ijkp[0]-c_ijkp[1]);
-
                 rhoi=0.0; rhon=0.0;
                 sum_nues=0.0; sum_nueq=0.0; sum_rhonusq=0.0; sum_nues_div_ms=0.0;
                 rhos_nusq_msmq=0.0; rhos_nusqmq_msmq=0.0; sum_nueq_div_mq=0.0;
                 rhos_nusqms_msmq=0.0; ne=0.0; Nn=0.0;
 
                 for (s = 0; s < sl; s++) {
-                    fsf_imjk = a_imjk_multi_a_imjk_subtr*(xx[k][j][i].fx[s]-xx[k][j][im].fx[s]);
-                    fsf_ipjk = a_ipjk_multi_a_ipjk_subtr*(xx[k][j][ip].fx[s]-xx[k][j][i].fx[s]);
+                    ff[k][j][i].fx[s] = dxdt[k][j][i].fx[s] + Ls[zk][yj][xi][s]*xx[k][j][i].fx[s];
 
-                    fsf_ijmk = b_ijmk_multi_b_ijmk_subtr*(xx[k][j][i].fx[s]-xx[k][jm][i].fx[s]);
-                    fsf_ijpk = b_ijpk_multi_b_ijpk_subtr*(xx[k][jp][i].fx[s]-xx[k][j][i].fx[s]);
-
-                    fsf_ijkm = c_ijkm_multi_c_ijkm_subtr*(xx[k][j][i].fx[s]-xx[km][j][i].fx[s]);
-                    fsf_ijkp = c_ijkp_multi_c_ijkp_subtr*(xx[kp][j][i].fx[s]-xx[k][j][i].fx[s]);
-
-                    ff[k][j][i].fx[s] = dxdt[k][j][i].fx[s] + Ls[zk][yj][xi][s]*xx[k][j][i].fx[s]
-                                       +(rh2[ip]*fsf_ipjk - rh2[i]*fsf_imjk)/rh_d3[i]
-                                       +(sinth_h[jp]*fsf_ijpk - sinth_h[j]*fsf_ijmk)/rfavg_costh[j][i]
-                                       +(fsf_ijkp - fsf_ijkm)/rfavg_costh_dth_dph[j][i];
-
-                    ff[k][j][i].fx[12+s] = dxdt[k][j][i].fx[12+s] + Ls[zk][yj][xi][7+s]*xx[k][j][i].fx[12+s];
+                    ff[k][j][i].fx[12+s]=dxdt[k][j][i].fx[12+s]+Ls[zk][yj][xi][7+s]*xx[k][j][i].fx[12+s];
 
                     sum_nues += nust[zk][yj][xi][s];
                     sum_nueq += nust[zk][yj][xi][s+7];
@@ -396,21 +350,6 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 
                     sum_nues_div_ms =+ nust[zk][yj][xi][s]/ms[s];
                     sum_nueq_div_mq =+ nust[zk][yj][xi][7+s]/ms[s];
-                }
-
-                for (s = 7; s < 12; s++) {
-                    fsf_imjk = a_imjk_multi_a_imjk_subtr*(xx[k][j][i].fx[s]-xx[k][j][im].fx[s]);
-                    fsf_ipjk = a_ipjk_multi_a_ipjk_subtr*(xx[k][j][ip].fx[s]-xx[k][j][i].fx[s]);
-
-                    fsf_ijmk = b_ijmk_multi_b_ijmk_subtr*(xx[k][j][i].fx[s]-xx[k][jm][i].fx[s]);
-                    fsf_ijpk = b_ijpk_multi_b_ijpk_subtr*(xx[k][jp][i].fx[s]-xx[k][j][i].fx[s]);
-
-                    fsf_ijkm = c_ijkm_multi_c_ijkm_subtr*(xx[k][j][i].fx[s]-xx[km][j][i].fx[s]);
-                    fsf_ijkp = c_ijkp_multi_c_ijkp_subtr*(xx[kp][j][i].fx[s]-xx[k][j][i].fx[s]);
-
-                    ff[k][j][i].fx[s] = dxdt[k][j][i].fx[s] + (rh2[ip]*fsf_ipjk - rh2[i]*fsf_imjk)/rh_d3[i]
-                                        +(sinth_h[jp]*fsf_ijpk - sinth_h[j]*fsf_ijmk)/rfavg_costh[j][i]
-                                        +(fsf_ijkp - fsf_ijkm)/rfavg_costh_dth_dph[j][i];
                 }
 
                 rhoe=ne*me;

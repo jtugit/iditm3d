@@ -140,13 +140,14 @@ int main(int argc,char **argv)
     params.ntot = params.ntot + params.npre;
     /*************** start time advancing *************************************/
     for (params.ndt = params.npre+1; params.ndt < params.ntot+1; params.ndt++) {
+        params.sec += dt;
         if (params.sec >= 86400) update_timedate(&params);
 
         TSStep(ts);
 
         DMDAVecGetArray(da, X, &xx);
 
-        check_positivity(xx);
+        check_positivity(da, xx);
 
         // output in parallel to a hdf5 file at chosen time steps
         if (params.ndt % params.nout ==0 || params.ndt==params.ntot) output_solution(da, xx, &params);
