@@ -100,8 +100,8 @@ int main(int argc,char **argv)
 
     TS    ts;
     TSCreate(MPI_COMM_WORLD, &ts);
-    TSSetProblemType(ts, TS_LINEAR);
-    TSSetType(ts, TSROSW);
+    TSSetProblemType(ts, TS_NONLINEAR);
+    TSSetType(ts, TSCN);
 
     TSSetDM(ts, da);
     TSSetSolution(ts, X);
@@ -112,8 +112,12 @@ int main(int argc,char **argv)
     TSSetTolerances(ts, 1.0e-12, NULL, 1.0e-12, NULL);
     TSSetFromOptions(ts);
 
+    SNES snes;
+    TSGetSNES(ts, &snes);
+    SNESSetFromOptions(snes);
+
     KSP ksp;
-    TSGetKSP(ts, &ksp);
+    SNESGetKSP(snes, &ksp);
     KSPSetType(ksp, KSPFGMRES);
     KSPSetFromOptions(ksp);
 

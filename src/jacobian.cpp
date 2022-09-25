@@ -29,7 +29,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
     const double two3rd=2.0/3.0, four3rd=4.0/3.0, one6th=1.0/6.0;
     double dr2=dr*dr;
 
-    int    ip, jm, jp, km, kp, s, t, kcm, jcm, kcp, jcp;
+    int    ip, im, jm, jp, km, kp, s, t, kcm, jcm, kcp, jcp;
     double rhos, rhoi, sum_nues, sum_nueq, sum_rhonusq, sum_nues_div_ms, sum_nueq_div_mq;
     double rhos_nusq_msmq, rhos_nusqmq_msmq, rhos_nusqms_msmq;
     double rhoe_sum_nueq; //ne = ni
@@ -91,8 +91,14 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                         nv++;
                     }
                     else {
-                        col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir; vals[nv]=a;
-                        nv++;
+                        if (i == 0 || i == Nr) {
+                            col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir; vals[nv]=1.0;
+                            nv++;
+                        }
+                        else {
+                            col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir; vals[nv]=a;
+                            nv++;
+                        }
                     }
 
                     MatSetValuesStencil(Jac,1,&row,nv,col,vals,INSERT_VALUES);
@@ -122,7 +128,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                 }
             }
             else {
-                ip = i+1;
+                ip = i+1; im=i-1;
 
                 rhoi=0.0; rhon=0.0;
                 sum_nues=0.0; sum_nueq=0.0; sum_rhonusq=0.0; sum_nues_div_ms=0.0;
@@ -198,39 +204,43 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;
-                        vals[nv]=four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]=-four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;
-                        vals[nv]=four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]=-four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;
-                        vals[nv]=four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]=-four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=19;
-                        vals[nv]=-four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]= four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhon;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=20;
-                        vals[nv]=-four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]= four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhon;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=21;
-                        vals[nv]=-four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]= four3rd*rhos_nusqmq_msmq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhon;
                         nv++;
                     }
                     else if (ir == 11) {
+                        col[nv].k=k; col[nv].j=j; col[nv].i=im; col[nv].c=ir;
+                        vals[nv] = one6th*(zz[k][j][ip].fx[24]-xx[k][j][im].fx[24])/(kb*dr2*uu[k][j][im].fx[17])
+                                  +two3rd*zz[k][j][i].fx[24]*(1.0/(rfavg[i]*dr)-1.0/dr2)/(kb*uu[k][j][im].fx[17]);
+                        nv++;
+
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
                         vals[nv]=a + 2.0*me*(sum_nues_div_ms+sum_nueq_div_mq)
                                    +four3rd*zz[k][j][i].fx[24]/(kb*uu[k][j][i].fx[17])
-                                           *( 1.0/dr2+1.0/(rfavg_dth[i]*rfavg_dth[i])
-                                             +1.0/(rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i]));
+                                    *(1.0/dr2+1.0/(rfavg_dth[i]*rfavg_dth[i])+1.0/(rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i]));
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=ip; col[nv].c=ir;
-                        vals[nv] = -one6th*(zz[k][j][ip].fx[24]-xx[k][j][ip].fx[24])/(kb*dr2*uu[k][j][ip].fx[17])
+                        vals[nv] = -one6th*(zz[k][j][ip].fx[24]-xx[k][j][im].fx[24])/(kb*dr2*uu[k][j][ip].fx[17])
                                   -two3rd*zz[k][j][i].fx[24]*(1.0/(rfavg[i]*dr)+1.0/dr2)/(kb*uu[k][j][ip].fx[17]);
                         nv++;
 
@@ -245,16 +255,16 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                         vals[nv] =-one6th*(zz[kcp][jcp][i].fx[24]-zz[kcm][jcm][i].fx[24])
                                           /(kb*rfavg_dth[i]*rfavg_dth[i]*uu[kcp][jcp][i].fx[17])
                                   -two3rd*zz[k][j][i].fx[24]/(kb*rfavg_dth[i]*uu[kcp][jcp][i].fx[17])
-                                                            *(cotth[j]/rfavg[i]-1.0/rfavg_dth[i]);
+                                                            *(cotth[j]/rfavg[i]+1.0/rfavg_dth[i]);
                         nv++;
 
                         col[nv].k=km; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
-                        vals[nv] = (one6th*(zz[kp][j][i].fx[24]-zz[km][j][i].fx[24])-two3rd*zz[k][j][i].fx[17])
+                        vals[nv] = (one6th*(zz[kp][j][i].fx[24]-zz[km][j][i].fx[24])-two3rd*zz[k][j][i].fx[24])
                                    /(kb*rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i]*uu[km][j][i].fx[17]);
                         nv++;
 
                         col[nv].k=kp; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
-                        vals[nv] =-(one6th*(zz[kp][j][i].fx[24]-zz[km][j][i].fx[24])+two3rd*zz[k][j][i].fx[17])
+                        vals[nv] =-(one6th*(zz[kp][j][i].fx[24]-zz[km][j][i].fx[24])+two3rd*zz[k][j][i].fx[24])
                                    /(kb*rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i]*uu[kp][j][i].fx[17]);
                         nv++;
 
@@ -267,27 +277,27 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;
-                        vals[nv]=four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]=-four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;
-                        vals[nv]=four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]=-four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;
-                        vals[nv]=four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]=-four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=19;
-                        vals[nv]=-four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]= four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=20;
-                        vals[nv]=-four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]= four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=21;
-                        vals[nv]=-four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]= four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhoi;
                         nv++;
                     }
                     else if (ir >= 12 && ir <= 18) {
@@ -332,35 +342,42 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;
-                        vals[nv]=four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]=-four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;
-                        vals[nv]=four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]=-four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;
-                        vals[nv]=four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]=-four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=19;
-                        vals[nv]=-four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]= four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=20;
-                        vals[nv]=-four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]= four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhoi;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=21;
-                        vals[nv]=-four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon);
+                        vals[nv]= four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhoi;
                         nv++;
                     }
                     else {
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
-                        vals[nv]=1.0;
+                        vals[nv]=a;
                         nv++;
                     }
 
+                    for (s = 0; s < nv; s++) {
+                        if (isnan(vals[s]) || isinf(vals[s])) {
+                            cout<<"Jacobian value is Nan or inf at ("<<row.i<<", "<<row.j<<", "<<row.k<<", "<<row.c
+                                <<col[nv].i<<", "<<col[nv].j<<", "<<col[nv].k<<", "<<col[nv].c<<")"<<endl;
+                            exit(-1);
+                        }
+                    }
                     MatSetValuesStencil(Jac,1,&row,nv,col,vals,INSERT_VALUES);
                 }
             }

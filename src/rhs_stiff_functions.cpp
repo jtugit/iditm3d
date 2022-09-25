@@ -200,7 +200,7 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                                        +(rh[i+1]*vv[k][j][i+1].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i];
 
                     if (isnan(gg[k][j][i].fx[24]) || isinf(gg[k][j][i].fx[24])) {
-                        cout<<"Solution is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<24<<") in rhsfunctions"<<endl;
+                        cout<<"Rhs function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<24<<") in rhsfunctions"<<endl;
                         exit(-1);
                     }
                 }
@@ -359,18 +359,18 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 uir=uer; uit=uet; uip=uep;
                 unr=xx[k][j][i].fx[19]/rhon; unt=xx[k][j][i].fx[20]/rhon; unp=xx[k][j][i].fx[21]/rhon;
 
-                ff[k][j][i].fx[7] += sum_rhonusq*(uir-unr); //sum_nues*(uir-uer) + 
-                ff[k][j][i].fx[8] += sum_rhonusq*(uit-unt); //sum_nues*(uit-uet) + 
-                ff[k][j][i].fx[9] += sum_rhonusq*(uip-unp); //sum_nues*(uip-uep) + 
+                ff[k][j][i].fx[7] = dxdt[k][j][i].fx[7] + sum_rhonusq*(uir-unr); //sum_nues*(uir-uer) + 
+                ff[k][j][i].fx[8] = dxdt[k][j][i].fx[8] + sum_rhonusq*(uit-unt); //sum_nues*(uit-uet) + 
+                ff[k][j][i].fx[9] = dxdt[k][j][i].fx[9] + sum_rhonusq*(uip-unp); //sum_nues*(uip-uep) + 
 
                 uiminusun_sq=(uir-unr)*(uir-unr)+(uit-unt)*(uit-unt)+(uip-unp)*(uip-unp);
                 Qifric=two3rd*rhos_nusqmq_msmq*uiminusun_sq;
                 Qefric=two3rd*rhoe_sum_nueq*((uer-unr)*(uer-unr)+(uet-unt)*(uet-unt)+(uep-unp)*(uep-unp));
                 Qnfric=two3rd*rhos_nusqms_msmq*uiminusun_sq;
 
-                ff[k][j][i].fx[10] += 2.0*( me*sum_nues_div_ms*(xx[k][j][i].fx[10]-xx[k][j][i].fx[11])
-                                           +rhos_nusq_msmq*(xx[k][j][i].fx[10]/ne-xx[k][j][i].fx[22]/Nn))
-                                     -two3rd*Qifric;
+                ff[k][j][i].fx[10] = 2.0*( me*sum_nues_div_ms*(xx[k][j][i].fx[10]-xx[k][j][i].fx[11])
+                                          +rhos_nusq_msmq*(xx[k][j][i].fx[10]/ne-xx[k][j][i].fx[22]/Nn))
+                                    -two3rd*Qifric;
 
                 Te=xx[k][j][i].fx[11]/(ne*kb);
                 Tn=xx[k][j][i].fx[22]/(Nn*kb);
@@ -404,11 +404,16 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 
                 for (s=0; s<nvar; s++) {
                     if (isnan(ff[k][j][i].fx[s]) || isinf(ff[k][j][i].fx[s])) {
-                        cout<<"function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
+                        cout<<"Stiff function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
                             <<") in stiffunction "<<ff[k][j][i].fx[s]<<endl;
                         exit(-1);
                     }
                 }
+            }
+            for (i=xs; i<xs+xm; i++) {
+                cout<<fixed<<setw(4)<<i<<fixed<<setw(4)<<j<<fixed<<setw(4)<<k;
+                for (s=22; s<26; s++) cout<<scientific<<setw(16)<<setprecision(8)<<ff[k][j][i].fx[s];
+                cout<<endl;
             }
         }
     }

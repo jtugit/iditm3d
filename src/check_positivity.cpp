@@ -14,12 +14,12 @@ int check_positivity(DM da, Field ***xx)
 //check if any negative densit or temperature
     for (k = zs; k < zs+zm; k++) {
         for (j = ys; j < ys+ym; j++) {
-            for (i = xs; i < xs+xm; i++) {
-                if (j == 0 || j == Nth) continue;
+            if (j == 0 || j == Nth) continue;
 
+            for (i = xs; i < xs+xm; i++) {
                 for (s=0; s<nvar; s++) {
                     if (isnan(xx[k][j][i].fx[s]) || isinf(xx[k][j][i].fx[s])) {
-                        cout<<"Solution is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
+                        cout<<"Solution is Nan or inf at (i, j, k, s) = ("<<i<<", "<<j<<", "<<k<<", "<<s
                             <<") in rhsfunctions"<<endl;
                         exit(-1);
                     }
@@ -32,7 +32,7 @@ int check_positivity(DM da, Field ***xx)
                             ngnp=-1;
                     }
                     if (xx[k][j][i].fx[12+s] <= 0.0) {
-                        cout<<"Neutral density <= 0 of species "<<s<<" = "<<xx[k][j][i].fx[12+s]
+                        cout<<"Neutral density <= 0 of species "<<s+12<<" = "<<xx[k][j][i].fx[12+s]
                             <<" at (i, j, k) = ("<<i<<", "<<j<<", "<<k<<")"<<endl;
                         ngnp=-2;
                     }

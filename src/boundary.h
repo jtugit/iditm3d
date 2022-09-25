@@ -48,13 +48,15 @@ inline void lower_boundary_bc(Field ***xx, Field***gg, PetscInt j, PetscInt k)
     y2= log(xx[k][j][2].fx[10]);
     gg[k][j][0].fx[10] = exp(y1 + rrb*(y2-y1));
 
+    // pe = ne*kb*Te
+    y1= log(xx[k][j][1].fx[11]);
+    y2= log(xx[k][j][2].fx[11]);
+    gg[k][j][0].fx[11] = exp(y1 + rrb*(y2-y1));
+
     // pn = Nn*kb*Tn
     y1= log(xx[k][j][1].fx[22]);
     y2= log(xx[k][j][2].fx[22]);
     gg[k][j][0].fx[22] = exp(y1 + rrb*(y2-y1));
-
-    // pe = ni*kb*Te
-    gg[k][j][0].fx[11] = xx[k][j][0].fx[10];
 
     //Br_{i=-1/2,j,k},  Btheta_{i=0,j-1/2,k} and Bphi_{i=0,j,k-1/2}
     y1=xx[k][j][1].fx[23];
