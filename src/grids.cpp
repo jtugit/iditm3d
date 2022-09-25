@@ -129,7 +129,8 @@ int grids(DM da, AppCtx *params)
             rCsinC[j][i]=rC[i]*sin(thetaC[j]);
             rfavg_costh[j][i]=rfavg[i]*costh_hd[j];
             rfavg_costh_dth_dph[j][i]=rfavg_costh[j][i]*dph/dth;
-            rfavg_sinth_dph[j][i]=rfavg[i]*sinth_h[j]*dph;
+            rfavg_sinth_dph[j][i]=rfavg[i]*sinth[j]*dph;
+            rfavg_sinth_h_dph[j][i]=rfavg[i]*sinth_h[j]*dph;
             rh_costh[j][i]=rh[i]*costh_hd[j];
             rh_costh_dth_dph[j][i]=rh_costh[j][i]*dph/dth;
             dAtheta_dV[j][i]=(sinth_h[j+1]-sinth_h[j])/(rfavg[i]*cotth[j]);

@@ -109,8 +109,18 @@ int main(int argc,char **argv)
     TSSetTime(ts, params.sec);
     TSSetTimeStep(ts, dt);
     TSSetMaxSteps(ts, params.ntot);
-
+    TSSetTolerances(ts, 1.0e-12, NULL, 1.0e-12, NULL);
     TSSetFromOptions(ts);
+
+    KSP ksp;
+    TSGetKSP(ts, &ksp);
+    KSPSetType(ksp, KSPFGMRES);
+    KSPSetFromOptions(ksp);
+
+    PC pc;
+    KSPGetPC(ksp, &pc);
+    PCSetType(pc, PCJACOBI);
+    PCSetFromOptions(pc);
 
     Mat A;
     DMSetMatrixPreallocateOnly(da, PETSC_FALSE);
@@ -135,6 +145,8 @@ int main(int argc,char **argv)
         TSStep(ts);
 
         DMDAVecGetArray(da, X, &xx);
+
+        check_positivity(xx);
 
         // output in parallel to a hdf5 file at chosen time steps
         if (params.ndt % params.nout ==0 || params.ndt==params.ntot) output_solution(da, xx, &params);

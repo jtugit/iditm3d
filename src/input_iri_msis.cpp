@@ -216,13 +216,24 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
     }
 
     int kc;
+    if (ys == 0) {
+        for (k = zs; k < zs+zm; k++) {
+            kc = (k+a3/2) % a3;
+
+            for (i = xs; i< xs+xm; i++) {
+                for (s = 0; s < nvar; s++)
+                    if (s != 24) xx[k][0][i].fx[s] = xx[kc][1][i].fx[s];
+            }
+        }
+    }
+
     if (ys+ym == a2) {
         for (k = zs; k < zs+zm; k++) {
             kc = (k+a3/2) % a3;
 
             for (i = xs; i< xs+xm; i++) {
                 for (s = 0; s < nvar; s++)
-                    if (s != 24) xx[k][Nth][i].fx[s] = xx[kc][0][i].fx[s];
+                    if (s != 24) xx[k][Nth][i].fx[s] = xx[kc][1][i].fx[s];
             }
         }
     }

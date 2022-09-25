@@ -1,6 +1,5 @@
 #include "fluxes.h"
 #include "funcdef.h"
-#include "check_positivity.h"
 #include "boundary.h"
 
 #include <fstream>
@@ -159,14 +158,14 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                     }
                     else if (j > 1 && j < Nthm) {
                         gg[k][j][i].fx[24]= (rh[ip]*vv[k][j][ip].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i]
-                                           -(vv[kp][j][i].fx[23]-vv[k][j][i].fx[23])/rfavg_sinth_dph[j][i];
+                                           -(vv[kp][j][i].fx[23]-vv[k][j][i].fx[23])/rfavg_sinth_h_dph[j][i];
 
                         gg[k][j][i].fx[25]= (vv[k][jp][i].fx[23]-vv[k][j][i].fx[23])/rfavg_dth[i]
                                            -(rh[ip]*vv[k][j][ip].fx[24]-rh[i]*vv[k][j][i].fx[24])/rh_d2[i];
                     }
                     else {
                         gg[k][j][i].fx[24]= (rh[ip]*vv[k][j][ip].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i]
-                                           -(vv[kp][j][i].fx[23]-vv[k][j][i].fx[23])/rfavg_sinth_dph[j][i];
+                                           -(vv[kp][j][i].fx[23]-vv[k][j][i].fx[23])/rfavg_sinth_h_dph[j][i];
 
                         Erss = 0.0;
                         for (s = 0; s < a3; s++) Erss += vv[s][jm][i].fx[23];
@@ -175,12 +174,13 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                         gg[k][j][i].fx[25]= (Erss - vv[k][jm][i].fx[23])/rfavg_dth[i]
                                            -(rh[ip]*vv[k][j][ip].fx[24]-rh[i]*vv[k][j][i].fx[24])/rh_d2[i];
                     }
-                }
 
-                for (s=0; s<nvar; s++) {
-                    if (isnan(gg[k][j][i].fx[s]) || isinf(gg[k][j][i].fx[s])) {
-                        cout<<"function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s<<") in rhsfunctions"<<endl;
-                        exit(-1);
+                    for (s=0; s<nvar; s++) {
+                        if (isnan(gg[k][j][i].fx[s]) || isinf(gg[k][j][i].fx[s])) {
+                            cout<<"function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
+                                <<") in rhsfunctions"<<endl;
+                            exit(-1);
+                        }
                     }
                 }
             }
@@ -199,7 +199,7 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                                          -vv[kc][jm][i].fx[23]+vv[k][jm][k].fx[23])/(2.0*rfavg_dth[i]*dph)
                                        +(rh[i+1]*vv[k][j][i+1].fx[25]-rh[i]*vv[k][j][i].fx[25])/rh_d2[i];
 
-                    if (isnan(xx[k][j][i].fx[24]) || isinf(xx[k][j][i].fx[24])) {
+                    if (isnan(gg[k][j][i].fx[24]) || isinf(gg[k][j][i].fx[24])) {
                         cout<<"Solution is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<24<<") in rhsfunctions"<<endl;
                         exit(-1);
                     }
@@ -230,11 +230,11 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
 
 int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 {
-    int  s, t;
+    int  s, t, kc, kcm, jcm, kcp, jcp;
     double rhos, rhoi, rhon, sum_nues, sum_nueq, sum_rhonusq, sum_nues_div_ms, sum_nueq_div_mq;
     double rhos_nusq_msmq, rhos_nusqmq_msmq, rhos_nusqms_msmq, temp;
     double ne, rhoe, Nn; //ne = ni
-    double rhoe_sum_nues, rhoe_sum_nueq, uiminusun_sq;
+    double rhoe_sum_nueq, uiminusun_sq;
     double uer, uet, uep, uir, uit, uip, unr, unt, unp;
     double Qefric, Qifric, Qnfric, Te, Tn;
     const double two3rd=2.0/3.0, one6th=1.0/6.0;
@@ -310,6 +310,12 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 
             jm = j-1; jp = j+1;
 
+            if (j == 1) {kcm = (k+a3/2) % a3; jcm=1;}
+            else {kcm = k; jcm = j;}
+
+            if (j < Nthm) {kcp = k; jcp = j;}
+            else {kcp = (k+a3/2) % a3; jcp = Nthm;}
+
             for (i = xs; i < xs+xm; i++) {
                 if (i == 0 or i == Nr) {
                     for (s = 0; s< nvar; s++) ff[k][j][i].fx[s] = xx[k][j][i].fx[s];
@@ -329,8 +335,15 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 b_ijmk[0]=uu[k][j][i].fx[5];
                 b_ijmk[1]=uu[k][j][i].fx[6];
                 b_ijmk_multi_b_ijmk_subtr = b_ijmk[0]*b_ijmk[1]/(b_ijmk[0]-b_ijmk[1]);
-                b_ijpk[0]=uu[k][jp][i].fx[5];
-                b_ijpk[1]=uu[k][jp][i].fx[6];
+                if (jp < Nth) {
+                    b_ijpk[0]=uu[k][jp][i].fx[5];
+                    b_ijpk[1]=uu[k][jp][i].fx[6];
+                }
+                else {
+                    kc=(k+a3/2) % a3;
+                    b_ijpk[0]=uu[kc][Nthm][i].fx[5];
+                    b_ijpk[1]=uu[kc][Nthm][i].fx[6];
+                }
                 b_ijpk_multi_b_ijpk_subtr = b_ijpk[0]*b_ijpk[1]/(b_ijpk[0]-b_ijpk[1]);
 
                 c_ijkm[0]=uu[k][j][i].fx[15];
@@ -400,17 +413,16 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                                         +(fsf_ijkp - fsf_ijkm)/rfavg_costh_dth_dph[j][i];
                 }
 
-                ff[k][j][i].fx[7] += sum_nues*(uir-uer) + sum_rhonusq*(uir-unr);
-                ff[k][j][i].fx[8] += sum_nues*(uit-uet) + sum_rhonusq*(uit-unt);
-                ff[k][j][i].fx[9] += sum_nues*(uip-uep) + sum_rhonusq*(uip-unp);
-
                 rhoe=ne*me;
-                rhoe_sum_nues=rhoe*sum_nues;
                 rhoe_sum_nueq=rhoe*sum_nueq;
 
                 uer=xx[k][j][i].fx[7]/rhoi; uet=xx[k][j][i].fx[8]/rhoi; uep=xx[k][j][i].fx[9]/rhoi;
                 uir=uer; uit=uet; uip=uep;
                 unr=xx[k][j][i].fx[19]/rhon; unt=xx[k][j][i].fx[20]/rhon; unp=xx[k][j][i].fx[21]/rhon;
+
+                ff[k][j][i].fx[7] += sum_rhonusq*(uir-unr); //sum_nues*(uir-uer) + 
+                ff[k][j][i].fx[8] += sum_rhonusq*(uit-unt); //sum_nues*(uit-uet) + 
+                ff[k][j][i].fx[9] += sum_rhonusq*(uip-unp); //sum_nues*(uip-uep) + 
 
                 uiminusun_sq=(uir-unr)*(uir-unr)+(uit-unt)*(uit-unt)+(uip-unp)*(uip-unp);
                 Qifric=two3rd*rhos_nusqmq_msmq*uiminusun_sq;
@@ -425,34 +437,23 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 Tn=xx[k][j][i].fx[22]/(Nn*kb);
                 ff[k][j][i].fx[11] = 2.0*me*( sum_nues_div_ms*(xx[k][j][i].fx[11]-xx[k][j][i].fx[10])
                                              +sum_nueq_div_mq*(xx[k][j][i].fx[11]-ne/Nn*xx[k][j][i].fx[22]))
-                                    -two3rd*(Qefric+ele_cooling_rate(xx, Te, Tn, ne, i, j, k))
-                                    +one6th/kb*( (zz[k][j][ip].fx[24]-zz[k][j][im].fx[24])/dr2
-                                                 *( xx[k][j][ip].fx[11]/uu[k][j][ip].fx[17]
-                                                   -xx[k][j][im].fx[11]/uu[k][j][im].fx[17])
-                                                +(zz[k][jp][i].fx[24]-zz[k][jm][i].fx[24])/(rfavg_dth[i]*rfavg_dth[i])
-                                                 *( xx[k][jp][i].fx[11]/uu[k][jp][i].fx[17]
-                                                   -xx[k][jm][i].fx[11]/uu[k][jm][i].fx[17])
-                                                +(zz[kp][j][i].fx[24]-zz[km][j][i].fx[24])
-                                                 /(rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i])
-                                                 *( xx[kp][j][i].fx[11]/uu[kp][j][i].fx[17]
-                                                   -xx[km][j][i].fx[11]/uu[km][j][i].fx[17]))
-                                    +two3rd/kb*zz[k][j][i].fx[24]
-                                              *( ( xx[k][j][ip].fx[11]/uu[k][j][ip].fx[17]
-                                                  -xx[k][j][im].fx[11]/uu[k][j][im].fx[17])/(rfavg[i]*dr)
-                                                +( xx[k][j][ip].fx[11]/uu[k][j][ip].fx[17]
-                                                  -2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
-                                                  +xx[k][j][im].fx[11]/uu[k][j][im].fx[17])/dr2
-                                                +cotth[j]*( xx[k][jp][i].fx[11]/uu[k][jp][i].fx[17]
-                                                           -xx[k][jm][i].fx[11]/uu[k][jm][i].fx[17])
-                                                          /(rfavg_dth[i]*rfavg[i])
-                                                +( xx[k][jp][i].fx[11]/uu[k][jp][i].fx[17]
-                                                  -2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
-                                                  +xx[k][jm][i].fx[11]/uu[k][jm][i].fx[17])
-                                                 /(rfavg_dth[i]*rfavg_dth[i])
-                                                +( xx[kp][j][i].fx[11]/uu[kp][j][i].fx[17]
-                                                  -2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
-                                                  +xx[km][j][i].fx[11]/uu[km][j][i].fx[17])
-                                                 /(rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i]));
+                 -two3rd*(Qefric /*+ele_cooling_rate(xx, Te, Tn, ne, i, j, k)*/)
+                 -one6th/kb*( (zz[k][j][ip].fx[24]-zz[k][j][im].fx[24])/dr2
+                              *(xx[k][j][ip].fx[11]/uu[k][j][ip].fx[17]-xx[k][j][im].fx[11]/uu[k][j][im].fx[17])
+                             +(zz[kcp][jcp][i].fx[24]-zz[kcm][jcm][i].fx[24])/(rfavg_dth[i]*rfavg_dth[i])
+                              *(xx[k][jp][i].fx[11]/uu[kcp][jcp][i].fx[17]-xx[k][jm][i].fx[11]/uu[kcm][jcm][i].fx[17])
+                             +(zz[kp][j][i].fx[24]-zz[km][j][i].fx[24])/(rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i])
+                              *(xx[kp][j][i].fx[11]/uu[kp][j][i].fx[17]-xx[km][j][i].fx[11]/uu[km][j][i].fx[17]))
+                 -two3rd/kb*zz[k][j][i].fx[24]
+                        *( (xx[k][j][ip].fx[11]/uu[k][j][ip].fx[17]-xx[k][j][im].fx[11]/uu[k][j][im].fx[17])/(rfavg[i]*dr)
+                          +( xx[k][j][ip].fx[11]/uu[k][j][ip].fx[17]-2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
+                            +xx[k][j][im].fx[11]/uu[k][j][im].fx[17])/dr2
+                          +cotth[j]/(rfavg_dth[i]*rfavg[i])
+                                  *(xx[k][jp][i].fx[11]/uu[kcp][jcp][i].fx[17]-xx[k][jm][i].fx[11]/uu[kcm][jcm][i].fx[17])                                                         
+                          +( xx[k][jp][i].fx[11]/uu[kcm][jcp][i].fx[17]-2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
+                            +xx[k][jm][i].fx[11]/uu[kcm][jcm][i].fx[17])/(rfavg_dth[i]*rfavg_dth[i])
+                          +( xx[kp][j][i].fx[11]/uu[kp][j][i].fx[17]-2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
+                            +xx[km][j][i].fx[11]/uu[km][j][i].fx[17])/(rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i]));
 
                 ff[k][j][i].fx[19] = dxdt[k][j][i].fx[19]+rhoe*sum_nueq*(unr-uer)+sum_rhonusq*(unr-uir);
                 ff[k][j][i].fx[20] = dxdt[k][j][i].fx[20]+rhoe*sum_nueq*(unt-uet)+sum_rhonusq*(unt-uit);
@@ -461,6 +462,14 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                                     +2.0*rhos_nusq_msmq*(xx[k][j][i].fx[22]/Nn-xx[k][j][i].fx[10]/ne);
 
                 for (s = 23; s< 26; s++) ff[k][j][i].fx[s] = dxdt[k][j][i].fx[s];
+
+                for (s=0; s<nvar; s++) {
+                    if (isnan(ff[k][j][i].fx[s]) || isinf(ff[k][j][i].fx[s])) {
+                        cout<<"function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
+                            <<") in stiffunction "<<ff[k][j][i].fx[s]<<endl;
+                        exit(-1);
+                    }
+                }
             }
         }
     }

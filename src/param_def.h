@@ -33,7 +33,7 @@ double *rr, *rh, *rC, *rfavg, *theta, *thetah, *thetaC, *phi, *phih;
 double dr, *rh_d3, *rh_d2;
 double *sinth_h, **rCsinC, **rh_costh, **rh_costh_dth_dph;
 double *zh, *rh2, **rfavg_costh, **rfavg_costh_dth_dph, **rfavg_sinth_dph, *rfavg_dth;
-double *sinth;
+double *sinth, **rfavg_sinth_h_dph;
 double **rsinth_dph, *cotth;
 double dth, dph, rCm1, rfavgm1;
 double **dAtheta_dV;

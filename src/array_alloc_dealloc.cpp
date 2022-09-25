@@ -135,6 +135,7 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
     rfavg_costh = new double*[a2];
     rfavg_costh_dth_dph=new double*[a2];
     rfavg_sinth_dph=new double*[a2];
+    rfavg_sinth_h_dph=new double*[a2];
     rh_costh = new double*[a2];
     rh_costh_dth_dph = new double*[a2];
     dAtheta_dV = new double*[a2];
@@ -144,6 +145,7 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
         rfavg_costh[j] =new double[a1];
         rfavg_costh_dth_dph[j]=new double[a1];
         rfavg_sinth_dph[j]=new double[a1];
+        rfavg_sinth_h_dph[j]=new double[a1];
         rh_costh[j] = new double[a1];
         rh_costh_dth_dph[j] = new double[a1];
         dAtheta_dV[j] = new double[a1];
@@ -255,6 +257,7 @@ void array_deallocate(PetscInt xm, PetscInt ym, PetscInt zm)
         delete[] rfavg_costh[j];
         delete[] rfavg_costh_dth_dph[j];
         delete[] rfavg_sinth_dph[j];
+        delete[] rfavg_sinth_h_dph[j];
         delete[] rh_costh[j];
         delete[] rh_costh_dth_dph[j];
         delete[] dAtheta_dV[j];
@@ -263,6 +266,7 @@ void array_deallocate(PetscInt xm, PetscInt ym, PetscInt zm)
     delete[] rfavg_costh;
     delete[] rfavg_costh_dth_dph;
     delete[] rfavg_sinth_dph;
+    delete[] rfavg_sinth_h_dph;
     delete[] rh_costh;
     delete[] rh_costh_dth_dph;
     delete[] dAtheta_dV;

@@ -17,7 +17,7 @@ inline void neu_max_speed_r_face(Field ***xx, Field ***uu, int i, int j, int k, 
     double Pn = reconstructed(xx, im, j, k, 22, rh[i], thetaC[j], phi[k]);
 
     // sound & Alfven speeds at (im-, thetaC[j], k)
-    double Cn = five3rd*Pn/rhonim_mjk;
+    double Cn = sqrt(five3rd*Pn/rhonim_mjk);
 
     double unr = reconstructed(uu, im, j, k, 19, rh[i], thetaC[j], phi[k]);
 
@@ -26,7 +26,7 @@ inline void neu_max_speed_r_face(Field ***xx, Field ***uu, int i, int j, int k, 
 
     // sound & Alfven speeds at (im+, thetaC[j], k)
     Pn = reconstructed(xx, i, j, k, 22, rh[i], thetaC[j], phi[k]);
-    Cn = five3rd*Pn/rhonim_pjk;
+    Cn = sqrt(five3rd*Pn/rhonim_pjk);
 
     unr = reconstructed(uu, i, j, k, 19, rh[i], thetaC[j], phi[k]);
 
@@ -59,7 +59,7 @@ inline void neu_max_speed_theta_face(Field ***xx, Field ***uu, int i, int j, int
     double Pn = reconstructed(xx, i, jm, kc, 22, rfavg[i], thetah[j], phi[kc]);
 
     // sound & Alfven speeds at (im-, thetaC[j], k)
-    double Cn = five3rd*Pn/rhonijm_mk;
+    double Cn = sqrt(five3rd*Pn/rhonijm_mk);
 
     double untheta = sgn*reconstructed(uu, i, jm, kc, 20, rfavg[i], thetah[j], phi[kc]);
 
@@ -68,7 +68,7 @@ inline void neu_max_speed_theta_face(Field ***xx, Field ***uu, int i, int j, int
 
     // sound & Alfven speeds at (im+, thetaC[j], k)
     Pn = reconstructed(xx, i, j, k, 22, rfavg[i], thetah[j], phi[k]);
-    Cn = five3rd*Pn/rhonijm_pk;
+    Cn = sqrt(five3rd*Pn/rhonijm_pk);
 
     untheta = reconstructed(xx, i, j, k, 20, rfavg[i], thetah[j], phi[k]);
 
@@ -101,7 +101,7 @@ inline void neu_max_speed_phi_face(Field ***xx, Field ***uu, int i, int j, int k
     double Pn = reconstructed(xx, i, j, km, 22, rfavg[i], thetah[j], phih[kprime]);
 
     // sound & Alfven speeds at (im-, thetaC[j], k)
-    double Cn = five3rd*Pn/rhonijkm_m;
+    double Cn = sqrt(five3rd*Pn/rhonijkm_m);
 
     double unphi = reconstructed(uu, i, j, km, 21, rfavg[i], theta[j], phih[kprime]);
 
@@ -110,7 +110,7 @@ inline void neu_max_speed_phi_face(Field ***xx, Field ***uu, int i, int j, int k
 
     // sound & Alfven speeds at (im+, thetaC[j], k)
     Pn = reconstructed(xx, i, j, k, 22, rfavg[i], theta[j], phih[k]);
-    Cn = five3rd*Pn/rhonijkm_p;
+    Cn = sqrt(five3rd*Pn/rhonijkm_p);
 
     unphi = reconstructed(xx, i, j, k, 21, rfavg[i], theta[j], phih[k]);
 
