@@ -64,6 +64,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
     for (k = zs; k < zs+zm; k++) {
 
         for (j = ys; j < ys+ym; j++) {
+            if (j == 0 || j == Nth) continue;
 
             for (s = 0; s < sl; s++) {
                 i0[s]=0.0; im[s]=0.0;
@@ -81,21 +82,21 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 }
                 irifstr.ignore(1,'\n');
 
-                // O+, H+, He+, O2+, N2+, NO+, N+ density (cm^{-3}) at (rC, thetaC, phi_k).
+                // O+, H+, He+, O2+, N2+, NO+, N+ density (m^{-3}) at (rC, thetaC, phi_k) -- normalized by ni_0.
                 // Density from IRI in m^-3 
-                localxx[k][j][i].fx[0]=f20[8]*1.0e-6;             //O+
-                localxx[k][j][i].fx[1]=f20[9]*1.0e-6;             //H+
-                localxx[k][j][i].fx[2]=f20[10]*1.0e-6;            //He+
-                localxx[k][j][i].fx[3]=f20[11]*0.1e-6;            //O2+
-                localxx[k][j][i].fx[4]=0.05e-6*(f20[11]+f20[12]); //N2+
-                localxx[k][j][i].fx[5]=0.03e-6*f20[12];           //NO+
-                localxx[k][j][i].fx[6]=f20[13]*1.0e-6;            //N+
+                localxx[k][j][i].fx[0]=f20[8]/ni_0;             //O+
+                localxx[k][j][i].fx[1]=f20[9]/ni_0;             //H+
+                localxx[k][j][i].fx[2]=f20[10]/ni_0;            //He+
+                localxx[k][j][i].fx[3]=f20[11]/ni_0;            //O2+
+                localxx[k][j][i].fx[4]=0.05e-6*(f20[11]+f20[12])/ni_0; //N2+
+                localxx[k][j][i].fx[5]=0.03*f20[12]/ni_0;       //NO+
+                localxx[k][j][i].fx[6]=f20[13]/ni_0;            //N+
 
                 if (f20[9]>0.0) numHi++;
                 if (f20[10]>0.0) numHei++;
 
                 //initialy set (rhoi uir), (rhoi uitheta), (rhoi uiphi) to a small constant
-                for (s = 7; s < 10; s++) xx[k][j][i].fx[s] = 1.0e-23;
+                for (s = 7; s < 10; s++) xx[k][j][i].fx[s] = 1.0e-18; //with normalization by ni_0
 
                 /* ion and electron temperatures (K) (to be converted to pressures) */
                 xx[k][j][i].fx[10] = f20[6];
@@ -113,23 +114,23 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 for (s = 0; s < 11; s++) msisfstr >> f20[s];
                 msisfstr.ignore(1,'\n');
                 for (s = 3; s < 9; s++) {
-                    if (f20[s] <= 0.0) f20[s]=denmin;
+                    if (f20[s] <= 0.0) f20[s]=denmin/nn_0;
                 }
 
-                /* neutral density from MSIS00 in cm^-3 */
-                xx[k][j][i].fx[12]=f20[4];  // O
-                xx[k][j][i].fx[13]=f20[7];  // H
-                xx[k][j][i].fx[14]=f20[3];  // He
-                xx[k][j][i].fx[15]=f20[6];  // O2
-                xx[k][j][i].fx[16]=f20[5];  // N2
+                /* neutral density from MSIS00 in m^-3 -- normalized */
+                xx[k][j][i].fx[12]=f20[4]*1.0e6/nn_0;  // O
+                xx[k][j][i].fx[13]=f20[7]*1.0e6/nn_0;  // H
+                xx[k][j][i].fx[14]=f20[3]*1.0e6/nn_0;  // He
+                xx[k][j][i].fx[15]=f20[6]*1.0e6/nn_0;  // O2
+                xx[k][j][i].fx[16]=f20[5]*1.0e6/nn_0;  // N2
 
                 /* NO density from empirical model of Mitra, A. P., A review of 
                  * D-region processes in non-polar latitudes, JATP, 30, 1065-1114, 1968 */
-                xx[k][j][i].fx[17]=(0.4*exp(-3700.0/f20[10])*f20[6]+5.0e-7*f20[4]);   // NO
-                xx[k][j][i].fx[18]=f20[8];  // N
+                xx[k][j][i].fx[17]=(0.4*exp(-3700.0/f20[10])*f20[6]+5.0e-7*f20[4])*1.0e6/nn_0;   // NO
+                xx[k][j][i].fx[18]=f20[8]*1.0e6/nn_0;  // N
 
                 /* initialy neutral rhon u_{n,r}, rhon u_{n,theta}, rhon u_{n,phi} set to a small constant */
-                for (s = 19; s < 22; s++) xx[k][j][i].fx[s]=1.0e-19;
+                for (s = 19; s < 22; s++) xx[k][j][i].fx[s]=1.0e-13; //with normlization by nn_0
 
                 if (f20[10] <= 0.0) {
                     cout<<"Negative neutral temperature from MSIS file at ";
@@ -137,7 +138,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                     exit(-1);
                 }
 
-                /* conservative variable (pn = Nn kb Tn) (in unit Newton / cm^{-3})*/
+                /* conservative variable (pn = Nn kb Tn) (in unit Newton / m^{-3} -- then normalized by nn_0)*/
                 Nn=0.0;
                 for (s = 0; s <sm; s++) Nn += xx[k][j][i].fx[12+s];
                 xx[k][j][i].fx[22]=Nn*kb*f20[10];
@@ -164,7 +165,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                         y1 = log(localxx[k][j][i+1].fx[s]);
                         y2 = log(localxx[k][j][i+2].fx[s]);
                         localxx[k][j][i].fx[s] = exp(y1+(rC[i]-rC[i+1])/(rC[i+2]-rC[i+1])*(y2-y1));
-                        if (localxx[k][j][i].fx[s] < denmin) localxx[k][j][i].fx[s]=denmin;
+                        if (localxx[k][j][i].fx[s] < denmin/ni_0) localxx[k][j][i].fx[s]=denmin/ni_0;
                     }
                 }
                 if (im[s] > 0) {
@@ -178,9 +179,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                         y1 = log(localxx[k][j][i-2].fx[s]);
                         y2 = log(localxx[k][j][i-1].fx[s]);
                         localxx[k][j][i].fx[s] = exp(y1+(rC[i]-rC[i-2])/(rC[i-1]-rC[i-2])*(y2-y1));
-                        if (localxx[k][j][i].fx[s] < denmin) localxx[k][j][i].fx[s]=denmin;
-                        //if (s == 3 && localxx[k][j][i].fx[s] > localxx[k][j][i-1].fx[s])
-                        //    localxx[k][j][i].fx[s] = localxx[k][j][i-2].fx[s];
+                        if (localxx[k][j][i].fx[s] < denmin/ni_0) localxx[k][j][i].fx[s]=denmin/ni_0;
                     }
                 }
             }
@@ -195,8 +194,8 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                     ne += xx[k][j][i].fx[s];
                 }
 
-                xx[k][j][i].fx[10] = ne*kb*xx[k][j][i].fx[10];
-                xx[k][j][i].fx[11] = ne*kb*xx[k][j][i].fx[11];
+                xx[k][j][i].fx[10] = ne*kb*xx[k][j][i].fx[10]; //with nromalization by ni_0
+                xx[k][j][i].fx[11] = ne*kb*xx[k][j][i].fx[11]; //with nromalization by ni_0
 
                 for (s=0; s<nvar; s++) {
                     if (isnan(xx[k][j][i].fx[s]) || isinf(xx[k][j][i].fx[s])) {
@@ -205,6 +204,9 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                         exit(-1);
                     }
                 }
+            }
+            for (i = xs; i < xs+xm; i++) {
+                if (xx[k][j][i].fx[1] <= 0.0) xx[k][j][i].fx[1]=denmin/ni_0;
             }
         }
 
@@ -223,6 +225,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
             for (i = xs; i< xs+xm; i++) {
                 for (s = 0; s < nvar; s++)
                     if (s != 24) xx[k][0][i].fx[s] = xx[kc][1][i].fx[s];
+                    else xx[k][0][i].fx[s] = 0.0;
             }
         }
     }
@@ -234,6 +237,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
             for (i = xs; i< xs+xm; i++) {
                 for (s = 0; s < nvar; s++)
                     if (s != 24) xx[k][Nth][i].fx[s] = xx[kc][1][i].fx[s];
+                    else xx[k][Nth][i].fx[s] = 0.0;
             }
         }
     }

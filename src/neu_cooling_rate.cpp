@@ -41,9 +41,10 @@ double neu_cooling_rate(Field ***xx, Field ***uu, int i, int j, int k)
         //                             /(sqrt(Tn)*(0.6+0.2*exp(-98.0/Tn)+Tx1));
     //}
 
-    nO =reconstructed(xx, i, j, k, 12, rfavg[i], thetaC[j], phi[k]);
-    nNO=reconstructed(xx, i, j, k, 17, rfavg[i], thetaC[j], phi[k]);
-    Tn =reconstructed(uu, i, j, k, 22, rfavg[i], thetaC[j], phi[k]);
+    double nn00=nn_0/1.0e6;
+    nO =reconstructed(xx, i, j, k, 12, rfavg[i], thetaC[j], phi[k])*nn00;
+    nNO=reconstructed(xx, i, j, k, 17, rfavg[i], thetaC[j], phi[k])*nn00;
+    Tn =reconstructed(uu, i, j, k, 22, rfavg[i], thetaC[j], phi[k])*nn00;
     //TOb[0]=Tn;
 
     Tx1=exp(-228.0/Tn);
@@ -54,9 +55,9 @@ double neu_cooling_rate(Field ***xx, Field ***uu, int i, int j, int k)
     //E22=expon_integral(tao[0]-tao[i-xs],60);
     //chi=0.5*(Tx1-1.0)*((2.0-E21-E22)/(Tx1-1.0)+E22/(exp(228.0/TOb)-1.0));
 
-    /* cooling rate in Joule cm^-3 s^-1 */
+    /* cooling rate in Joule m^-3 s^-1 / nn_0 */
     Cn=nO*( (1.69e-25*Tx1+4.59e-27*Tx2)/(1.0+0.6*Tx1+0.2*Tx2)
-           +3.24015e-29*nNO*exp(-2714.57/Tn)/(6.5e-11*nO+13.3));
+           +3.24015e-29*nNO*exp(-2714.57/Tn)/(6.5e-11*nO+13.3))/nn00;
 
     //delete[] tao;
 

@@ -31,11 +31,13 @@ inline double ele_cooling_rate(Field ***xx, double Te, double Tn, double ne, int
     //electron and neutral temperature in K
     Td=sqrt(Te);
 
+    double const nn00 = nn_0/1.0e6;
+
     // density in cm^-3
-    nO =reconstructed(xx, i, j, k, 12, rfavg[i], thetaC[j], phi[k]);
-    nO2=reconstructed(xx, i, j, k, 15, rfavg[i], thetaC[j], phi[k]);
-    nN2=reconstructed(xx, i, j, k, 16, rfavg[i], thetaC[j], phi[k]);
-    nH =reconstructed(xx, i, j, k, 13, rfavg[i], thetaC[j], phi[k]);
+    nO =reconstructed(xx, i, j, k, 12, rfavg[i], thetaC[j], phi[k])*nn00;
+    nO2=reconstructed(xx, i, j, k, 15, rfavg[i], thetaC[j], phi[k])*nn00;
+    nN2=reconstructed(xx, i, j, k, 16, rfavg[i], thetaC[j], phi[k])*nn00;
+    nH =reconstructed(xx, i, j, k, 13, rfavg[i], thetaC[j], phi[k])*nn00;
 
     /* rate (divided by ne) of cooling due to impact excitation of
     * N2 rotation in eV s^-1 (not multiplied by ne yet) */

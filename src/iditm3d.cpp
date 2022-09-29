@@ -131,7 +131,6 @@ int main(int argc,char **argv)
     DMSetMatType(da, MATMPIAIJ);
     DMDASetBlockFills(da, dfill, ofill);
     DMCreateMatrix(da, &A);
-    //MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
     TSSetRHSFunction(ts, NULL, rhsfunctions, &params);
     TSSetIFunction(ts, NULL, stifffunction, &params);

@@ -6,13 +6,15 @@ void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, in
     int zk, int yj, int xi, double source[])
 {
     int    s;
-    const double n00=1.0e-6, two3rd=2.0/3.0;
+    const double two3rd=2.0/3.0;
     //double Ti_coll_coef = 0.0, inner_term = 0.0;
     //double Tn_coll_coef = 0.0, inner_term_n = 0.0;
 
     double ns_jC[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0}, nn_jC;
     double rhoi_jC = 0.0, rhoi_j = 0.0, ne_jC=0.0;
-    double rhon_jC=0.0, rhon_j=0.0;;
+    double rhon_jC=0.0, rhon_j=0.0;
+    const double ni00=ni_0/1.0e6, nn00=nn_0/1.0e6;
+
     for (s = 0; s < sl; s++) {
         //reconstructed ion mass density at (rfavg, thetaC, phi)
         ns_jC[s] = reconstructed(xx, i, j, k, s, rfavg[i], thetaC[j], phi[k]);
@@ -30,8 +32,8 @@ void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, in
         rhon_j += ms[s]*reconstructed(xx, i, j, k, 12+s, rfavg[i], theta[j], phi[k]);      
 
         //source terms for ion and neutral continuity equations
-        source[s] = Ps[zk][yj][xi][s]; // - Ls[s]*ns_jC[s];
-        source[12+s] = Ps[zk][yj][xi][7+s]; // - Ls[7+s]*nn_jC;
+        source[s] = Ps[zk][yj][xi][s]/ni00; // - Ls[s]*ns_jC[s];
+        source[12+s] = Ps[zk][yj][xi][7+s]/nn00; // - Ls[7+s]*nn_jC;
     }
 
     //reconstructed quantities at (rfavg, thetaC, phi_k)
@@ -64,12 +66,12 @@ void source_terms(Field ***xx, Field ***uu, Field ***ww, Field ***zz, int xs, in
     Pe_j = reconstructed(xx, i, j, k, 11, rfavg[i], theta[j], phi[k]);
 
     //source terms for ion velocity
-    source[7] = (rhoi_jC*(uitheta_jC*uitheta_jC + uiphi_jC*uiphi_jC)+2.0*(Pi_jC+Pe_jC)+n00*Br_jC*Br_jC)/rfavg[i]
+    source[7] = (rhoi_jC*(uitheta_jC*uitheta_jC + uiphi_jC*uiphi_jC)+2.0*(Pi_jC+Pe_jC)+Br_jC*Br_jC/ni_0)/rfavg[i]
                -rhoi_jC*gr[i-xs];
-    source[8] = ( (rhoi_j*uiphi_j*uiphi_j+Pi_j+Pe_j+0.5e-6*(Br_j*Br_j+Btheta_j*Btheta_j-Bphi_j*Bphi_j))*cotth[j]
-                 +(n00*Btheta_jC*Br_jC-rhoi_jC*uitheta_jC*uir_jC))/rfavg[i];
-    source[9] = ( n00*Bphi_jC*Br_jC - rhoi_jC*uiphi_jC*uir_jC
-                 +(n00*Bphi_j*Btheta_j - rhoi_j*uiphi_j*uitheta_j)*cotth[j])/rfavg[i];
+    source[8] = ( (rhoi_j*uiphi_j*uiphi_j+Pi_j+Pe_j+0.5/ni_0*(Br_j*Br_j+Btheta_j*Btheta_j-Bphi_j*Bphi_j))*cotth[j]
+                 +(Btheta_jC*Br_jC/ni_0-rhoi_jC*uitheta_jC*uir_jC))/rfavg[i];
+    source[9] = ( Bphi_jC*Br_jC/ni_0 - rhoi_jC*uiphi_jC*uir_jC
+                 +(Bphi_j*Btheta_j/ni_0 - rhoi_j*uiphi_j*uitheta_j)*cotth[j])/rfavg[i];
 
     // for source terms of ion and electron energy equations
     double delta_uir, delta_uitheta, delta_uiphi;

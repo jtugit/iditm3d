@@ -105,12 +105,12 @@ void dipole_magnetic(DM da, AppCtx *params)
                 SPHCAR_08(rC[i], thetaC[j], phi[k], xmag, ymag, zmag, 1);
                 BCARSP_08(xmag, ymag, zmag, wxm, wym, wzm, wr, wt, wp);
 
-                /*--- normalized Earth's rotation rate in magnetic spherical coordinates */
+                /*--- Earth's rotation rate in magnetic spherical coordinates */
                 rotat_r[zk][yj]=wr;
                 rotat_t[zk][yj]=wt;
                 rotat_p[zk][yj]=wp;
 
-                /*---- normalized centrifugal force = Omega x (Omega x r) ----*/
+                /*---- centrifugal force = Omega x (Omega x r) ----*/
                 /*--- in rotating coordinates (for fluid needed to multiply rho) */
                 cenf_r[zk][yj][xi]=-rr[i]*(wt*wt+wp*wp);
                 cenf_t[zk][yj][xi]= rr[i]*wr*wt;

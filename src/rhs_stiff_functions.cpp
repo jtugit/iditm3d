@@ -177,7 +177,7 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
 
                     for (s=0; s<nvar; s++) {
                         if (isnan(gg[k][j][i].fx[s]) || isinf(gg[k][j][i].fx[s])) {
-                            cout<<"function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
+                            cout<<"Rhs function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
                                 <<") in rhsfunctions"<<endl;
                             exit(-1);
                         }
@@ -409,11 +409,6 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                         exit(-1);
                     }
                 }
-            }
-            for (i=xs; i<xs+xm; i++) {
-                cout<<fixed<<setw(4)<<i<<fixed<<setw(4)<<j<<fixed<<setw(4)<<k;
-                for (s=22; s<26; s++) cout<<scientific<<setw(16)<<setprecision(8)<<ff[k][j][i].fx[s];
-                cout<<endl;
             }
         }
     }

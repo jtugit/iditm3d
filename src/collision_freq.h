@@ -5,24 +5,26 @@
 inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int zk)
 {
     int    s;
-    double rhoi=0.0, rhon=0.0, ni[7], nn[7], ne=0.0, Nn=0.0, Te, Te12, Te32;
+    double ni[7], nn[7], ne=0.0, Nn=0.0, Te, Te12, Te32;
     double cee, Ti, Tn, Ti12, Ti32, logTi, Tr, logTr, Tr12;
 
-    for (s = 0; s < sl; s++) {
-        ni[s] = xx[k][j][i].fx[s];
-        ne += ni[s];
-        rhoi += ms[s]*ni[s];
+    double ni00=ni_0/1.0e6, nn00=nn_0/1.0e6;
 
-        nn[s] = xx[k][j][i].fx[12+s];
+    for (s = 0; s < sl; s++) {
+        ni[s] = xx[k][j][i].fx[s]*ni00;   //density in cm^{-3}
+        ne += ni[s];
+
+        nn[s] = xx[k][j][i].fx[12+s]*nn00;
         Nn += nn[s];
-        rhon += ms[s]*nn[s];
     }
+
+    double nenorm = ne*1.0e6/ni_0, Nnnorm = Nn*1.0e6/nn_0;
 
 /*--------------------------------------------------*/
 /*---------------- collision frequencies -----------*/
 /*--------------------------------------------------*/
     //electron Coulomb collision frequencies
-    Te=xx[k][j][i].fx[11]/(ne*kb);
+    Te=xx[k][j][i].fx[11]/(nenorm*kb);
     Te12=sqrt(Te);
     Te32=Te*Te12;
     cee=54.5/Te32;
@@ -40,8 +42,8 @@ inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int
     nust[zk][yj][xi][13]=1.0e-11*nn[6];                         //e - N
 
 /* ---- O+ collision frequencies ---------------------------------------------------------*/
-    Ti=xx[k][j][i].fx[10]/(ne*kb);
-    Tn=xx[k][j][i].fx[22]/(Nn*kb);
+    Ti=xx[k][j][i].fx[10]/(nenorm*kb);
+    Tn=xx[k][j][i].fx[22]/(Nnnorm*kb);
     Ti12=sqrt(Ti);
     Ti32=Ti*Ti12;
     logTi=log10(Ti);

@@ -17,7 +17,7 @@
 #define nvar     26
 #define nion     7
 #define nonu     7
-#define denmin   10.0
+#define denmin   10.0e4
 
 /* variables of interest to be solved at each grid point */
 typedef struct {
@@ -63,6 +63,9 @@ typedef struct {
 
     double ftime;
 } AppCtx;
+
+const double ni_0 = 1.0e10;
+const double nn_0 = 1.0e18;
 
 const double pi=3.141592653589793238;
 const double pi2=6.283185307179586476;

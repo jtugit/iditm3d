@@ -28,7 +28,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     double kk[29], react[29], photoIon[8];
 
     double R, R2, epsl, ne=0;
-    const double cc[5]={12.75, 6.941, 1.166, 8.034e-2, 1.996e-3};
+    const double cc[5]={12.75, 6.941, 1.166, 8.034e-2, 1.996e-3}, ni00=ni_0/1.0e6, nn00=nn_0/1.0e6;
     //const double norm=1.6022e-13*t0/p0;
 
     CCi=kb/mp;
@@ -46,15 +46,15 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     Qeuv[zk][yj][xi]=0.0;
 
     Tn=uu[k][j][i].fx[22];
-    ne =uu[k][j][i].fx[17];
+    ne =uu[k][j][i].fx[17]*ni00;  //electron density in cm^{-3}
 
     /* day time photo-ionization */
     if (zenith[zk][yj] < pih) {
-        Nnn[0]=xx[k][j][i].fx[12];    // O density  in cm^-3
-        Nnn[1]=xx[k][j][i].fx[15];    // O2 density
-        Nnn[2]=xx[k][j][i].fx[16];    // N2 density
-        Nnn[3]=xx[k][j][i].fx[18];    // N density
-        Nnn[4]=xx[k][j][i].fx[14];    // He density
+        Nnn[0]=xx[k][j][i].fx[12]*nn00;    // O density  in cm^-3
+        Nnn[1]=xx[k][j][i].fx[15]*nn00;    // O2 density
+        Nnn[2]=xx[k][j][i].fx[16]*nn00;    // N2 density
+        Nnn[3]=xx[k][j][i].fx[18]*nn00;    // N density
+        Nnn[4]=xx[k][j][i].fx[14]*nn00;    // He density
 
 /* optical depth due to absorption by O, O2, N2, N, He */
         for (m = 0; m < 5; m++) {
@@ -98,8 +98,8 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
             qi[6] += segion[s][6]*euvf; /* He + hv --> He+ + e */
 
             /* EUV heating of neutrals due to O, O2, N2 
-             * absorption of EUV flux in J cm^-3 s^-1, assuming heating efficiency of 0.45 */
-            Qeuv[zk][yj][xi] += 0.45*(segabs[s][0]*Nnn[0]+segabs[s][1]*Nnn[1]+segabs[s][3]*Nnn[2])*euvf*pene[s];
+             * absorption of EUV flux in J m^-3 s^-1 / nn_0, assuming heating efficiency of 0.45 */
+            Qeuv[zk][yj][xi] += 0.45*(segabs[s][0]*Nnn[0]+segabs[s][1]*Nnn[1]+segabs[s][3]*Nnn[2])*euvf*pene[s]/nn00;
         }
     }
     else  {
@@ -173,7 +173,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     kk[11]=2.2e-11*sqrt(Ti);
 
     // O+ + e --> O + hv
-    Te=xx[k][j][i].fx[11]/(ne*kb);
+    Te=uu[k][j][i].fx[11];
     double Te300 = pow(Te/300.0, 0.7);
     kk[21]=4.0e-12*Te300;
 
@@ -201,22 +201,22 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     //N+ + e --> N
     kk[28]=4.43e-12*pow(Te, 0.7);
 
-    //normalized ion and neutral densities
-    niO =xx[k][j][i].fx[0];
-    niH =xx[k][j][i].fx[1];
-    niHe=xx[k][j][i].fx[2];
-    niO2=xx[k][j][i].fx[3];
-    niN2=xx[k][j][i].fx[4];
-    niNO=xx[k][j][i].fx[5];
-    niN =xx[k][j][i].fx[6];
+    //ion and neutral densities in cm^{-3}
+    niO =xx[k][j][i].fx[0]*ni00;
+    niH =xx[k][j][i].fx[1]*ni00;
+    niHe=xx[k][j][i].fx[2]*ni00;
+    niO2=xx[k][j][i].fx[3]*ni00;
+    niN2=xx[k][j][i].fx[4]*ni00;
+    niNO=xx[k][j][i].fx[5]*ni00;
+    niN =xx[k][j][i].fx[6]*ni00;
 
-    nO =xx[k][j][i].fx[12];
-    nH =xx[k][j][i].fx[13];
-    nHe=xx[k][j][i].fx[14];
-    nO2=xx[k][j][i].fx[15];
-    nN2=xx[k][j][i].fx[16];
-    nNO=xx[k][j][i].fx[17];
-    nN =xx[k][j][i].fx[18];
+    nO =xx[k][j][i].fx[12]*nn00;
+    nH =xx[k][j][i].fx[13]*nn00;
+    nHe=xx[k][j][i].fx[14]*nn00;
+    nO2=xx[k][j][i].fx[15]*nn00;
+    nN2=xx[k][j][i].fx[16]*nn00;
+    nNO=xx[k][j][i].fx[17]*nn00;
+    nN =xx[k][j][i].fx[18]*nn00;
 
     /* O+ reactions */
     react[1] =kk[1] *niO*nN2;
@@ -401,14 +401,14 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
 /*-----------------------------------------------------------------------------*/
 /*--------------- electron heating rate ---------------------------------------*/
 /*-----------------------------------------------------------------------------*/
-    /* local photoelectron heating Swartz & Nisbet, JGR, 1972 in J cm^-3 s^-1 */
+    /* local photoelectron heating Swartz & Nisbet, JGR, 1972 in J m^-3 s^-1 /ni_0 */
     //if (zh[xi] < 300.0) {                   
         R=log(ne/(0.1*nO + nO2 + nN2));
         R2=R*R;
         epsl=exp(-(cc[0]+cc[1]*R+cc[2]*R2+cc[3]*R2*R+cc[4]*R2*R2));
 
         Qee[zk][yj][xi]=e*epsl*( photoIon[0]+photoIon[1]+photoIon[2]+photoIon[3]
-                    +photoIon[4]+photoIon[5]+photoIon[6]+photoIon[7]);
+                    +photoIon[4]+photoIon[5]+photoIon[6]+photoIon[7])/ni00;
     //}
     //else {
     /* P. Richards et al., JGR, [1984] */

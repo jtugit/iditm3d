@@ -130,9 +130,9 @@ int parameters(DM da, Vec X, AppCtx *params)
                 PiPe=xx[k][j][i].fx[10]+xx[k][j][i].fx[11];
 
                 //flux F_r(rC, thetaC, phi_k)
-                vv[k][j][i].fx[7]= xx[k][j][i].fx[7]*uir+PiPe+0.5e-6*(Btheta*Btheta-Br*Br+Bphi*Bphi);
-                vv[k][j][i].fx[8]= xx[k][j][i].fx[8]*uir-1.0e-6*Br*Btheta;
-                vv[k][j][i].fx[9]= xx[k][j][i].fx[9]*uir-1.0e-6*Br*Bphi;
+                vv[k][j][i].fx[7]= xx[k][j][i].fx[7]*uir+PiPe+0.5/ni_0*(Btheta*Btheta-Br*Br+Bphi*Bphi);
+                vv[k][j][i].fx[8]= xx[k][j][i].fx[8]*uir-Br*Btheta/ni_0;
+                vv[k][j][i].fx[9]= xx[k][j][i].fx[9]*uir-Br*Bphi/ni_0;
                 vv[k][j][i].fx[10]=xx[k][j][i].fx[10]*uir; //heat flux has to be calculated and included later
                 vv[k][j][i].fx[11]=xx[k][j][i].fx[11]*uu[k][j][i].fx[7];
 
@@ -142,9 +142,9 @@ int parameters(DM da, Vec X, AppCtx *params)
                 vv[k][j][i].fx[22]=xx[k][j][i].fx[22]*unr;   //heat flux has to be calculated and included later
 
                 //flux F_theta(rC, thetaC, phi_k)
-                ww[k][j][i].fx[7]= xx[k][j][i].fx[7]*uitheta-1.0e-6*Br*Btheta;
-                ww[k][j][i].fx[8]= xx[k][j][i].fx[8]*uitheta+PiPe+0.5e-6*(Br*Br-Btheta*Btheta+Bphi*Bphi);
-                ww[k][j][i].fx[9]= xx[k][j][i].fx[9]*uitheta-1.0e-6*Btheta*Bphi;
+                ww[k][j][i].fx[7]= xx[k][j][i].fx[7]*uitheta-Br*Btheta/ni_0;
+                ww[k][j][i].fx[8]= xx[k][j][i].fx[8]*uitheta+PiPe+0.5/ni_0*(Br*Br-Btheta*Btheta+Bphi*Bphi);
+                ww[k][j][i].fx[9]= xx[k][j][i].fx[9]*uitheta-Btheta*Bphi/ni_0;
                 ww[k][j][i].fx[10]=xx[k][j][i].fx[10]*uitheta; //heat flux has to be calculated and included later
                 ww[k][j][i].fx[11]=xx[k][j][i].fx[11]*uu[k][j][i].fx[8];
 
@@ -154,9 +154,9 @@ int parameters(DM da, Vec X, AppCtx *params)
                 ww[k][j][i].fx[22]=xx[k][j][i].fx[22]*untheta;   //heat flux has to be calculated and included later
 
                 //flux F_phi(rC, thetaC, phi_k)
-                zz[k][j][i].fx[7]= xx[k][j][i].fx[7]*uiphi-1.0e-6*Br*Bphi;
-                zz[k][j][i].fx[8]= xx[k][j][i].fx[8]*uiphi-1.0e-6*Btheta*Bphi;
-                zz[k][j][i].fx[9]= xx[k][j][i].fx[9]*uiphi+PiPe+0.5e-6*(Br*Br+Btheta*Btheta-Bphi*Bphi);
+                zz[k][j][i].fx[7]= xx[k][j][i].fx[7]*uiphi-Br*Bphi/ni_0;
+                zz[k][j][i].fx[8]= xx[k][j][i].fx[8]*uiphi-Btheta*Bphi/ni_0;
+                zz[k][j][i].fx[9]= xx[k][j][i].fx[9]*uiphi+PiPe+0.5/ni_0*(Br*Br+Btheta*Btheta-Bphi*Bphi);
                 zz[k][j][i].fx[10]=xx[k][j][i].fx[10]*uiphi;     //heat flux has to be calculated and included later
                 zz[k][j][i].fx[11]=xx[k][j][i].fx[11]*uu[k][j][i].fx[9];
 
@@ -187,6 +187,8 @@ int parameters(DM da, Vec X, AppCtx *params)
     DMGlobalToLocalEnd(da,params->Z,INSERT_VALUES,localZ);
     DMDAVecGetArray(da, localZ, &localzz);
 
+    double ni00=ni_0/1.0e6, nn00=nn_0/1.0e6;
+
     //calcuation of heat fluxes needs local uu because non-local grids required
     //therefre, they are evaluated in separate loops
     for (k=zs; k<zs+zm; k++) {
@@ -205,16 +207,16 @@ int parameters(DM da, Vec X, AppCtx *params)
 /*-----------------------------------------------------------------------------*/
 //--------------- thermal conductivities
 /*-----------------------------------------------------------------------------*/
-                    ne=uu[k][j][i].fx[17];
+                    ne=uu[k][j][i].fx[17]*ni00;   //electron density in cm^{-3}
                     Te=uu[k][j][i].fx[11];
                     Te12=sqrt(Te);
                     Te2=Te*Te;
 
-                    nn[0]=xx[k][j][i].fx[12];
-                    nn[1]=xx[k][j][i].fx[15];
-                    nn[2]=xx[k][j][i].fx[16];
-                    nn[3]=xx[k][j][i].fx[13];
-                    nn[4]=xx[k][j][i].fx[14];
+                    nn[0]=xx[k][j][i].fx[12]*nn00;  //neutral density in cm^{-3}
+                    nn[1]=xx[k][j][i].fx[15]*nn00;
+                    nn[2]=xx[k][j][i].fx[16]*nn00;
+                    nn[3]=xx[k][j][i].fx[13]*nn00;
+                    nn[4]=xx[k][j][i].fx[14]*nn00;
 
                     qn[0]=1.1e-16*(1.0+5.7e-4*Te);
                     qn[1]=2.2e-16*(1.0+0.036*Te12);
@@ -224,9 +226,9 @@ int parameters(DM da, Vec X, AppCtx *params)
 
                     fq=1.0/(1.0+sinh(zh[xi]*1.0e3/(rr[0]-Re)-1.0));
 
-                    /* electron thermal conductivity */
+                    /* electron thermal conductivity in J/(m s K) / ni_0 */
                     nqd=nn[0]*qn[0]+nn[3]*qn[1]+nn[4]*qn[2]+nn[1]*qn[3]+nn[2]*qn[4];
-                    zz[k][j][i].fx[24]=1.233694e-11*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd);
+                    zz[k][j][i].fx[24]=1.233694e-11*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd)/ni_0;
 
                     rhon = 0.0;
                     for (s = 0; s < sm; s++) rhon += xx[k][j][i].fx[12+s]*ms[s];
@@ -288,14 +290,14 @@ int parameters(DM da, Vec X, AppCtx *params)
                     uu[k][j][i].fx[25] =-lambdan*limited_slope_phi(localuu, i, j, k, 22)/rCsinC[j][i];
 
                     // now add heat fluxes to the ion and neutral pressure fluxes
-                    vv[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[12];
-                    vv[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[23];
+                    vv[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[12]/ni_0;
+                    vv[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[23]/nn_0;
 
-                    ww[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[13];
-                    ww[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[24];
+                    ww[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[13]/ni_0;
+                    ww[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[24]/nn_0;
 
-                    zz[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[14];
-                    zz[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[25];
+                    zz[k][j][i].fx[10] += two3rdmu*uu[k][j][i].fx[14]/ni_0;
+                    zz[k][j][i].fx[22] += two3rdmu*uu[k][j][i].fx[25]/nn_0;
                 }
             }
         }

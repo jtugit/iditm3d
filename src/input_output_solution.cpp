@@ -42,7 +42,7 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
     char *fname = &strfname[0];
     hdf5parallelread(MPI_COMM_WORLD, offset, count, block, fname, params->dset_name, xdata);
 
-    double rhoi, ne, rhon, Nn;
+    double rhoi, ne, rhon, Nn, ni00=ni_0/1.0e6, nn00=nn_0/1.0e6;
 
     for (k=zs; k<zs+zm; k++) {
         zk=k-zs;
@@ -54,38 +54,37 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
                 xi=i-xs;
                 s=a4*(zk*ym*xm+yj*xm+xi);
 
-                //ion density (O+, H+, He+, O2+, N2+, NO+, N+) in 1/cm^3, ion mass density
-                //and electron density in 1/cm^3
+                //ion density (O+, H+, He+, O2+, N2+, NO+, N+), ion mass density, and electron density
                 rhoi = 0.0; ne = 0.0;
                 for (m = 0; m < sl; m++) {
-                    xx[k][j][i].fx[m] = xdata[s+m];
-                    rhoi += ms[m]*xx[k][j][i].fx[m]; //ion mass density in kg cm^{-3}
-                    ne += xx[k][j][i].fx[m];
+                    xx[k][j][i].fx[m] = xdata[s+m]/ni00; //density in m^{-3}/ni_0 
+                    rhoi += ms[m]*xx[k][j][i].fx[m];     //ion mass density in kg m^{-3}/ni_0
+                    ne += xx[k][j][i].fx[m];             //electron density in m^{-3}/ni_0
                 }
 
-                //momentum density (rhoi*uir), (rhoi*uitheta), (rhoi*uiphi) in kg (m/s) cm^{-3} 
+                //momentum density (rhoi*uir), (rhoi*uitheta), (rhoi*uiphi) in kg/m^{3} (m/s) / ni_0 
                 xx[k][j][i].fx[7] = rhoi*xdata[s+7];
                 xx[k][j][i].fx[8] = rhoi*xdata[s+8];
                 xx[k][j][i].fx[9] = rhoi*xdata[s+9];
 
-                //pi=ni*kb*Ti and pe=ne*kb*Te (ni=ne) in J cm^{-3}
+                //pi=ni*kb*Ti and pe=ne*kb*Te (ni=ne) in J m^{-3} / ni_0
                 xx[k][j][i].fx[10] = ne*kb*xdata[s+10];
                 xx[k][j][i].fx[11] = ne*kb*xdata[s+11];
 
                 /* O, H, He, O2, N2, NO, N normalized density in cm^{-3} */
                 rhon = 0.0; Nn = 0.0;
                 for (m = 0; m < sm; m++) {
-                    xx[k][j][i].fx[12+m]=xdata[s+12+m];
-                    rhon += ms[m]*xx[k][j][i].fx[12+m];  //neutral mass density in cm^{-3}
-                    Nn += xx[k][j][i].fx[12+m];
+                    xx[k][j][i].fx[12+m]=xdata[s+12+m]/nn00; //density in m^{-3}/nn_0
+                    rhon += ms[m]*xx[k][j][i].fx[12+m];  //neutral mass density in kg m^{-3} / nn_0
+                    Nn += xx[k][j][i].fx[12+m];          //neutral number density in m^{-3}/nn_0
                 }
 
-                //neutral momentum (rhon*unr), (rhon*untheta), (rhon*unphi) in kg (m/s) cm^{-3}
+                //neutral momentum (rhon*unr), (rhon*untheta), (rhon*unphi) in kg/m^{3} (m/s) / nn_0
                 xx[k][j][i].fx[19] = rhon*xdata[s+19];
                 xx[k][j][i].fx[20] = rhon*xdata[s+20];
                 xx[k][j][i].fx[21] = rhon*xdata[s+21];
 
-                //pn=Nn*kb*Tn
+                //pn=Nn*kb*Tn in J/m^{3} / nn_0
                 xx[k][j][i].fx[22] = Nn*kb*xdata[s+22];
             
                 /* delta_B at face center in Tesla */
@@ -166,7 +165,7 @@ int output_solution(DM da, Field ***xx, AppCtx *params)
     vsize=a4*xm*ym*zm;
     xdata=new double[vsize];
 
-    double rhoi, ne, rhon, Nn;
+    double rhoi, ne, rhon, Nn, ni00=ni_0/1.0e6, nn00=nn_0/1.0e6;;
 
     /* all quantities in SI unit */
     for (k=zs; k<zs+zm; k++) {
@@ -182,21 +181,21 @@ int output_solution(DM da, Field ***xx, AppCtx *params)
                 /* ion number density (cm^{-3}), velocity (m/s), and temperature (K) */
                 rhoi = 0.0; ne = 0.0;
                 for (m = 0; m < sl; m++) {
-                    xdata[s+m]=xx[k][j][i].fx[m];
-                    rhoi += xx[k][j][i].fx[m]*ms[m];
-                    ne += xx[k][j][i].fx[m];
+                    xdata[s+m]=xx[k][j][i].fx[m]*ni00;  //ion density in cm^{-3}
+                    rhoi += xx[k][j][i].fx[m]*ms[m];          //ion mass density in kg m^{-3}/ni_0
+                    ne += xx[k][j][i].fx[m];                  //electron mass density in m^{-3}/ni_0
                 }
-                xdata[s+7]=xx[k][j][i].fx[7]/rhoi;  //uir
+                xdata[s+7]=xx[k][j][i].fx[7]/rhoi;  //uir     //velocity in m/s
                 xdata[s+8]=xx[k][j][i].fx[8]/rhoi;  //uitheta
                 xdata[s+9]=xx[k][j][i].fx[9]/rhoi;  //uiphi
 
-                xdata[s+10] = xx[k][j][i].fx[10]/(ne*kb);
+                xdata[s+10] = xx[k][j][i].fx[10]/(ne*kb);     //temperature in K
                 xdata[s+11] = xx[k][j][i].fx[11]/(ne*kb);
 
                 /* neutral number density (cm^{-3}), velocity (m/s), and temperature (K)*/
                 rhon = 0.0; Nn = 0.0;
                 for (m = 0; m < sm; m++) {
-                    xdata[s+12+m]=xx[k][j][i].fx[12+m];
+                    xdata[s+12+m]=xx[k][j][i].fx[12+m]*nn00;
                     rhon += xx[k][j][i].fx[12+m]*ms[m];
                     Nn += xx[k][j][i].fx[12+m];
                 }
