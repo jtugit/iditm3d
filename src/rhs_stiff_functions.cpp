@@ -364,9 +364,9 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 ff[k][j][i].fx[9] = dxdt[k][j][i].fx[9] + sum_rhonusq*(uip-unp); //sum_nues*(uip-uep) + 
 
                 uiminusun_sq=(uir-unr)*(uir-unr)+(uit-unt)*(uit-unt)+(uip-unp)*(uip-unp);
-                Qifric=two3rd*rhos_nusqmq_msmq*uiminusun_sq;
-                Qefric=two3rd*rhoe_sum_nueq*((uer-unr)*(uer-unr)+(uet-unt)*(uet-unt)+(uep-unp)*(uep-unp));
-                Qnfric=two3rd*rhos_nusqms_msmq*uiminusun_sq;
+                Qifric=rhos_nusqmq_msmq*uiminusun_sq;
+                Qefric=rhoe_sum_nueq*((uer-unr)*(uer-unr)+(uet-unt)*(uet-unt)+(uep-unp)*(uep-unp));
+                Qnfric=rhos_nusqms_msmq*uiminusun_sq;
 
                 ff[k][j][i].fx[10] = 2.0*( me*sum_nues_div_ms*(xx[k][j][i].fx[10]-xx[k][j][i].fx[11])
                                           +rhos_nusq_msmq*(xx[k][j][i].fx[10]/ne-xx[k][j][i].fx[22]/Nn))
@@ -389,7 +389,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                             +xx[k][j][im].fx[11]/uu[k][j][im].fx[17])/dr2
                           +cotth[j]/(rfavg_dth[i]*rfavg[i])
                                   *(xx[k][jp][i].fx[11]/uu[kcp][jcp][i].fx[17]-xx[k][jm][i].fx[11]/uu[kcm][jcm][i].fx[17])                                                         
-                          +( xx[k][jp][i].fx[11]/uu[kcm][jcp][i].fx[17]-2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
+                          +( xx[k][jp][i].fx[11]/uu[kcp][jcp][i].fx[17]-2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
                             +xx[k][jm][i].fx[11]/uu[kcm][jcm][i].fx[17])/(rfavg_dth[i]*rfavg_dth[i])
                           +( xx[kp][j][i].fx[11]/uu[kp][j][i].fx[17]-2.0*xx[k][j][i].fx[11]/uu[k][j][i].fx[17]
                             +xx[km][j][i].fx[11]/uu[km][j][i].fx[17])/(rfavg_sinth_dph[j][i]*rfavg_sinth_dph[j][i]));

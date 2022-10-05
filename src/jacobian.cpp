@@ -192,7 +192,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     }
                     else if (ir == 10) {
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
-                        vals[nv]=a + 2.0*(me*sum_nues_div_ms+rhos_nusq_msmq)/ne;
+                        vals[nv]=a + 2.0*(me*sum_nues_div_ms+rhos_nusq_msmq/ne);
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=11;
@@ -200,7 +200,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=22;
-                        vals[nv]=-2.0*rhos_nusq_msmq/uu[k][j][i].fx[18];
+                        vals[nv]=-2.0*rhos_nusq_msmq/Nn;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;
@@ -273,7 +273,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=22;
-                        vals[nv]=-2.0*me*sum_nueq_div_mq*uu[k][j][i].fx[17]/uu[k][j][i].fx[18];
+                        vals[nv]=-2.0*me*sum_nueq_div_mq*ne/Nn;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;
@@ -289,15 +289,15 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=19;
-                        vals[nv]= four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhoi;
+                        vals[nv]= four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhon;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=20;
-                        vals[nv]= four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhoi;
+                        vals[nv]= four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhon;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=21;
-                        vals[nv]= four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhoi;
+                        vals[nv]= four3rd*rhoe_sum_nueq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhon;
                         nv++;
                     }
                     else if (ir >= 12 && ir <= 18) {
@@ -354,15 +354,15 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=19;
-                        vals[nv]= four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhoi;
+                        vals[nv]= four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[7]/rhoi-xx[k][j][i].fx[19]/rhon)/rhon;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=20;
-                        vals[nv]= four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhoi;
+                        vals[nv]= four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[8]/rhoi-xx[k][j][i].fx[20]/rhon)/rhon;
                         nv++;
 
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=21;
-                        vals[nv]= four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhoi;
+                        vals[nv]= four3rd*rhos_nusqms_msmq*(xx[k][j][i].fx[9]/rhoi-xx[k][j][i].fx[21]/rhon)/rhon;
                         nv++;
                     }
                     else {
