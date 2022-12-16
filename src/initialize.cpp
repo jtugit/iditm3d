@@ -34,6 +34,8 @@ PetscErrorCode initialize(DM da, Vec X, AppCtx *params)
 
     if(euvflux_seg(da, params)<0) return -1;
 
+    const_normalize();
+    
     /* calculate mesh system in geomagnetic spherical coordinates */
     if(grids(da, params) < 0) return -1;
 

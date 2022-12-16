@@ -89,9 +89,6 @@ int main(int argc,char **argv)
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
     DMCreateGlobalVector(da, &X);
     VecDuplicate(X, &params.U);
-    VecDuplicate(X, &params.V);
-    VecDuplicate(X, &params.W);
-    VecDuplicate(X, &params.Z);
 
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
 
@@ -175,9 +172,6 @@ int main(int argc,char **argv)
     array_deallocate(xm, ym, zm);
 
     VecDestroy(&params.U);
-    VecDestroy(&params.V);
-    VecDestroy(&params.W);
-    VecDestroy(&params.Z);
     VecDestroy(&X);
 
     MatDestroy(&A);

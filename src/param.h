@@ -11,17 +11,19 @@
 #include "petscdmda.h"
 #include "petscts.h"
 #include <string>
+#include <vector>
+using namespace std;
 
 #define kbmp 8.25481286619634103e3
 #define data_dim 4
-#define nvar     26
+#define a4      34
 #define nion     7
 #define nonu     7
 #define denmin   10.0e4
 
 /* variables of interest to be solved at each grid point */
 typedef struct {
-   double fx[nvar];
+   double fx[a4];
 } Field;
 
 /* User defined variables. Used in solving for variables of interest */
@@ -64,16 +66,13 @@ typedef struct {
     double ftime;
 } AppCtx;
 
-const double ni_0 = 1.0e10;
-const double nn_0 = 1.0e18;
-
 const double pi=3.141592653589793238;
 const double pi2=6.283185307179586476;
 const double deg=57.29577951308232;
 const double rad=0.017453292519943295;
 
 //physical constants
-const double e=1.6022e-19, ge=9.80665, Re=6371.2e3;
+const double q=1.6022e-19, ge=9.80665, Re=6371.2e3;
 const double kb=1.3807e-23, eps0=8.85e-12, mu0=1.25663706e-6;
 const double gm=3.984997527e14, cspd=3.0e8;
 const double w0=7.27220517e-5; //Earth's rotation rate
@@ -91,6 +90,9 @@ const double ms[7]={2.656762874216004e-26, 1.673773562960802e-27, 6.646473667973
 /* mass of O+, H+, He+, O2+, N2+, NO+, N+ or O, H, He, O2, N2, NO, N normalized 
  * by proton mass, i.e. mass in atomic mass unit (AMU) */
 const double ams[7]={15.9994, 1.00797, 4.0026, 31.9988, 28.0134, 30.0061, 14.0067};
+//const double e_ms[3]={6.03064735904794e6, 9.57238204411478e7, 2.4106015912173025e7};
+//const double ms_kb[3]={1.9242144377605592e-3, 1.21226447668632e-4, 4.813843462001695e-4};
+//const double kb_ms[3]={519.6925978602576, 8249.025020789712, 2077.341651440076};
 
 //average photoelectron energies (eps, in eV) in the parameterization of 
 //photoelectron heating
@@ -110,12 +112,8 @@ const double thetant[4][5]={{0.0, 90.0, 120.0, 150.0, 180.0},
                             {0.0, 102.0, 120.0, 130.0, 130.0},
                             {0.0, 90.0, 120.0, 150.0, 180.0}};
 
-const double inv_gama=2.0/3.0; //adiabatic constant in neutral temperature eqs 
-
-//extern double r0, n0, B0, v0, t0, E0, g0, p0, j00, e0, T0, q0, lamda0, beta0;
-
 //number of grids along r, theta, phi
-extern int  a1, a2, a3, a4;
+extern int  a1, a2, a3;
 extern int Nr, Nth, Np, Nrm, Nthm, Npm;
 
 //number of ion and major neutral species
@@ -133,13 +131,8 @@ extern double ***cenf_r, ***cenf_t, ***cenf_p;
 
 //r, theta, phi and geometrical parameters in geographic coordinates
 //every process has a copy
-extern double *rr, *rh, *rC, *rfavg, *theta, *thetah, *thetaC, *phi, *phih;
-extern double dr, *rh_d3, *rh_d2, *sinth_h, *cotth, *sinth;
-extern double **rCsinC, **rh_costh, **rh_costh_dth_dph;
-extern double *zh, *rh2, **rfavg_costh, **rfavg_costh_dth_dph, **rfavg_sinth_dph, *rfavg_dth;
-extern double **rsinth_dph, **rfavg_sinth_h_dph;
-extern double dth, dph, rCm1, rfavgm1;
-extern double **dAtheta_dV;
+extern double *rr, *rh, *theta, *thetah, *phi, *phih;
+extern double dr, dth, dph, *zh;
 
 //gravitational acceleration 
 extern double *gr;
@@ -159,17 +152,56 @@ extern double coe[15], coiO2[13], coiN2[13], coiO[13], coiH[13], coiHe[13], coiN
 extern double con[10];
 
 //ion and neutral collision frequencies */
-extern double ****nust, ***Omegae;
+extern double ****nust;
 
 extern double ***fluxn;
 
 extern double **vt, **vp;
 
-extern double **Ftheta_Rface, ***Fphi_Rface;
-
 extern double ****Ps, ****Ls, ***Qee, ***Qeuv;
 
-    const PetscInt dfill[676] = {
+typedef struct{
+    vector<double> J11, J12;     //J11[zk][yj], J12[zk][yj] - use 1-D indexing kj=k*ym+j
+    vector<double> J13;          //J13[yj]
+    vector<double> J21, J22;     //J21[zk][yj][xi], J22[zk][yj][xi] - use 1-D indexing kji=k*ym*xm + j*xm+i
+    vector<double> J23;          //J23[yj][xi] - use 1-D indexing ji = j*xm+i
+    vector<double> J31, J32;     //J31[zk][yj][xi], J32[zk][yj][xi] - use 1-D indexing kji=k*ym*xm + j*xm+i
+} Jmatrix;
+
+typedef struct{
+    vector<double> Jiv11;               //Jiv11[zk][yj] - 1-D indexing kj=k*ym+j
+    vector<double> Jiv12, Jiv13;        //Jiv12[zk][yj][xi], Jiv13[zk][yj][xi] - 1-D indexing kji=k*ym*xm + j*xm+i
+    vector<double> Jiv21;               //Jiv21[zk][yj] - 1-D indexing kj=k*ym+j
+    vector<double> Jiv22, Jiv23;        //Jiv22[zk][yj][xi], Jiv23[zk][yj][xi] - 1-D indexing kji=k*ym*xm + j*xm+i
+    vector<double> Jiv31;               //Jiv31[yj]
+    vector<double> Jiv32;               //J32[yj][xi] - use 1-D indexing ji = j*xm+i
+} Jinvmatrix;
+
+typedef struct{
+    vector<double> K11, K12; //K11[zk][yj], K12[zk][yj] - 1-D indexing kj=k*ym+j
+    vector<double> K13;      //K13[zk]
+    vector<double> K21, K22; //K21[zk][yj], K22[zk][yj] - use 1-D indexing ji = j*a1+i
+    vector<double> K23;      //K23[zk]
+    vector<double> K31, K32; //K31[yj], K32[yj]
+} Kmatrix;
+
+extern Jmatrix Jmat;
+extern Jinvmatrix Jinv;
+extern Kmatrix Kmat;
+extern double **r2sintheta, **cot_div_r, **rsin;
+
+typedef struct {
+    double r, t, p;
+} vector3D;
+
+extern vector3D ***grad_pe;
+
+/* evaluate normalization parameters from 4 basic parameters: r0, n0, B0, & mp */
+extern double n0, B0, r0, v0, t0, E0, g0, p0, j00, e0, T0, q0, lamda0, beta0, gen, e, Omegae;
+//normalized earth's rotational frequency
+extern double w0n;
+
+const PetscInt dfill[676] = {
     //  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 0
         0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 1
@@ -198,7 +230,7 @@ extern double ****Ps, ****Ls, ***Qee, ***Qeuv;
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,  // 24
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,  // 25
     };
-    const PetscInt ofill[676] = {
+const PetscInt ofill[676] = {
     //  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 16 18 29 21 22 23 24 25
         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 0
         0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 1

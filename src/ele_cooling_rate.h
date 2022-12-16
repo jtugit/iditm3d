@@ -12,15 +12,14 @@
  * Jiannan Tu
  * 5/21/2022
 *************************************************************************/
-#include <ctime>
-
-#include "reconstruction.h"
+#include "param.h"
 
 inline double ele_cooling_rate(Field ***xx, double Te, double Tn, double ne, int i, int j, int k)
 {
     int    m;
     double Td, fc, gc, he, Z, Dxi[3], Exi[3], dd;
     double nO, nO2, nN2, nH, Le[10], Cee=0.0;
+    const double n00=n0*1.0e-6;
 
     const double ei[3]={0.02, 0.028, 0.008};
     const double Ei[3]={228.0, 326.0, 98.0};
@@ -31,13 +30,13 @@ inline double ele_cooling_rate(Field ***xx, double Te, double Tn, double ne, int
     //electron and neutral temperature in K
     Td=sqrt(Te);
 
-    double const nn00 = nn_0/1.0e6;
-
     // density in cm^-3
-    nO =reconstructed(xx, i, j, k, 12, rfavg[i], thetaC[j], phi[k])*nn00;
-    nO2=reconstructed(xx, i, j, k, 15, rfavg[i], thetaC[j], phi[k])*nn00;
-    nN2=reconstructed(xx, i, j, k, 16, rfavg[i], thetaC[j], phi[k])*nn00;
-    nH =reconstructed(xx, i, j, k, 13, rfavg[i], thetaC[j], phi[k])*nn00;
+    nO =exp(xx[k][j][i].fx[20])*n00;
+    nO2=exp(xx[k][j][i].fx[23])*n00;
+    nN2=exp(xx[k][j][i].fx[24])*n00;
+    nH =exp(xx[k][j][i].fx[21])*n00;
+
+    ne=ne*n00; Te=Te*T0; Tn=Tn*T0; e=e*e0;
 
     /* rate (divided by ne) of cooling due to impact excitation of
     * N2 rotation in eV s^-1 (not multiplied by ne yet) */
@@ -95,8 +94,8 @@ inline double ele_cooling_rate(Field ***xx, double Te, double Tn, double ne, int
     //cooling due to elastic collisions with H
     Le[9]=9.63e-16*nH*(1.0-1.35e-4*Te)*Td*(Te-Tn);
 
-    //normalized electron cooling rate in J cm^{-3}
-    Cee=(Le[0]+Le[1]+Le[2]+Le[3]+Le[4]+Le[5]+Le[6]+Le[7]+Le[8]+Le[9])*ne*e;
+    //normalized electron cooling rate
+    Cee=(Le[0]+Le[1]+Le[2]+Le[3]+Le[4]+Le[5]+Le[6]+Le[7]+Le[8]+Le[9])*ne*e*t0/p0;
 
     return Cee;
 }

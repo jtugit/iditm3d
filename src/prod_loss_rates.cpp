@@ -28,10 +28,10 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     double kk[29], react[29], photoIon[8];
 
     double R, R2, epsl, ne=0;
-    const double cc[5]={12.75, 6.941, 1.166, 8.034e-2, 1.996e-3}, ni00=ni_0/1.0e6, nn00=nn_0/1.0e6;
+    const double cc[5]={12.75, 6.941, 1.166, 8.034e-2, 1.996e-3}, n00=n0*1.0e-6, t0divp0=t0/p0;
     //const double norm=1.6022e-13*t0/p0;
 
-    CCi=kb/mp;
+    CCi=kb/(mp*g0);
     pih=0.5*pi;
 
     coschi=cos(zenith[zk][yj]);
@@ -43,18 +43,18 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     for (m = 0; m < 8; m++) qi[m]=0.0;
 
     // ionization rates normalized by n0/t0
-    Qeuv[zk][yj][xi]=0.0;
+    uu[k][j][i].fx[32]=0.0;
 
-    Tn=uu[k][j][i].fx[22];
-    ne =uu[k][j][i].fx[17]*ni00;  //electron density in cm^{-3}
+    Tn=uu[k][j][i].fx[30]*T0;
+    ne =uu[k][j][i].fx[6]*n00;  //electron density in cm^{-3}
 
     /* day time photo-ionization */
     if (zenith[zk][yj] < pih) {
-        Nnn[0]=xx[k][j][i].fx[12]*nn00;    // O density  in cm^-3
-        Nnn[1]=xx[k][j][i].fx[15]*nn00;    // O2 density
-        Nnn[2]=xx[k][j][i].fx[16]*nn00;    // N2 density
-        Nnn[3]=xx[k][j][i].fx[18]*nn00;    // N density
-        Nnn[4]=xx[k][j][i].fx[14]*nn00;    // He density
+        Nnn[0]=exp(xx[k][j][i].fx[20])*n00;    // O density  in m^-3
+        Nnn[1]=exp(xx[k][j][i].fx[23])*n00;    // O2 density
+        Nnn[2]=exp(xx[k][j][i].fx[24])*n00;    // N2 density
+        Nnn[3]=exp(xx[k][j][i].fx[26])*n00;    // N density
+        Nnn[4]=exp(xx[k][j][i].fx[22])*n00;    // He density
 
 /* optical depth due to absorption by O, O2, N2, N, He */
         for (m = 0; m < 5; m++) {
@@ -62,7 +62,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
             Hn[m]=Tn/(ams[m]*gr[xi])*CCi;
 
             /* calculate Chapman integration along path from Sun to the observation point */
-            Xp=rr[i]/Hn[m];
+            Xp=rr[i]*r0/Hn[m];
             y=sqrt(0.5*Xp)*tcos;
             if (y > 13.0) y=13.0;
 
@@ -98,12 +98,12 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
             qi[6] += segion[s][6]*euvf; /* He + hv --> He+ + e */
 
             /* EUV heating of neutrals due to O, O2, N2 
-             * absorption of EUV flux in J m^-3 s^-1 / nn_0, assuming heating efficiency of 0.45 */
-            Qeuv[zk][yj][xi] += 0.45*(segabs[s][0]*Nnn[0]+segabs[s][1]*Nnn[1]+segabs[s][3]*Nnn[2])*euvf*pene[s]/nn00;
+             * absorption of EUV flux normalized by t0/p0, assuming heating efficiency of 0.45 */
+            uu[k][j][i].fx[32] += 0.45e6*(segabs[s][0]*Nnn[0]+segabs[s][1]*Nnn[1]+segabs[s][3]*Nnn[2])*euvf*pene[s]*t0divp0;
         }
     }
     else  {
-        /* night time photo-ionization rates for O+, O2+, N2+, and NO+ */
+        /* night time photo-ionization rates for O+, O2+, N2+, and NO+ in s^-1 */
         isza = (int)(zenith[zk][yj]*deg) - 90;
         isza = (int)(max((double)isza, 1.));
         for (s = 0; s < 4; s++) {
@@ -127,7 +127,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     kk[19]=3.7e-11;        // N+  + O2 --> O+ + NO
     kk[20]=2.0e-11;        // N+  + NO --> NO+ + N
 
-    Ti=uu[k][j][i].fx[10];
+    Ti=uu[k][j][i].fx[16]*T0;
 
     // O+ + N2 --> NO+ + N (note kk[0] not used)
     T1=(0.6363*Ti+0.3637*Tn);
@@ -170,10 +170,10 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     kk[9]=5.0e-11/T300;
 
     // H+ + O --> O+ + H
-    kk[11]=2.2e-11*sqrt(Ti);
+    kk[11]=2.2e-11*sqrt(xx[k][j][i].fx[17]);
 
     // O+ + e --> O + hv
-    Te=uu[k][j][i].fx[11];
+    Te=uu[k][j][i].fx[19]*T0;
     double Te300 = pow(Te/300.0, 0.7);
     kk[21]=4.0e-12*Te300;
 
@@ -202,21 +202,21 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     kk[28]=4.43e-12*pow(Te, 0.7);
 
     //ion and neutral densities in cm^{-3}
-    niO =xx[k][j][i].fx[0]*ni00;
-    niH =xx[k][j][i].fx[1]*ni00;
-    niHe=xx[k][j][i].fx[2]*ni00;
-    niO2=xx[k][j][i].fx[3]*ni00;
-    niN2=xx[k][j][i].fx[4]*ni00;
-    niNO=xx[k][j][i].fx[5]*ni00;
-    niN =xx[k][j][i].fx[6]*ni00;
+    niO =exp(xx[k][j][i].fx[0])*n00;
+    niH =exp(xx[k][j][i].fx[1])*n00;
+    niHe=exp(xx[k][j][i].fx[2])*n00;
+    niO2=exp(xx[k][j][i].fx[3])*n00;
+    niN2=exp(xx[k][j][i].fx[4])*n00;
+    niNO=exp(xx[k][j][i].fx[5])*n00;
+    niN =exp(xx[k][j][i].fx[6])*n00;
 
-    nO =xx[k][j][i].fx[12]*nn00;
-    nH =xx[k][j][i].fx[13]*nn00;
-    nHe=xx[k][j][i].fx[14]*nn00;
-    nO2=xx[k][j][i].fx[15]*nn00;
-    nN2=xx[k][j][i].fx[16]*nn00;
-    nNO=xx[k][j][i].fx[17]*nn00;
-    nN =xx[k][j][i].fx[18]*nn00;
+    nO =exp(xx[k][j][i].fx[20])*n00;
+    nH =exp(xx[k][j][i].fx[21])*n00;
+    nHe=exp(xx[k][j][i].fx[22])*n00;
+    nO2=exp(xx[k][j][i].fx[23])*n00;
+    nN2=exp(xx[k][j][i].fx[24])*n00;
+    nNO=exp(xx[k][j][i].fx[25])*n00;
+    nN =exp(xx[k][j][i].fx[26])*n00;
 
     /* O+ reactions */
     react[1] =kk[1] *niO*nN2;
@@ -282,117 +282,119 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     photoIon[6]=qi[6]*nHe;
     photoIon[7]=qi[7]*nNO;
 
-    /* production rates & loss coefficients */
+    const double t0divn0=t0/n0;
+
+    /* production rates cm^{-3} s^{-1} & loss coefficients s^{-1} */
     //O+
-    Ps[zk][yj][xi][0]=photoIon[0] + photoIon[1]+ react[7] +react[11] + react[14] + react[19];
-    Ls[zk][yj][xi][0]=kk[1]*nN2 + kk[2]*nO2 + kk[3]*nNO + kk[4]*nH + kk[21]*ne;
+    Ps[zk][yj][xi][0]=(photoIon[0] + photoIon[1]+ react[7] +react[11] + react[14] + react[19])*t0divn0;
+    Ls[zk][yj][xi][0]=kk[1]*nN2 + kk[2]*nO2 + kk[3]*nNO + kk[4]*nH + kk[21]*ne*t0;
     if (Ps[zk][yj][xi][0] > 1.20*Ls[zk][yj][xi][0]*niO || Ls[zk][yj][xi][0]*niO > Ps[zk][yj][xi][0]*1.20) {
         if (Ps[zk][yj][xi][0] > 1.20*Ls[zk][yj][xi][0]*niO) Ps[zk][yj][xi][0]=1.20*Ls[zk][yj][xi][0]*niO; 
         if (Ls[zk][yj][xi][0]*niO > Ps[zk][yj][xi][0]*1.20) Ls[zk][yj][xi][0]=1.20*Ps[zk][yj][xi][0]/niO;
     }
 
     //H+
-    Ps[zk][yj][xi][1]=react[4];
-    Ls[zk][yj][xi][1]=kk[11]*nO + kk[12]*nNO + kk[24]*ne;
+    Ps[zk][yj][xi][1]=react[4]*t0divn0;
+    Ls[zk][yj][xi][1]=(kk[11]*nO + kk[12]*nNO + kk[24]*ne)*t0;
     if (Ps[zk][yj][xi][1] > 1.20*Ls[zk][yj][xi][1]*niH || Ls[zk][yj][xi][1]*niH > Ps[zk][yj][xi][1]*1.20) {
         if (Ps[zk][yj][xi][1] > 1.20*Ls[zk][yj][xi][1]*niH) Ps[zk][yj][xi][1]=1.20*Ls[zk][yj][xi][1]*niH; 
         if (Ls[zk][yj][xi][1]*niH > Ps[zk][yj][xi][1]*1.20) Ls[zk][yj][xi][1]=1.20*Ps[zk][yj][xi][1]/niH;
     }
 
     //He+
-    Ps[zk][yj][xi][2]=photoIon[6];
-    Ls[zk][yj][xi][2]=kk[13]*nN2 + kk[14]*nO2 + kk[15]*nNO + kk[25]*ne;
+    Ps[zk][yj][xi][2]=photoIon[6]*t0divn0;
+    Ls[zk][yj][xi][2]=(kk[13]*nN2 + kk[14]*nO2 + kk[15]*nNO + kk[25]*ne)*t0;
     if (Ps[zk][yj][xi][2] > 1.20*Ls[zk][yj][xi][2]*niHe || Ls[zk][yj][xi][2]*niHe > Ps[zk][yj][xi][2]*1.20) {
         if (Ps[zk][yj][xi][2] > 1.20*Ls[zk][yj][xi][2]*niHe) Ps[zk][yj][xi][2]=1.20*Ls[zk][yj][xi][2]*niHe; 
         if (Ls[zk][yj][xi][2]*niHe > Ps[zk][yj][xi][2]*1.20) Ls[zk][yj][xi][2]=1.20*Ps[zk][yj][xi][2]/niHe;
     }
 
     //O2+
-    Ps[zk][yj][xi][3]=photoIon[2] + react[2] + react[9] + react[18];
-    Ls[zk][yj][xi][3]=kk[5]*nNO + kk[6]*nN + kk[22]*ne;
+    Ps[zk][yj][xi][3]=(photoIon[2] + react[2] + react[9] + react[18])*t0divn0;
+    Ls[zk][yj][xi][3]=(kk[5]*nNO + kk[6]*nN + kk[22]*ne)*t0;
     if (Ps[zk][yj][xi][3] > 1.20*Ls[zk][yj][xi][3]*niO2 || Ls[zk][yj][xi][3]*niO2 > Ps[zk][yj][xi][3]*1.20) {
         if (Ps[zk][yj][xi][3] > 1.20*Ls[zk][yj][xi][3]*niO2) Ps[zk][yj][xi][3]=1.20*Ls[zk][yj][xi][3]*niO2; 
         if (Ls[zk][yj][xi][3]*niO2 > Ps[zk][yj][xi][3]*1.20) Ls[zk][yj][xi][3]=1.20*Ps[zk][yj][xi][3]/niO2;
     }
 
     //N2+
-    Ps[zk][yj][xi][4]=photoIon[3] + react[13];
-    Ls[zk][yj][xi][4]=(kk[7] + kk[8])*nO + kk[9]*nO2 + kk[10]*nNO + kk[23]*ne;
+    Ps[zk][yj][xi][4]=(photoIon[3] + react[13])*t0divn0;
+    Ls[zk][yj][xi][4]=((kk[7] + kk[8])*nO + kk[9]*nO2 + kk[10]*nNO + kk[23]*ne)*t0;
     if (Ps[zk][yj][xi][4] > 1.20*Ls[zk][yj][xi][4]*niN2 || Ls[zk][yj][xi][4]*niN2 > Ps[zk][yj][xi][4]*1.20) {
         if (Ps[zk][yj][xi][4] > 1.20*Ls[zk][yj][xi][4]*niN2) Ps[zk][yj][xi][4]=1.20*Ls[zk][yj][xi][4]*niN2; 
         if (Ls[zk][yj][xi][4]*niN2 > Ps[zk][yj][xi][4]*1.20) Ls[zk][yj][xi][4]=1.20*Ps[zk][yj][xi][4]/niN2;
     }
 
     //NO+
-    Ps[zk][yj][xi][5]=  react[1] + react[3] + react[5] + react[6] + react[8] + react[10] 
-          + react[12] +react[16] + react[20];
-    Ls[zk][yj][xi][5]=(kk[26] + kk[26])*ne;
+    Ps[zk][yj][xi][5]=( react[1] + react[3] + react[5] + react[6] + react[8] + react[10] 
+                       +react[12] +react[16] + react[20])*t0divn0;
+    Ls[zk][yj][xi][5]=(kk[26] + kk[26])*ne*t0;
     if (Ps[zk][yj][xi][5] > 1.20*Ls[zk][yj][xi][5]*niNO || Ls[zk][yj][xi][5]*niNO > Ps[zk][yj][xi][5]*1.20) {
         if (Ps[zk][yj][xi][5] > 1.20*Ls[zk][yj][xi][5]*niNO) Ps[zk][yj][xi][5]=1.20*Ls[zk][yj][xi][5]*niNO; 
         if (Ls[zk][yj][xi][5]*niNO > Ps[zk][yj][xi][5]*1.20) Ls[zk][yj][xi][5]=1.20*Ps[zk][yj][xi][5]/niNO;
     }
 
-    Ps[zk][yj][xi][6]= react[15];
-    Ls[zk][yj][xi][6]= kk[16]*nNO +(kk[17]+kk[18]+kk[19])*nO2 + kk[20]*nNO + kk[28]*ne;
+    Ps[zk][yj][xi][6]= react[15]*t0divn0;
+    Ls[zk][yj][xi][6]= (kk[16]*nNO +(kk[17]+kk[18]+kk[19])*nO2 + kk[20]*nNO + kk[28]*ne)*t0;
     if (Ps[zk][yj][xi][6] > 1.20*Ls[zk][yj][xi][6]*niN || Ls[zk][yj][xi][6]*niN > Ps[zk][yj][xi][6]*1.20) {
         if (Ps[zk][yj][xi][6] > 1.20*Ls[zk][yj][xi][6]*niN) Ps[zk][yj][xi][6]=1.20*Ls[zk][yj][xi][6]*niN; 
         if (Ls[zk][yj][xi][6]*niN > Ps[zk][yj][xi][6]*1.20) Ls[zk][yj][xi][6]=1.20*Ps[zk][yj][xi][6]/niN;
     }
 
     //O
-    Ps[zk][yj][xi][7]= photoIon[1] + react[2] + react[3] + react[4]+react[6] + react[14]
-          + react[15] + react[17] + react[21] + react[22] + react[26];
-    Ls[zk][yj][xi][7]=qi[0] + (kk[7] + kk[8])*niN2 + kk[11]*niH;
+    Ps[zk][yj][xi][7]=( photoIon[1] + react[2] + react[3] + react[4]+react[6] + react[14]
+                       +react[15] + react[17] + react[21] + react[22] + react[26])*t0divn0;
+    Ls[zk][yj][xi][7]=(qi[0] + (kk[7] + kk[8])*niN2 + kk[11]*niH)*t0;
     if (Ps[zk][yj][xi][7] > 1.20*Ls[zk][yj][xi][7]*nO || Ls[zk][yj][xi][7]*nO > Ps[zk][yj][xi][7]*1.20) {
         if (Ps[zk][yj][xi][7] > 1.20*Ls[zk][yj][xi][7]*nO) Ps[zk][yj][xi][7]=1.20*Ls[zk][yj][xi][7]*nO; 
         if (Ls[zk][yj][xi][7]*nO > Ps[zk][yj][xi][7]*1.20) Ls[zk][yj][xi][7]=1.20*Ps[zk][yj][xi][7]/nO;
     }
 
     //H
-    Ps[zk][yj][xi][8]=react[11] + react[12] + react[24];
-    Ls[zk][yj][xi][8]=kk[4]*niO;
+    Ps[zk][yj][xi][8]=(react[11] + react[12] + react[24])*t0divn0;
+    Ls[zk][yj][xi][8]=kk[4]*niO*t0;
     if (Ps[zk][yj][xi][8] > 1.20*Ls[zk][yj][xi][8]*nH || Ls[zk][yj][xi][8]*nH > Ps[zk][yj][xi][8]*1.20) {
         if (Ps[zk][yj][xi][8] > 1.20*Ls[zk][yj][xi][8]*nH) Ps[zk][yj][xi][8]=1.20*Ls[zk][yj][xi][8]*nH; 
         if (Ls[zk][yj][xi][8]*nH > Ps[zk][yj][xi][8]*1.20) Ls[zk][yj][xi][8]=1.20*Ps[zk][yj][xi][8]/nH;
     }
 
     //He
-    Ps[zk][yj][xi][9]=react[13] + react[14] + react[15] + react[25];
-    Ls[zk][yj][xi][9]=qi[6];
+    Ps[zk][yj][xi][9]=(react[13] + react[14] + react[15] + react[25])*t0divn0;
+    Ls[zk][yj][xi][9]=qi[6]*t0;
     if (Ps[zk][yj][xi][9] > 1.20*Ls[zk][yj][xi][9]*nHe || Ls[zk][yj][xi][9]*nHe > Ps[zk][yj][xi][9]*1.20) {
         if (Ps[zk][yj][xi][9] > 1.20*Ls[zk][yj][xi][9]*nHe) Ps[zk][yj][xi][9]=1.20*Ls[zk][yj][xi][9]*nHe; 
         if (Ls[zk][yj][xi][9]*nHe > Ps[zk][yj][xi][9]*1.20) Ls[zk][yj][xi][9]=1.20*Ps[zk][yj][xi][9]/nHe;
     }
 
     //O2
-    Ps[zk][yj][xi][10]=react[5];
-    Ls[zk][yj][xi][10]= (qi[1] + qi[2]) + kk[2]*niO + kk[9]*niN2 +kk[14]*niHe +(kk[17]+kk[18]+kk[19])*niN;
+    Ps[zk][yj][xi][10]=react[5]*t0divn0;
+    Ls[zk][yj][xi][10]= ((qi[1] + qi[2]) + kk[2]*niO + kk[9]*niN2 +kk[14]*niHe +(kk[17]+kk[18]+kk[19])*niN)*t0;
     if (Ps[zk][yj][xi][10] > 1.20*Ls[zk][yj][xi][10]*nO2 || Ls[zk][yj][xi][10]*nO2 > Ps[zk][yj][xi][10]*1.20) {
         if (Ps[zk][yj][xi][10] > 1.20*Ls[zk][yj][xi][10]*nO2) Ps[zk][yj][xi][10]=1.20*Ls[zk][yj][xi][10]*nO2; 
         if (Ls[zk][yj][xi][10]*nO2 > Ps[zk][yj][xi][10]*1.20) Ls[zk][yj][xi][10]=1.20*Ps[zk][yj][xi][10]/nO2;
     }
 
     //N2
-    Ps[zk][yj][xi][11]=react[7] + react[9] + react[10];
-    Ls[zk][yj][xi][11]=(qi[3]+qi[4]) + kk[1]*niO + kk[13]*niHe;
+    Ps[zk][yj][xi][11]=(react[7] + react[9] + react[10])*t0divn0;
+    Ls[zk][yj][xi][11]=((qi[3]+qi[4]) + kk[1]*niO + kk[13]*niHe)*t0;
     if (Ps[zk][yj][xi][11] > 1.20*Ls[zk][yj][xi][11]*nN2 || Ls[zk][yj][xi][11]*nN2 > Ps[zk][yj][xi][11]*1.20) {
         if (Ps[zk][yj][xi][11] > 1.20*Ls[zk][yj][xi][11]*nN2) Ps[zk][yj][xi][11]=1.20*Ls[zk][yj][xi][11]*nN2; 
         if (Ls[zk][yj][xi][11]*nN2 > Ps[zk][yj][xi][11]*1.20) Ls[zk][yj][xi][11]=1.20*Ps[zk][yj][xi][11]/nN2;
     }
 
     //NO
-    Ps[zk][yj][xi][12]=react[19] + react[27];
-    Ls[zk][yj][xi][12]= qi[6] + kk[3]*niO + kk[5]*niO2 + kk[10]*niN2 + kk[12]*niH + kk[15]*niHe
-           +(kk[16]+kk[20])*niN;
+    Ps[zk][yj][xi][12]=(react[19] + react[27])*t0divn0;
+    Ls[zk][yj][xi][12]=( qi[6] + kk[3]*niO + kk[5]*niO2 + kk[10]*niN2 + kk[12]*niH + kk[15]*niHe
+                        +(kk[16]+kk[20])*niN)*t0;
     if (Ps[zk][yj][xi][12] > 1.20*Ls[zk][yj][xi][12]*nNO || Ls[zk][yj][xi][12]*nNO > Ps[zk][yj][xi][12]*1.20) {
         if (Ps[zk][yj][xi][12] > 1.20*Ls[zk][yj][xi][12]*nNO) Ps[zk][yj][xi][12]=1.20*Ls[zk][yj][xi][12]*nNO; 
         if (Ls[zk][yj][xi][12]*nNO > Ps[zk][yj][xi][12]*1.20) Ls[zk][yj][xi][12]=1.20*Ps[zk][yj][xi][12]/nNO;
     }
 
     //N
-    Ps[zk][yj][xi][13]= photoIon[4] + react[8] + 2.0*react[23] + react[26] + react[16] + react[20]
-           +react[18] + react[28];
-    Ls[zk][yj][xi][13]=qi[5] + kk[6]*niO2;
+    Ps[zk][yj][xi][13]=( photoIon[4] + react[8] + 2.0*react[23] + react[26] + react[16] + react[20]
+                        +react[18] + react[28])*t0divn0;
+    Ls[zk][yj][xi][13]=(qi[5] + kk[6]*niO2)*t0;
     if (Ps[zk][yj][xi][13] > 1.20*Ls[zk][yj][xi][13]*nN || Ls[zk][yj][xi][13]*nN > Ps[zk][yj][xi][13]*1.20) {
         if (Ps[zk][yj][xi][13] > 1.20*Ls[zk][yj][xi][13]*nN) Ps[zk][yj][xi][13]=1.20*Ls[zk][yj][xi][13]*nN; 
         if (Ls[zk][yj][xi][13]*nN > Ps[zk][yj][xi][13]*1.20) Ls[zk][yj][xi][13]=1.20*Ps[zk][yj][xi][13]/nN;
@@ -401,15 +403,15 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
 /*-----------------------------------------------------------------------------*/
 /*--------------- electron heating rate ---------------------------------------*/
 /*-----------------------------------------------------------------------------*/
-    /* local photoelectron heating Swartz & Nisbet, JGR, 1972 in J m^-3 s^-1 /ni_0 */
-    //if (zh[xi] < 300.0) {                   
+    /* local photoelectron heating Swartz & Nisbet, JGR, 1972 in J m^-3 s^-1 normalzed by t0/p0 */
+    if (zh[xi] < 300.0) {                   
         R=log(ne/(0.1*nO + nO2 + nN2));
         R2=R*R;
-        epsl=exp(-(cc[0]+cc[1]*R+cc[2]*R2+cc[3]*R2*R+cc[4]*R2*R2));
+        epsl=exp(-(cc[0]+cc[1]*R+cc[2]*R2+cc[3]*R2*R+cc[4]*R2*R2)); //man energy per photon (eV)
 
-        Qee[zk][yj][xi]=e*epsl*( photoIon[0]+photoIon[1]+photoIon[2]+photoIon[3]
-                    +photoIon[4]+photoIon[5]+photoIon[6]+photoIon[7])/ni00;
-    //}
+        uu[k][j][i].fx[31]=e*epsl*( photoIon[0]+photoIon[1]+photoIon[2]+photoIon[3]
+                                   +photoIon[4]+photoIon[5]+photoIon[6]+photoIon[7])*t0divp0;
+    }
     //else {
     /* P. Richards et al., JGR, [1984] */
     //    Qee=0.35*pesimp(zh[xi],zenith[zk][yj],user->f107,Te,Tn,ne,nO,nO2,nN2)*norm;

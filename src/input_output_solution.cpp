@@ -23,8 +23,10 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
 {
     int i, j, k, m, ierr;
     PetscInt xs, xm, ys, ym, zs, zm, vsize, s;
-    int zk, yj, xi;
+    int zk, yj, xi, kj, kji, ji;
     double   *xdata;                 /* pointer to data buffer for writing */
+    double   Bx, By, Bz, Bsph[3];
+    string  spec[4]={"O+", "H+", "He+", "electron"};
 
     hsize_t  dimsf[data_dim];     /* dataset dimensions */
     hsize_t  offset[data_dim];    /* start location in each dimension */
@@ -42,93 +44,60 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
     char *fname = &strfname[0];
     hdf5parallelread(MPI_COMM_WORLD, offset, count, block, fname, params->dset_name, xdata);
 
-    double rhoi, ne, rhon, Nn, ni00=ni_0/1.0e6, nn00=nn_0/1.0e6;
-
     for (k=zs; k<zs+zm; k++) {
         zk=k-zs;
 
         for (j=ys; j<ys+ym; j++) {
-            yj=j-ys;
+            yj=j-ys; kj = zk*ym+yj;
 
             for (i=xs; i<xs+xm; i++) {
-                xi=i-xs;
-                s=a4*(zk*ym*xm+yj*xm+xi);
+                xi=i-xs; kji=zk*ym*xm+yj*xm+xi; ji=yj*xm+xi;
+                s=a4*kji;
 
                 //ion density (O+, H+, He+, O2+, N2+, NO+, N+), ion mass density, and electron density
-                rhoi = 0.0; ne = 0.0;
-                for (m = 0; m < sl; m++) {
-                    xx[k][j][i].fx[m] = xdata[s+m]/ni00; //density in m^{-3}/ni_0 
-                    rhoi += ms[m]*xx[k][j][i].fx[m];     //ion mass density in kg m^{-3}/ni_0
-                    ne += xx[k][j][i].fx[m];             //electron density in m^{-3}/ni_0
-                }
+                for (m = 0; m < sl; m++) xx[k][j][i].fx[m] = log(xdata[s+m]*1.0e6/n0); //density in m^{-3} converted to log scale 
 
-                //momentum density (rhoi*uir), (rhoi*uitheta), (rhoi*uiphi) in kg/m^{3} (m/s) / ni_0 
-                xx[k][j][i].fx[7] = rhoi*xdata[s+7];
-                xx[k][j][i].fx[8] = rhoi*xdata[s+8];
-                xx[k][j][i].fx[9] = rhoi*xdata[s+9];
+                //ion velocity in m/s, ion and electron temperatuer in K 
+                for (m = sl; m < 16; m++) xx[k][j][i].fx[m] = xdata[s+m]/v0;
+                for (m = 16; m < 20; m++) xx[k][j][i].fx[m] = xdata[s+m]/T0;
 
-                //pi=ni*kb*Ti and pe=ne*kb*Te (ni=ne) in J m^{-3} / ni_0
-                xx[k][j][i].fx[10] = ne*kb*xdata[s+10];
-                xx[k][j][i].fx[11] = ne*kb*xdata[s+11];
+                /* O, H, He, O2, N2, NO, N m^{-3} in log scale */
+                for (m = 20; m < 27; m++) xx[k][j][i].fx[m]=log(xdata[s+m]*1.0e6/n0); //density m^{-3} in log scale
 
-                /* O, H, He, O2, N2, NO, N normalized density in cm^{-3} */
-                rhon = 0.0; Nn = 0.0;
-                for (m = 0; m < sm; m++) {
-                    xx[k][j][i].fx[12+m]=xdata[s+12+m]/nn00; //density in m^{-3}/nn_0
-                    rhon += ms[m]*xx[k][j][i].fx[12+m];  //neutral mass density in kg m^{-3} / nn_0
-                    Nn += xx[k][j][i].fx[12+m];          //neutral number density in m^{-3}/nn_0
-                }
-
-                //neutral momentum (rhon*unr), (rhon*untheta), (rhon*unphi) in kg/m^{3} (m/s) / nn_0
-                xx[k][j][i].fx[19] = rhon*xdata[s+19];
-                xx[k][j][i].fx[20] = rhon*xdata[s+20];
-                xx[k][j][i].fx[21] = rhon*xdata[s+21];
-
-                //pn=Nn*kb*Tn in J/m^{3} / nn_0
-                xx[k][j][i].fx[22] = Nn*kb*xdata[s+22];
+                //neutral velocity unr, untheta, unphi (m/s) and temperature in K
+                for (m = 27; m < 30; m++) xx[k][j][i].fx[m] = xdata[s+m]/v0;
+                xx[k][j][i].fx[30] = xdata[s+30]/T0;
             
-                /* delta_B at face center in Tesla */
-                xx[k][j][i].fx[23]=xdata[s+23];
-                xx[k][j][i].fx[24]=xdata[s+24];
-                xx[k][j][i].fx[25]=xdata[s+25];
+                /* normalized delta_B in spherical coordinates */
+                for (m = 31; m < 34; m++) Bsph[m-31]=xdata[s+m]*1.0e-9/B0;
+
+                //converte to Cartesian coordinates
+                Bx=Kmat.K11[kj]*Bsph[0]+Kmat.K12[kj]*Bsph[1]+Kmat.K13[zk]*Bsph[2];
+                By=Kmat.K21[kj]*Bsph[0]+Kmat.K22[kj]*Bsph[1]+Kmat.K23[zk]*Bsph[2];
+                Bz=Kmat.K31[yj]*Bsph[0]+Kmat.K32[yj]*Bsph[1];
+
+                /* normalized delta_B in special spherical coordinates */
+                xx[k][j][i].fx[31]=r2sintheta[yj][xi]*(Jmat.J11[kj]*Bx+Jmat.J12[kj]*By+Jmat.J13[yj]*Bz);
+                xx[k][j][i].fx[32]=r2sintheta[yj][xi]*(Jmat.J21[kji]*Bx+Jmat.J22[kji]*By+Jmat.J23[ji]*Bz);
+                xx[k][j][i].fx[33]=r2sintheta[yj][xi]*(Jmat.J31[kji]*Bx+Jmat.J32[kji]*By);
 
 /*----- check if any variables ar not a number (Nan) or infinity (inf) or ------
  *----- negative density or temperature -----------*/
-                for (m=0; m<nvar; m++) {
+                for (m=0; m<a4; m++) {
                     if (isnan(xx[k][j][i].fx[m]) || isinf(xx[k][j][i].fx[m])) {
-                        cout<<"variable is Nan or inf at ("<<i<<", "<<j<<", "<<k
-                            <<", "<<m<<") from input file"<<endl;
+                        cout<<"variable is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<m<<") from input file"<<endl;
                         MPI_Abort(MPI_COMM_WORLD,ierr);
                     }
                 }
-                for (m = 0; m < sl; m++) {
-                    if (xx[k][j][i].fx[m] <= 0.0) {
-                        cout<<"Negative or zero ion density of species "<< m
-                            <<" = "<<xx[k][j][i].fx[m] <<" at (" << i << ", " << j << ", "
-                            << k << ") from input file" <<endl;
+                for (s = 16; s < 20; s++) {
+                    if (xx[k][j][i].fx[s] <= 0.0) {
+                        cout<<"Negative or zero temperature of "<<spec[s]<<" = "<<xx[k][j][i].fx[s]
+                            <<" at ("<<i<<", "<<j<<", "<<k<<")" <<" from input file"<<endl;
                         MPI_Abort(MPI_COMM_WORLD,ierr);
                     }
                 }
-                if (xx[k][j][i].fx[10] <= 0.0) {
-                    cout<<"Negative or zero ion pressure = "<<xx[k][j][i].fx[10]
-                        <<" at ("<<i<<", "<<j<<", "<<k<<")" <<" from input file"<<endl;
-                    MPI_Abort(MPI_COMM_WORLD,ierr);
-                }
-                if (xx[k][j][i].fx[11] <= 0.0) {
-                    cout<<"Negative or zero electron pressure = "<<xx[k][j][i].fx[11]
-                        <<" at (i, j, k) = ("<<i<<", "<<j<<", "<<k<<")" <<" from input file"<<endl;
-                    MPI_Abort(MPI_COMM_WORLD,ierr);
-                }
-                for (m=0; m<sm; m++) {
-                    if (xx[k][j][i].fx[m+12] <= 0.0) {
-                        cout<<"Negative or zero neutral density of species "<< m
-                            <<" = "<<xx[k][j][i].fx[m+12] <<" at (" << i << ", " << j << ", "
-                            << k << ") from input file" <<endl;
-                        MPI_Abort(MPI_COMM_WORLD,ierr);
-                    }
-                }
-                if (xx[k][j][i].fx[22] <= 0.0) {
-                    cout<<"Negative or zero neutral pressure = "<<xx[k][j][i].fx[22] << " at ("<<i<< ", "
+                if (xx[k][j][i].fx[30] <= 0.0) {
+                    cout<<"Negative or zero neutral temperature = "<<xx[k][j][i].fx[30] << " at ("<<i<< ", "
                         << j << ", " << k << ") from input file" << endl;
                     MPI_Abort(MPI_COMM_WORLD,ierr);
                 }
@@ -151,8 +120,10 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
 int output_solution(DM da, Field ***xx, AppCtx *params)
 {
     PetscInt xs, xm, ys, ym, zs, zm, vsize, s;
-    int i, j, k, m, zk, yj, xi, ierr;
+    int i, j, k, m, zk, yj, xi, ierr, kj, kji, ji;
+    double   Bx, By, Bz, Bsph[3];
     double   *xdata;                 /* pointer to data buffer for writing */
+    const double B00=B0*1.0e9, n00=n0*1.0e-6;
 
     hsize_t  dimsf[data_dim];     /* dataset dimensions */
     hsize_t  offset[data_dim];    /* start location in each dimension */
@@ -165,50 +136,40 @@ int output_solution(DM da, Field ***xx, AppCtx *params)
     vsize=a4*xm*ym*zm;
     xdata=new double[vsize];
 
-    double rhoi, ne, rhon, Nn, ni00=ni_0/1.0e6, nn00=nn_0/1.0e6;;
-
     /* all quantities in SI unit */
     for (k=zs; k<zs+zm; k++) {
         zk=k-zs;
 
         for (j=ys; j<ys+ym; j++) {
-            yj=j-ys;
+            yj=j-ys; kj = zk*ym+yj;
 
             for (i=xs; i<xs+xm; i++) {
-                xi=i-xs;
-                s=a4*(zk*ym*xm+yj*xm+xi);
+                xi=i-xs; kji=zk*ym*xm+yj*xm+xi; ji=yj*xm+xi;
+                s=a4*kji;
 
-                /* ion number density (cm^{-3}), velocity (m/s), and temperature (K) */
-                rhoi = 0.0; ne = 0.0;
-                for (m = 0; m < sl; m++) {
-                    xdata[s+m]=xx[k][j][i].fx[m]*ni00;  //ion density in cm^{-3}
-                    rhoi += xx[k][j][i].fx[m]*ms[m];          //ion mass density in kg m^{-3}/ni_0
-                    ne += xx[k][j][i].fx[m];                  //electron mass density in m^{-3}/ni_0
-                }
-                xdata[s+7]=xx[k][j][i].fx[7]/rhoi;  //uir     //velocity in m/s
-                xdata[s+8]=xx[k][j][i].fx[8]/rhoi;  //uitheta
-                xdata[s+9]=xx[k][j][i].fx[9]/rhoi;  //uiphi
+                //output ion density in cm^{-3}
+                for (m = 0; m < sl; m++) xdata[s+m]=exp(xx[k][j][i].fx[m])*n00;
 
-                xdata[s+10] = xx[k][j][i].fx[10]/(ne*kb);     //temperature in K
-                xdata[s+11] = xx[k][j][i].fx[11]/(ne*kb);
+                //ion velocity components (m/s) and ion and ele temperatures (K)
+                for (m = 7; m < 16; m++) xdata[s+m]=xx[k][j][i].fx[m]*v0;
+                for (m = 16; m < 20; m++) xdata[s+m]=xx[k][j][i].fx[m]*T0;
 
-                /* neutral number density (cm^{-3}), velocity (m/s), and temperature (K)*/
-                rhon = 0.0; Nn = 0.0;
-                for (m = 0; m < sm; m++) {
-                    xdata[s+12+m]=xx[k][j][i].fx[12+m]*nn00;
-                    rhon += xx[k][j][i].fx[12+m]*ms[m];
-                    Nn += xx[k][j][i].fx[12+m];
-                }
-                xdata[s+19]=xx[k][j][i].fx[19]/rhon;  //unr
-                xdata[s+20]=xx[k][j][i].fx[20]/rhon;  //untheta
-                xdata[s+21]=xx[k][j][i].fx[21]/rhon;  //unphi
+                /* neutral number density (m^{-3}), velocity (m/s), and temperature (K)*/
+                for (m = 20; m < 27; m++) xdata[s+m]=exp(xx[k][j][i].fx[m])*n00;
+                for (m = 27; m < 30; m++) xdata[s+m]=xx[k][j][i].fx[m]*v0;
+                xdata[s+30]=xx[k][j][i].fx[30]*T0;
 
-                xdata[s+22] = xx[k][j][i].fx[22]/(Nn*kb);  //Tn
+                //convert perturbation magentic field to Cartesian coordinates
+                Bx=( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]+Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
+                    +Jinv.Jiv13[yj]*xx[k][j][i].fx[33])/r2sintheta[yj][xi];
+                By=( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]+Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
+                    +Jinv.Jiv13[yj]*xx[k][j][i].fx[33])/r2sintheta[yj][xi];
+                Bz=( Jinv.Jiv31[yj]*xx[k][j][i].fx[31]+Jinv.Jiv32[ji]*xx[k][j][i].fx[32])/r2sintheta[yj][xi];
 
-                /* perturbation magnetic field (Tesla) at face interfaces*/
-                xdata[s+23]=xx[k][j][i].fx[23];
-                xdata[s+24]=xx[k][j][i].fx[24];
-                xdata[s+25]=xx[k][j][i].fx[25];
+                /* perturbation magnetic field (nT) in spherical coordinates */
+                xdata[s+31]=(Kmat.K11[kj]*Bx+Kmat.K21[kj]*By+Kmat.K31[yj]*Bz)*B00;
+                xdata[s+32]=(Kmat.K12[kj]*Bx+Kmat.K22[kj]*By+Kmat.K32[yj]*Bz)*B00;
+                xdata[2+33]=(Kmat.K13[zk]*Bx+Kmat.K23[zk]*By)*B00;
             }
         }
     }

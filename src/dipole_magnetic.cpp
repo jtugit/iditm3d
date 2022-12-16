@@ -25,7 +25,7 @@ void BCARSP_08(double, double, double, double, double,double, double&,double&, d
 
 void dipole_magnetic(DM da, AppCtx *params)
 {
-    Field        ***ww, ***zz;
+    Field        ***uu;
     int          i, j, k;
     PetscInt     xs, xm, ys, ym, zs, zm;
     double       xmag, ymag, zmag;
@@ -36,26 +36,18 @@ void dipole_magnetic(DM da, AppCtx *params)
 
     double       wx, wy, wz, wxm, wym, wzm, wr, wt, wp;
 
-    //int          file_free;
-    //fstream      divbfs;
-    //MPI_Status   status;
-    //int     nproc, rank;
-
     hsize_t  dimsf[data_dim];     /* dataset dimensions */
     hsize_t  offset[data_dim];    /* start location in each dimension */
     hsize_t  count[data_dim];     /* number of hyperslab dimension */
     hsize_t  block[data_dim];     /* number of blocks in each dimension */
     double   *xdata;                 /* pointer to data buffer for writing */
     int vsize, zk, yj, xi, s;
-
-    //MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    //MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+    double   B0x, B0y, B0z, rr_unorm;
 
     /*
      Get pointers to vector data
     */
-    DMDAVecGetArray(da, params->W, &ww);
-    DMDAVecGetArray(da, params->Z, &zz);
+    DMDAVecGetArray(da, params->U, &uu);
     DMDAGetCorners(da, &xs, &ys, &zs, &xm, &ym, &zm);
 
     /* Initialize a one dimensional data buffer for storing 3-component B-field*/
@@ -71,30 +63,39 @@ void dipole_magnetic(DM da, AppCtx *params)
     RECALC_08(iyr,iday,ihour,imin,isec,params->vgsex,params->vgsey,params->vgsez,AAP,G,H,REC);
 
     /* convert Earth's rotation rate (normalized) to geomagnetic Cartesian coordinates*/
-    wx=0.0; wy=0.0, wz=w0;
+    wx=0.0; wy=0.0, wz=w0n;
     GEOMAG_08(wx, wy, wz, wxm, wym, wzm, 1, AAP);
 
+    int kj, kji, ji;
     /* calculate background magnetic field, Earth's rotation rate, centrifugal force */
     for (k = zs; k < zs+zm; k++) {
         zk=k-zs;
 
         for (j=ys; j<ys+ym; j++) {
-            yj=j-ys;
+            if (j < 1) j = 1;
+            if (j > Nthm) j = Nthm;
+
+            yj=j-ys; kj=zk*ym+yj;
 
             for (i=xs; i<xs+xm; i++) {
-                xi=i-xs;
+                xi=i-xs; kji=zk*(ym*xm)+yj*xm+xi; ji=yj*xm+xi;
 
                 /* dipole magnetic field in geomagnetic coordinates at (rC_i, thetaC_j, phi_k) */
                 // Note thetaC[Nth] = thetaC[Nth-1] on kc=(k+a3/2) % a3
-                r3=rC[i]*rC[i]*rC[i];
-                Br=-2.0*Mz*cos(thetaC[j])/r3;
-                Bt=-Mz*sin(thetaC[j])/r3;  
+                rr_unorm=rr[i]*r0;
+                r3=rr_unorm*rr_unorm*rr_unorm;
+                Br=-2.0*Mz*cos(theta[j])/r3;
+                Bt=-Mz*sin(theta[j])/r3;
+                Bp=0.0;
 
-                /* dipole magnetic field in spherical coordinates */
-                ww[k][j][i].fx[23]=Br;
-                ww[k][j][i].fx[24]=Bt;
+                uu[k][j][i].fx[0]=Br/B0; uu[k][j][i].fx[1]=Bt/B0; uu[k][j][i].fx[2]=Bp/B0;
 
-                Omegae[zk][yj][xi] = e*sqrt(Br*Br+Bt*Bt)/me;
+                /* dipole magnetic field in special spherical coordinates */
+                B0x=(Kmat.K11[kj]*Br+Kmat.K12[kj]*Bt+Kmat.K13[zk]*Bp);
+                B0y=(Kmat.K21[kj]*Br+Kmat.K22[kj]*Bt+Kmat.K23[zk]*Bp);
+                B0z=(Kmat.K31[yj]*Br+Kmat.K32[yj]*Bt);
+
+                uu[k][j][i].fx[28]=B0x/B0; uu[k][j][i].fx[29]=B0y/B0; uu[k][j][i].fx[30]=B0z/B0;
 
                 s=3*(zk*ym*xm+yj*xm+xi);
                 xdata[s]  =Br;
@@ -102,7 +103,7 @@ void dipole_magnetic(DM da, AppCtx *params)
                 xdata[s+2]=Bp;
 
                 /* convert spherical coordinates to Cartesian coordinates */
-                SPHCAR_08(rC[i], thetaC[j], phi[k], xmag, ymag, zmag, 1);
+                SPHCAR_08(rr[i], theta[j], phi[k], xmag, ymag, zmag, 1);
                 BCARSP_08(xmag, ymag, zmag, wxm, wym, wzm, wr, wt, wp);
 
                 /*--- Earth's rotation rate in magnetic spherical coordinates */
@@ -120,8 +121,7 @@ void dipole_magnetic(DM da, AppCtx *params)
     }
 
     /* release resources not needed anymore */
-    DMDAVecRestoreArray(da, params->W, &ww);
-    DMDAVecRestoreArray(da, params->Z, &zz);
+    DMDAVecRestoreArray(da, params->U, &uu);
 
     /* file name of hdf5 file and write buffer xdata to the file in parallel*/
     string strfname = params->outpdir + "/B0.h5";
@@ -130,51 +130,6 @@ void dipole_magnetic(DM da, AppCtx *params)
     hyperslab_set(xs, xm, ys, ym, zs, zm, 3, dimsf, offset, count, block);
 
     hdf5parallelwrite(MPI_COMM_WORLD, dimsf, offset, count, block, fname, dsetn, xdata);
-
-/* write text file --- diagnostic use only */
-    /*strncpy(fname, params->outpdir, 150);
-    strcat(fname, "/output/B0divB0.dat");
-
-    if (rank==0) {
-      file_free=1;
-
-      divbfs.open(fname, fstream::out);
-      if(!divbfs) {
-        cout << "Can't open file " << fname << endl;
-        MPI_Abort(comm,-1);
-      }
-    }
-    else {
-      MPI_Recv(&file_free,1,MPI_INT,rank-1,tag1,comm,&status);
-
-      //open the file to append contents
-      divbfs.open(fname);
-      if(!divbfs) {        cout << "Can't open file " << fname << endl;
-        MPI_Abort(comm,-1);
-      }
-      divbfs.seekp(0,fstream::end);
-    }
-
-    if(file_free==1) {
-        for (k=zs; k<zs+zm; k++) {
-            zk=k-zs;
-            for (j=ys; j<ys+ym; j++) {
-                yj=j-ys;
-                for (i=xs; i<xs+xm; i++) {
-                    xi=i-xs;
-                    s=3*(zk*ym*xm+yj*xm+xi);
-                    divbfs<<scientific<<setw(12)<<setprecision(4)
-                          <<(rr[i]*r0-Re)/1.0e3
-                          <<scientific<<setw(14)<<setprecision(5)<<xdata[s]
-                          <<scientific<<setw(14)<<setprecision(5)<<xdata[s+1]
-                          <<scientific<<setw(14)<<setprecision(5)<<xdata[s+2]<<endl;
-                }
-            }
-        }
-        divbfs.close();
-    }
-
-    if(rank != nprocs-1) MPI_Send(&file_free,1,MPI_INT,rank+1,tag1,comm);*/
 
     delete[] xdata;
 

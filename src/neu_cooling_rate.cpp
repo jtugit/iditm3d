@@ -15,14 +15,14 @@
 #include <iomanip>*/
 
 #include <cmath>
-#include "reconstruction.h"
 #include "funcdef.h"
 
 using namespace std;
 
 double neu_cooling_rate(Field ***xx, Field ***uu, int i, int j, int k)
 {
-    double Tn, nO, nNO, Tx1, Tx2, Cn; //chi, , E21, E22; 
+    double Tn, nO, nNO, Tx1, Tx2, Cn; //chi, , E21, E22;
+    const double t0divp0=t0/p0;
 
     //double *tao = new double[xm];
 
@@ -41,11 +41,10 @@ double neu_cooling_rate(Field ***xx, Field ***uu, int i, int j, int k)
         //                             /(sqrt(Tn)*(0.6+0.2*exp(-98.0/Tn)+Tx1));
     //}
 
-    double nn00=nn_0/1.0e6;
-    nO =reconstructed(xx, i, j, k, 12, rfavg[i], thetaC[j], phi[k])*nn00;
-    nNO=reconstructed(xx, i, j, k, 17, rfavg[i], thetaC[j], phi[k])*nn00;
-    Tn =reconstructed(uu, i, j, k, 22, rfavg[i], thetaC[j], phi[k])*nn00;
-    //TOb[0]=Tn;
+    //O and NO density in m^{-3}
+    nO =exp(xx[k][j][i].fx[20])*n0;
+    nNO=exp(xx[k][j][i].fx[25])*n0;
+    Tn =exp(xx[k][j][i].fx[30])*T0;
 
     Tx1=exp(-228.0/Tn);
     Tx2=exp(-326.0/Tn);
@@ -55,9 +54,9 @@ double neu_cooling_rate(Field ***xx, Field ***uu, int i, int j, int k)
     //E22=expon_integral(tao[0]-tao[i-xs],60);
     //chi=0.5*(Tx1-1.0)*((2.0-E21-E22)/(Tx1-1.0)+E22/(exp(228.0/TOb)-1.0));
 
-    /* cooling rate in Joule m^-3 s^-1 / nn_0 */
-    Cn=nO*( (1.69e-25*Tx1+4.59e-27*Tx2)/(1.0+0.6*Tx1+0.2*Tx2)
-           +3.24015e-29*nNO*exp(-2714.57/Tn)/(6.5e-11*nO+13.3))/nn00;
+    /* cooling rate in Joule m^-3 s^-1 */
+    uu[k][j][i].fx[33]=nO*( (1.69e-25*Tx1+4.59e-27*Tx2)/(1.0+0.6*Tx1+0.2*Tx2)
+                           +3.24015e-29*nNO*exp(-2714.57/Tn)/(6.5e-11*nO+13.3))*t0divp0;
 
     //delete[] tao;
 

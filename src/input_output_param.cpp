@@ -73,6 +73,12 @@ PetscErrorCode input_param(AppCtx *params)
         infstr.ignore(200, '\n');
         infstr >> params->ALindex;
         infstr.ignore(200, '\n');
+        infstr >> r0;
+        infstr.ignore(200, '\n');
+        infstr >> n0;
+        infstr.ignore(200, '\n');
+        infstr >> B0;
+        infstr.ignore(200, '\n');
         infstr >> params->ntot;
         infstr.ignore(200, '\n');
         infstr >> params->nout;
@@ -123,12 +129,6 @@ PetscErrorCode input_param(AppCtx *params)
         cout << "Number of grids, a3, along longitude must be even number"<< endl;
         return -1;
     }
-    /* # of state variables */
-    a4=4+sl+sm+8;
-    if (a4 != nvar) {
-        cout << "Number of unknowns on a grid must equal to " << nvar << endl;
-        return -1;
-    }
 
     if (!rank) {
         if(a1 % 5 != 0 || a2 % 5 !=0 || a3 % 5 !=0) {
@@ -137,18 +137,15 @@ PetscErrorCode input_param(AppCtx *params)
         }
     }
 
-    //boundary radial distances in meters
-    params->rb=(1.0e3*params->rb+Re);
-    params->ru=(1.0e3*params->ru+Re);
+    //boundary radial distances normalized
+    params->rb=(1.0e3*params->rb+Re)/r0;
+    params->ru=(1.0e3*params->ru+Re)/r0;
 
     params->rurb3=pow(params->rb/params->ru, 3.0);
 
     Nr =a1-1; Nrm=Nr-1;
     Nth=a2-1; Nthm=Nth-1;
     Np =a3-1; Npm=Np-1;
-
-    dt_half=0.5*dt;
-    dt2=2.0*dt;
 
     return 0;
 }

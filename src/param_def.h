@@ -10,7 +10,7 @@
 //double r0, n0, B0, v0, t0, E0, g0, p0, j00, e0, T0, q0, lamda0, beta0;
 
 //number of grids along r, theta, phi
-int a1, a2, a3, a4;
+int a1, a2, a3;
 int Nr, Nth, Np, Nrm, Nthm, Npm;
 
 //number of ion and major neutral species
@@ -29,17 +29,8 @@ double ***cenf_r, ***cenf_t, ***cenf_p;
 
 //r, theta, phi and geometrical parameters in geographic coordinates
 //every process has a copy
-double *rr, *rh, *rC, *rfavg, *theta, *thetah, *thetaC, *phi, *phih;
-double dr, *rh_d3, *rh_d2;
-double *sinth_h, **rCsinC, **rh_costh, **rh_costh_dth_dph;
-double *zh, *rh2, **rfavg_costh, **rfavg_costh_dth_dph, **rfavg_sinth_dph, *rfavg_dth;
-double *sinth, **rfavg_sinth_h_dph;
-double **rsinth_dph, *cotth;
-double dth, dph, rCm1, rfavgm1;
-double **dAtheta_dV;
-
-//fast mode speed
-extern double ****Vfs;
+double *rr, *rh, *theta, *thetah, *phi, *phih;
+double dr, dth, dph, *zh;
 
 //gravitational acceleration 
 double *gr;
@@ -62,14 +53,24 @@ double coe[15], coiO2[13], coiN2[13], coiO[13], coiH[13], coiHe[13], coiNO[13], 
 double con[10];
 
 //ion and neutral collision frequencies */
-double ****nust, ***Omegae;
+double ****nust;
 
 double ***fluxn;
 
 double **vt, **vp;
 
-double **Ftheta_Rface, ***Fphi_Rface;
-
 double ****Ps, ****Ls, ***Qee, ***Qeuv;
+
+Jmatrix Jmat;
+Jinvmatrix Jinv;
+Kmatrix Kmat;
+double **r2sintheta, **cot_div_r, **rsin;
+
+vector3D ***grad_pe;
+
+/* evaluate normalization parameters from 4 basic parameters: r0, n0, B0, & mp */
+double n0, B0, r0, v0, t0, E0, g0, p0, j00, e0, T0, q0, lamda0, beta0, gen, e, Omegae;
+//normalized earth's rotational frequency
+double w0n;
 
 #endif  /* INC PARAM_DEF */
