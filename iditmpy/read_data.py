@@ -8,7 +8,6 @@ Created on Wed Nov 4 10:45:03 2020
 import os
 import numpy as np
 import h5py
-import def_classes
 
 # input idimt3 arrays
 def input_data(fname):
@@ -22,6 +21,7 @@ def input_data(fname):
 
     key, iditm_arr=next(iter(hf.items()))
     iditm_arr=np.array(iditm_arr)   #array of type iditm_arr[][][][]
+    print(iditm_arr[0][1][1][0],iditm_arr[0][1][2][0])
 
     print(hf[key])
     dset = hf[key]
@@ -75,7 +75,7 @@ def input_grids(fpath, a1, a2, a3):
     for i in range(a1):
         lineR=frd.readline()
         astr=lineR.split()
-        alt[i]=float(astr[4])
+        alt[i]=float(astr[3])
 
     frd.readline()
 

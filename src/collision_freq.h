@@ -5,8 +5,8 @@
 inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int zk)
 {
     int    s;
-    double ni[7], nn[7], ne=0.0, Nn=0.0, Te, Te12, Te32;
-    double cee, Ti, Tn, Ti12, Ti32, logTi, Tr, logTr, Tr12, logTrOi, Tr12Oi;
+    double ni[7], nn[7], ne=0.0, Nn=0.0, Te, Te12;
+    double Ti, Tn, Ti12, Ti32, logTi, Tr, logTr, Tr12, logTrOi, Tr12Oi;
     const double n00=n0*1.0e-6;
 
     for (s = 0; s < sl; s++) {
@@ -22,7 +22,7 @@ inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int
 /*--------------------------------------------------*/
     //electron Coulomb collision frequencies
     Te=xx[k][j][i].fx[19]*T0;
-    Te12=sqrt(Te); Te32=Te*Te12;
+    Te12=sqrt(Te);
 
     //electron - ions collisions
     for (s = 0; s < sl; s++) nust[zk][yj][xi][s]=coe[0]*ni[s];

@@ -9,7 +9,7 @@ void solar_zenith(AppCtx *params, int ys, int ym, int zs, int zm);
 
 /* ----------------------------------------------------------------------------
  *-------- Compute negative of \nabla \mathbf{q} for O+, H+, He+, and electron
- /* ----------------------------------------------------------------------------*/
+  ----------------------------------------------------------------------------*/
 inline double heat_flow_divergence(Field ***xx, Field ***localuu, int i, int j, int k, int xi, int yj, int s)
 {
     double d2Tdth2;
@@ -41,7 +41,7 @@ inline double heat_flow_divergence(Field ***xx, Field ***localuu, int i, int j, 
 
 /* ----------------------------------------------------------------------------
  *-------- Compute negative of \nabla \mathbf{q} for neutrals
- /* ----------------------------------------------------------------------------*/
+  ----------------------------------------------------------------------------*/
 inline double neu_heat_flow_divergence(Field ***xx, Field ***localuu, int i, int j, int k, int xi, int yj)
 {
     double d2Tdth2;
@@ -83,13 +83,12 @@ int parameters(DM da, Vec X, AppCtx *params)
     PetscInt xs, ys, zs, xm, ym, zm;
     Field    ***xx, ***uu, ***localuu;
 
-    double Te, Te12, ne, ni[7], nn[7], Ti, Tn, fq, nimole;
+    double Te, Te12, ne, ni[7], nn[7], Tn, nimole;
     int    zk, yj, xi, s0;
-    double Td, rhoi, rhon;
-    double qn[5], nqd, Dst, amt, Te2, nuss[7], nuin, lambdai[7], lambdan, lambdae;
-    double Br, Btheta, Bphi, uir, uitheta, uiphi, PiPe, unr, untheta, unphi;
+    double Td;
+    double qn[5], nqd, Dst, amt, Te2, nuss[7];
 
-    const double two3rdmu=2.0e-6/3.0, n00=n0*1.0e-6;
+    const double n00=n0*1.0e-6;
 
     //------------- xx local array ---------------------
     DMGetLocalVector(da, &localX);
@@ -246,7 +245,7 @@ int parameters(DM da, Vec X, AppCtx *params)
                 //efd_gradPe = E_gradPe(xx, localuu, i, j, k, xi, yj, zk, xm, ym, zm);
                 //uu[k][j][i].fx[12]=efd_gradPe.r; uu[k][j][i].fx[13]=efd_gradPe.t; uu[k][j][i].fx[14]=efd_gradPe.p;
 
-                electric_field_vxB(xx, localuu, i, j, k, xi, yj, zk, xm, ym, zm);
+                //electric_field_vxB(xx, localuu, i, j, k, xi, yj, zk, xm, ym, zm);
 
                 //negative of divergence of heat flows
                 uu[k][j][i].fx[15]=heat_flow_divergence(xx, localuu, i, j, k, xi, yj, 16);
@@ -302,7 +301,6 @@ int parameters(DM da, Vec X, AppCtx *params)
     DMDAVecGetArray(da, params->U, &uu);
 
     int imin, imax, jm, jp, jm2, jp2, kcm, kcp, kcm2, kcp2;
-    double sgn;
 
     if (xs == 0) imin=xs+2; else imin = xs;
     if (xs+xm==a1) imax=xs+xm-2; else imax=xs+xm;

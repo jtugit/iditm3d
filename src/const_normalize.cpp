@@ -43,7 +43,7 @@ void const_normalize()
     for (i = 0; i < sl; i++) qms[i]=e/ams[i];
 
     //normalized (multiplied by t0) electron gyro-frequency using normalization factor B0
-    Omegae=q*B0*t0/(me*mp);
+    Omegae=q*B0*t0/me;
     
 /* coefficients of all collision frequencies, multiplied by t0 */
     coe[0]=54.5*t0;                  //e - ions
@@ -108,7 +108,7 @@ void const_normalize()
     con[8]=8.63023e-12*t0;    //He - O2
     con[9]=1.00277e-11*t0;    //He - N2
 
-    /*coiO2[0]=1.30e-1*t0;       //O2+ - O+
+    coiO2[0]=1.30e-1*t0;       //O2+ - O+
     coiO2[1]=3.90e-2*t0;       //O2+ - H+
     coiO2[2]=7.50e-2*t0;       //O2+ - He+
     coiO2[3]=1.50e-1*t0;       //O2+ - N2+
@@ -162,7 +162,7 @@ void const_normalize()
     coiN[9]=7.25e-10*t0;        //N+ - O2
     coiN[10]=7.47e-10*t0;       //N+ - N2
     coiN[11]=2.69e-11*t0;       //N+ - NO
-    coiN[12]=3.83e-11*t0;       //N+ - N*/
+    coiN[12]=3.83e-11*t0;       //N+ - N
 
     return;
 }

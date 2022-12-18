@@ -116,7 +116,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 /* neutral density from MSIS00 in m^-3 in log scale */
                 xx[k][j][i].fx[20]=log(f20[4]*1.0e6/n0);  // O
                 xx[k][j][i].fx[21]=log(f20[7]*1.0e6/n0);  // H
-                xx[k][j][i].fx[22]=log(f20[3]*1.0e6/n0);  // He
+                xx[k][j][i].fx[22]=log(f20[3]*1.0e6/n0/5.0);  // He
                 xx[k][j][i].fx[23]=log(f20[6]*1.0e6/n0);  // O2
                 xx[k][j][i].fx[24]=log(f20[5]*1.0e6/n0);  // N2
 

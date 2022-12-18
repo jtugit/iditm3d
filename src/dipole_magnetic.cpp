@@ -26,7 +26,7 @@ void BCARSP_08(double, double, double, double, double,double, double&,double&, d
 void dipole_magnetic(DM da, AppCtx *params)
 {
     Field        ***uu;
-    int          i, j, k;
+    int          i, j, k, kc;
     PetscInt     xs, xm, ys, ym, zs, zm;
     double       xmag, ymag, zmag;
     double       r3, Br=0.0, Bt=0.0, Bp=0.0;
@@ -51,7 +51,7 @@ void dipole_magnetic(DM da, AppCtx *params)
     DMDAGetCorners(da, &xs, &ys, &zs, &xm, &ym, &zm);
 
     /* Initialize a one dimensional data buffer for storing 3-component B-field*/
-    vsize=3*xm*ym*zm;
+    vsize=6*xm*ym*zm;
     xdata=new double[vsize];
 
     int iyr=params->iyr, mn=params->mon, dd=params->idate;
@@ -66,20 +66,19 @@ void dipole_magnetic(DM da, AppCtx *params)
     wx=0.0; wy=0.0, wz=w0n;
     GEOMAG_08(wx, wy, wz, wxm, wym, wzm, 1, AAP);
 
-    int kj, kji, ji;
+    uint64_t kj;
+
     /* calculate background magnetic field, Earth's rotation rate, centrifugal force */
     for (k = zs; k < zs+zm; k++) {
-        zk=k-zs;
+        zk=k-zs; 
 
         for (j=ys; j<ys+ym; j++) {
-            if (j < 1) j = 1;
-            if (j > Nthm) j = Nthm;
+            if (j < 1 || j > Nthm) continue;
 
-            yj=j-ys; kj=zk*ym+yj;
+            yj=j-ys; kj=(uint64_t)(zk*ym+yj);
 
             for (i=xs; i<xs+xm; i++) {
-                xi=i-xs; kji=zk*(ym*xm)+yj*xm+xi; ji=yj*xm+xi;
-
+                xi=i-xs;
                 /* dipole magnetic field in geomagnetic coordinates at (rC_i, thetaC_j, phi_k) */
                 // Note thetaC[Nth] = thetaC[Nth-1] on kc=(k+a3/2) % a3
                 rr_unorm=rr[i]*r0;
@@ -91,31 +90,62 @@ void dipole_magnetic(DM da, AppCtx *params)
                 uu[k][j][i].fx[0]=Br/B0; uu[k][j][i].fx[1]=Bt/B0; uu[k][j][i].fx[2]=Bp/B0;
 
                 /* dipole magnetic field in special spherical coordinates */
-                B0x=(Kmat.K11[kj]*Br+Kmat.K12[kj]*Bt+Kmat.K13[zk]*Bp);
-                B0y=(Kmat.K21[kj]*Br+Kmat.K22[kj]*Bt+Kmat.K23[zk]*Bp);
-                B0z=(Kmat.K31[yj]*Br+Kmat.K32[yj]*Bt);
+                B0x=(Kmat.K11[kj]*Br+Kmat.K12[kj]*Bt+Kmat.K13[(uint64_t)zk]*Bp)/B0;
+                B0y=(Kmat.K21[kj]*Br+Kmat.K22[kj]*Bt+Kmat.K23[(uint64_t)zk]*Bp)/B0;
+                B0z=(Kmat.K31[(uint64_t)yj]*Br+Kmat.K32[(uint64_t)yj]*Bt)/B0;
 
-                uu[k][j][i].fx[28]=B0x/B0; uu[k][j][i].fx[29]=B0y/B0; uu[k][j][i].fx[30]=B0z/B0;
+                uu[k][j][i].fx[3]=B0x/B0; uu[k][j][i].fx[4]=B0y/B0; uu[k][j][i].fx[5]=B0z/B0;
 
-                s=3*(zk*ym*xm+yj*xm+xi);
-                xdata[s]  =Br;
-                xdata[s+1]=Bt;
-                xdata[s+2]=Bp;
+                s=6*(zk*ym*xm+yj*xm+xi);
+                xdata[s]=rr[i]*r0; xdata[s+1]=theta[j]; xdata[s+2]=phi[k];
+                xdata[s+3]=Br; xdata[s+4]=Bt; xdata[s+5]=Bp; //background mfd in Tesla
 
                 /* convert spherical coordinates to Cartesian coordinates */
                 SPHCAR_08(rr[i], theta[j], phi[k], xmag, ymag, zmag, 1);
                 BCARSP_08(xmag, ymag, zmag, wxm, wym, wzm, wr, wt, wp);
 
                 /*--- Earth's rotation rate in magnetic spherical coordinates */
-                rotat_r[zk][yj]=wr;
-                rotat_t[zk][yj]=wt;
-                rotat_p[zk][yj]=wp;
+                rotat_r[zk][yj]=wr; rotat_t[zk][yj]=wt; rotat_p[zk][yj]=wp;
 
                 /*---- centrifugal force = Omega x (Omega x r) ----*/
                 /*--- in rotating coordinates (for fluid needed to multiply rho) */
                 cenf_r[zk][yj][xi]=-rr[i]*(wt*wt+wp*wp);
                 cenf_t[zk][yj][xi]= rr[i]*wr*wt;
                 cenf_p[zk][yj][xi]= rr[i]*wr*wp;
+            }
+        }
+    }
+
+    for (k = zs; k < zs+zm; k++) {
+        zk=k-zs; kc = (k+a3/2) % a3;
+
+        //boundary condition at j = 0
+        if (ys == 0) {
+            j=0; yj=0; kj=(uint64_t)(zk*ym+yj);
+
+            for (i=xs; i<xs+xm; i++) {
+                xi=i-xs;
+
+                s=6*(zk*ym*xm+yj*xm+xi);
+                xdata[s]=rr[i]*r0; xdata[s+1]=theta[j]; xdata[s+2]=phi[k];
+                xdata[s+3]=uu[kc][1][i].fx[0]*B0;
+                xdata[s+4]=uu[kc][1][i].fx[1]*B0;
+                xdata[s+5]=uu[kc][1][i].fx[2]*B0; //background mfd in Tesla
+            }
+        }
+
+        //boundary condition at j = Nth
+        if (ys+ym == Nth) {
+            j=Nth; yj=j-ys; kj=(uint64_t)(zk*ym+yj);
+
+            for (i=xs; i<xs+xm; i++) {
+                xi=i-xs;
+
+                s=6*(zk*ym*xm+yj*xm+xi);
+                xdata[s]=rr[i]*r0; xdata[s+1]=theta[j]; xdata[s+2]=phi[k];
+                xdata[s+3]=uu[kc][Nthm][i].fx[0]*B0;
+                xdata[s+4]=uu[kc][Nthm][i].fx[1]*B0;
+                xdata[s+5]=uu[kc][Nthm][i].fx[2]*B0; //background mfd in Tesla
             }
         }
     }

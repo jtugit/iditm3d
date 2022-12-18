@@ -27,8 +27,7 @@ inline double minmod(double aa, double bb){
 
 inline double limited_slope_r(Field ***xx, int i, int j, int k, int s)
 {
-    double aa, bb, rrb, rrt, y1, y2;
-    int    Nrm1=Nr-1, Nrm2=Nr-2;
+    double aa, bb;
 
     if (i == 0) { //dN/dr|0 = dN/dr|1
         aa = (xx[k][j][1].fx[s]-xx[k][j][i].fx[s])/dr;
@@ -97,11 +96,13 @@ inline double difference_r(Field ***xx, int i, int j, int k, int s)
     yip = 0.5*(yL + yR);
 
     double dydr = (yip - yim)/dr;
+
+    return dydr;
 }
 
 inline double difference_theta(Field ***xx, int i, int j, int k, int s)
 {
-    double yL, yR, yjp, yjm, slope_thetaj, sgn;
+    double yL, yR, yjp, yjm, slope_thetaj;
     int    kc, jm, jp;
 
     if (j == 1) {
@@ -135,12 +136,14 @@ inline double difference_theta(Field ***xx, int i, int j, int k, int s)
 
     yjp = 0.5*(yL + yR);
 
-    double dydr = (yjp - yjm)/dth;
+    double dydtheta = (yjp - yjm)/dth;
+
+    return dydtheta;
 }
 
 inline double difference_phi(Field ***xx, int i, int j, int k, int s)
 {
-    double yL, yR, ykp, ykm, slope_phk, dphm;
+    double yL, yR, ykp, ykm, slope_phk;
     int    km=k-1, kp=k+1;
 
     if (k==0) yL = xx[Np][j][i].fx[s] + limited_slope_phi(xx, i, j, Np, s)*(phih[Np+1]-phi[Np]);
@@ -158,7 +161,9 @@ inline double difference_phi(Field ***xx, int i, int j, int k, int s)
 
     ykp = 0.5*(yL + yR);
 
-    double dydr = (ykp - ykm)/dph;
+    double dydphi = (ykp - ykm)/dph;
+
+    return dydphi;
 }
 
 inline vector3D gradient (Field ***xx, int i, int j, int k, int yj, int xi, int s)

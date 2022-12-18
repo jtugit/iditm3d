@@ -1,17 +1,14 @@
 #include "param.h"
 #include "operators.h"
 
-inline vector3D E_gradPe(Field ***xx, Field ***uu, int i, int j, int k, int xi, int yj, int zk, int xm, int ym, int zm) 
+inline void E_gradPe(Field ***xx, Field ***uu, int i, int j, int k, int xi, int yj, int zk, 
+    int xm, int ym, double Ec_gradPe[]) 
 {
     double dTe_dr, dne_dr, dTe_dth, dne_dth, dTe_dph, dne_dph;
     double ne, Te, dpe_dr, dpe_dth, dpe_dph, inv_ene;
-    double Epart_x, Epart_y, Epart_z, kb_ene;
-    int    kj, ji, kji;
-    vector3D efd_gradPe;
+    uint64_t kj, ji, kji;
 
-    kj = zk*ym+yj;
-
-    ji = yj*xm+xi; kji=zk*ym*xm+yj*xm+xi;
+    kj = (uint64_t)(zk*ym+yj); ji = (uint64_t)(yj*xm+xi); kji=(uint64_t)(zk*ym*xm+yj*xm+xi);
 
     dTe_dr=difference_r(xx, i, j, k, 19);
     dTe_dth=difference_theta(xx, i, j, k, 19);
@@ -29,46 +26,36 @@ inline vector3D E_gradPe(Field ***xx, Field ***uu, int i, int j, int k, int xi, 
     dpe_dph=(ne*dTe_dph+Te*dne_dph)/rsin[yj][xi];
 
     //part of electric field due to electron pressure gradient in Cartesian coordinates
-    Epart_x =-(Jmat.J11[kj]*dpe_dr+Jmat.J21[kji]*dpe_dth+Jmat.J31[kji]*dpe_dph)/inv_ene;
-    Epart_y =-(Jmat.J12[kj]*dpe_dr+Jmat.J22[kji]*dpe_dth+Jmat.J32[kji]*dpe_dph)/inv_ene;
-    Epart_z =-(Jmat.J13[yj]*dpe_dr+Jmat.J23[ji] *dpe_dth)/inv_ene;
-
-    //convert this part of electric field into special spherical components
-    efd_gradPe.r=Jinv.Jiv11[kj] *Epart_x+Jinv.Jiv21[kj] *Epart_y+Jinv.Jiv31[yj]*Epart_z;
-    efd_gradPe.t=Jinv.Jiv12[kji]*Epart_x+Jinv.Jiv22[kji]*Epart_y+Jinv.Jiv32[ji]*Epart_z;
-    efd_gradPe.p=Jinv.Jiv13[kji]*Epart_x+Jinv.Jiv23[kji]*Epart_y;
-
-    return efd_gradPe;
+    inv_ene=1.0/(e*uu[k][j][i].fx[6]);
+    Ec_gradPe[0] =-(Jmat.J11[kj]*dpe_dr+Jmat.J21[kji]*dpe_dth+Jmat.J31[kji]*dpe_dph)*inv_ene;
+    Ec_gradPe[1] =-(Jmat.J12[kj]*dpe_dr+Jmat.J22[kji]*dpe_dth+Jmat.J32[kji]*dpe_dph)*inv_ene;
+    Ec_gradPe[2] =-(Jmat.J13[(uint64_t)yj]*dpe_dr+Jmat.J23[ji] *dpe_dth)*inv_ene;
 }
+
 /*-------------------------------------------------------------------------------------------------------
  *  special spherical components of electric field: -(u_e x B) part
  *-------------------------------------------------------------------------------------------------------*/
-inline void electric_field_vxB(Field ***xx, Field ***uu, int i, int j, int k, int xi, int yj, int zk, int xm, int ym, int zm)
+inline void electric_field_vxB(Field ***xx, Field ***uu, double ue[], int i, int j, int k, int xi,
+    int yj, int zk, int xm, int ym, double Ec_VxB[])
 {
-    int kj = zk*ym+yj, kji=zk*ym*xm+yj*xm+xi, ji=yj*xm+xi;
-
+    uint64_t kj = (uint64_t)(zk*ym+yj), kji=(uint64_t)(zk*ym*xm+yj*xm+xi), ji=(uint64_t)(yj*xm+xi);
     double Bx, By, Bz, uex, uey, uez;
 
     //Cartesian Bx, By, and Bz in terms of special sperhical components of B
     Bx = ( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]+Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
-          +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])/r2sintheta[yj][xi] + uu[k][j][i].fx[25];
+          +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])/r2sintheta[yj][xi] + uu[k][j][i].fx[3];
     By = ( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]+Jinv.Jiv22[kji]*xx[k][j][i].fx[32]
-          +Jinv.Jiv23[kji]*xx[k][j][i].fx[33])/r2sintheta[yj][xi] + uu[k][j][i].fx[26];
-    Bz = (Jinv.Jiv31[yj]*xx[k][j][i].fx[31]+Jinv.Jiv32[ji]*xx[k][j][i].fx[32])/r2sintheta[yj][xi]
-        + uu[k][j][i].fx[27];
+          +Jinv.Jiv23[kji]*xx[k][j][i].fx[33])/r2sintheta[yj][xi] + uu[k][j][i].fx[4];
+    Bz = (Jinv.Jiv31[(uint64_t)yj]*xx[k][j][i].fx[31]+Jinv.Jiv32[ji]*xx[k][j][i].fx[32])/r2sintheta[yj][xi]
+        + uu[k][j][i].fx[5];
 
     //uex, uey, uez in terms of uer, and ue_theta, and ue_phi
-    uex = (Kmat.K11[kj]*uu[k][j][i].fx[7]+Kmat.K12[kj]*uu[k][j][i].fx[8]+Kmat.K13[zk]*uu[k][j][i].fx[9]);
-    uey = (Kmat.K21[kj]*uu[k][j][i].fx[7]+Kmat.K22[kj]*uu[k][j][i].fx[8]+Kmat.K23[zk]*uu[k][j][i].fx[9]);
-    uez = (Kmat.K31[yj]*uu[k][j][i].fx[7]+Kmat.K32[yj]*uu[k][j][i].fx[8]);
+    uex = (Kmat.K11[kj]*ue[0]+Kmat.K12[kj]*ue[1]+Kmat.K13[(uint64_t)zk]*ue[2]);
+    uey = (Kmat.K21[kj]*ue[0]+Kmat.K22[kj]*ue[1]+Kmat.K23[(uint64_t)zk]*ue[2]);
+    uez = (Kmat.K31[(uint64_t)yj]*ue[0]+Kmat.K32[(uint64_t)yj]*ue[1]);
 
     //Cartesian components of the electric field
-    double Epartx=By*uez - Bz*uey, Eparty=Bz*uex - Bx*uez, Epartz=Bx*uey - By*uex;
-
-    //convert Cartesian components EFD to special spherical components
-    uu[k][j][i].fx[3] = Jinv.Jiv11[kj] *Epartx+Jinv.Jiv21[kj] *Eparty+Jinv.Jiv31[yj]*Epartz;
-    uu[k][j][i].fx[4] = Jinv.Jiv12[kji]*Epartx+Jinv.Jiv22[kji]*Eparty+Jinv.Jiv32[ji]*Epartz;
-    uu[k][j][i].fx[5] = Jinv.Jiv13[kji]*Epartx+Jinv.Jiv23[kji]*Eparty;
+    Ec_VxB[0]=By*uez - Bz*uey; Ec_VxB[1]=Bz*uex - Bx*uez; Ec_VxB[2]=Bx*uey - By*uex;
 }
 
 inline void currents(Field ***xx, Field ***uu, int i, int j, int k, int yj, int xi)

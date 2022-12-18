@@ -37,7 +37,7 @@ int hdf5parallelread(MPI_Comm, hsize_t*, hsize_t*, hsize_t*,  char*, char *, dou
 int input_psolutions(DM, Field ***, AppCtx*);
 int output_solution(DM,Field***,AppCtx*);
 
-double neu_cooling_rate(Field ***, Field***, int, int, int);
+void neu_cooling_rate(Field ***, Field***, int, int, int);
 
 void prod_loss_rates(Field***, Field ***, int, int, int, int, int, int);
 

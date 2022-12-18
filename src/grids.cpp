@@ -27,7 +27,7 @@ int grids(DM da, AppCtx *params)
 
 /* --------- start run from the scratch: first set up grid points */
     /* r_{i} */
-    for (i = 0; i < a1; i++) rr[i] = dr/2.0+params->rb + dr*(double)i; 
+    for (i = 0; i < a1; i++) rr[i] = params->rb + dr*(double)i;
 
     /* theta_{j} in deg*/
     theta[0]=dth/2.0;   //dummy element
@@ -132,9 +132,10 @@ int grids(DM da, AppCtx *params)
 * rh[i+1] is the right interface of the cell i
 ***************************************************************************************/
     rh[0] = rr[0] - dr/2.0;
+    zh[0]=(rr[0]*r0-Re)*1.0e-3;
     for (i = 1; i < a1; i++) {
         rh[i]=0.5*(rr[i]+rr[i-1]);
-        zh[i] = (rr[i]-Re)*1.0e-3;
+        zh[i] = (rr[i]*r0-Re)*1.0e-3;
     }
     rh[a1]=rh[Nr]+dr; //extra rh for calculating rC[Nr], zh[Nr]
 
@@ -152,13 +153,10 @@ int grids(DM da, AppCtx *params)
     thetah[Nth]=pi;
 
     for (j = ys; j < ys+ym; j++) {
-        if (j < 1) j = 1;
-        if (j > Nthm) j = Nthm;
-
         for (i = xs; i < xs+xm; i++) {
             r2sintheta[j-ys][i-xs]=rr[i]*rr[i]*sin(theta[j]);
             cot_div_r[j-ys][i-xs]=cos(theta[j])/(rr[i]*sin(theta[j]));
-            rsin[j-ym][i-xs]=rr[i]*sin(theta[j])*dph;
+            rsin[j-ys][i-xs]=rr[i]*sin(theta[j])*dph;
         }
     }
 

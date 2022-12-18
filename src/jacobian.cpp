@@ -17,20 +17,18 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
     Vec        localX, localU;
     Field      ***xx, ***uu;
     AppCtx     *params = (AppCtx*)ctx;
-    PetscInt   i, j, k, ir, nv;
-    PetscInt   xs, xm, ys, ym, zs, zm;
+    int        i, j, k, ir, nv, xs, xm, ys, ym, zs, zm;
     MatStencil row, *col;
     PetscErrorCode ierr=0;
     double     *vals;
-    const PetscInt  nzer=a4;
+    const int  nzer=a4;
 
-    PetscInt   s14;
     uint64_t   xi, yj, zk, kj, kji, ji;
     double     temp, ne, rhon, Nn, ns[7], nn[7], nsmore, Bx, By, Bz, Br, Bt, Bp, uex, uey, uez;
 
     const double two3rd=2.0/3.0, four3rd=4.0/3.0, dT=1.0e-8;
 
-    int    s;
+    int    s, s14;
     double sum_nusq[7], sum_nueq, sum_nues_div_ms, sum_nueq_div_mq;
     double sum_nuHiOi, sum_nuHeiOi, mq_nusq_msmq, mi_nust_mims[2], nust_mims[2];
     double nusq_msmq, nust_msmt, mt_nust_msmt, uir, uit, uip;
@@ -84,35 +82,45 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                 }
             }
             else {
-                ne=0.0;
+                ne=0.0; uir=0.0; uit=0.0; uip=0.0;
                 for (s = 0; s < sl; s++) {
                     ns[s]=exp(xx[k][j][i].fx[s]); ne += ns[s];
+
+                    if (s < 3) {
+                        uir = + ns[s]*xx[k][j][i].fx[7+3*s];
+                        uit = + ns[s]*xx[k][j][i].fx[8+3*s];
+                        uip = + ns[s]*xx[k][j][i].fx[9+3*s];
+                    }
                 }
+
+                nsmore=(ns[3]+ns[4]+ns[5]+ns[6]);
+                uir=(uir+nsmore*xx[k][j][i].fx[7])/ne;
+                uit=(uit+nsmore*xx[k][j][i].fx[8])/ne;
+                uip=(uip+nsmore*xx[k][j][i].fx[9])/ne;
+
+                //magnetic field components in terms of special spherical components
+                Bx=( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]+Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
+                    +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])/r2sintheta[yj][xi];
+                By=( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]+Jinv.Jiv22[kji]*xx[k][j][i].fx[32]
+                    +Jinv.Jiv23[ji] *xx[k][j][i].fx[33])/r2sintheta[yj][xi];
+                Bz=(Jinv.Jiv31[yj]*xx[k][j][i].fx[31]+Jinv.Jiv32[ji] *xx[k][j][i].fx[32])/r2sintheta[yj][xi];
+
+                //uex, uey, uez in terms of uer, and ue_theta, and ue_phi
+                uex=Kmat.K11[kj]*uir+Kmat.K12[kj]*uit+Kmat.K13[zk]*uip;
+                uey=Kmat.K21[kj]*uir+Kmat.K22[kj]*uit+Kmat.K23[zk]*uip;
+                uez=Kmat.K31[yj]*uir+Kmat.K32[yj]*uit;
+
+                Br=(Kmat.K11[kj]*Bx+Kmat.K21[kj]*By+Kmat.K31[yj]*Bz)/r2sintheta[yj][xi]+uu[k][j][i].fx[0];
+                Bt=(Kmat.K12[kj]*Bx+Kmat.K22[kj]*By+Kmat.K23[kji]*Bz)/r2sintheta[yj][xi]+uu[k][j][i].fx[1];
+                Bp=(Kmat.K13[zk]*Bx+Kmat.K23[zk]*By)/r2sintheta[yj][xi]+uu[k][j][i].fx[2];
+
+                sum_nuHiOi= nust[zk][yj][xi][29]+nust[zk][yj][xi][31]+nust[zk][yj][xi][32]
+                           +nust[zk][yj][xi][33]+nust[zk][yj][xi][34];
+                sum_nuHeiOi= nust[zk][yj][xi][43]+nust[zk][yj][xi][45]+nust[zk][yj][xi][46]
+                            +nust[zk][yj][xi][47]+nust[zk][yj][xi][48];
 
                 for (ir = 0; ir < a4; ir++) {
                     row.c=ir; nv=0;
-
-                    if ((ir >= 7 && ir <= 15) || (ir >= 34 && ir <= 36)) {
-                        //magnetic field components in terms of special spherical components
-                        Bx=( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]+Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
-                            +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])/r2sintheta[yj][xi];
-                        By=( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]+Jinv.Jiv22[kji]*xx[k][j][i].fx[32]
-                            +Jinv.Jiv23[ji] *xx[k][j][i].fx[33])/r2sintheta[yj][xi];
-                        Bz=(Jinv.Jiv31[yj]*xx[k][j][i].fx[31]+Jinv.Jiv32[ji] *xx[k][j][i].fx[32])/r2sintheta[yj][xi];
-                    }
-
-                    if (ir >= 34 && ir <= 36) {
-                        //uex, uey, uez in terms of uer, and ue_theta, and ue_phi
-                        uex=(Kmat.K11[kj]*uu[k][j][i].fx[7]+Kmat.K12[kj]*uu[k][j][i].fx[8]+Kmat.K13[zk]*uu[k][j][i].fx[9]);
-                        uey=(Kmat.K21[kj]*uu[k][j][i].fx[7]+Kmat.K22[kj]*uu[k][j][i].fx[8]+Kmat.K23[zk]*uu[k][j][i].fx[9]);
-                        uez=(Kmat.K31[yj]*uu[k][j][i].fx[7]+Kmat.K32[yj]*uu[k][j][i].fx[8]);
-                    }
-
-                    if (ir >= 7 && ir <= 15) {
-                        Br=(Kmat.K11[kj]*Bx+Kmat.K21[kj]*By+Kmat.K31[yj]*Bz)/r2sintheta[yj][xi]+uu[k][j][i].fx[0];
-                        Bt=(Kmat.K12[kj]*Bx+Kmat.K22[kj]*By+Kmat.K23[kji]*Bz)/r2sintheta[yj][xi]+uu[k][j][i].fx[1];
-                        Bp=(Kmat.K13[zk]*Bx+Kmat.K23[zk]*By)/r2sintheta[yj][xi]+uu[k][j][i].fx[2];
-                    }
 
                     if (ir < sl) {
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;

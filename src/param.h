@@ -16,7 +16,7 @@ using namespace std;
 
 #define kbmp 8.25481286619634103e3
 #define data_dim 4
-#define a4      34
+#define a4      37
 #define nion     7
 #define nonu     7
 #define denmin   10.0e4
@@ -61,7 +61,7 @@ typedef struct {
     char dset_diag[11]="diagnostic";
     char dset_pl[10]="prod_loss";
 
-    Vec  U, V, W, Z;
+    Vec  U;
 
     double ftime;
 } AppCtx;
