@@ -89,9 +89,9 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
                 Ez=Kmat.K31[(uint64_t)yj]*Esph[0]+Kmat.K32[(uint64_t)yj]*Esph[1];
 
                 /* normalized E in special spherical coordinates */
-                xx[k][j][i].fx[34]=r2sintheta[yj][xi]*(Jmat.J11[kj]*Ex+Jmat.J12[kj]*Ey+Jmat.J13[(uint64_t)yj]*Ez);
-                xx[k][j][i].fx[35]=r2sintheta[yj][xi]*(Jmat.J21[kji]*Ex+Jmat.J22[kji]*Ey+Jmat.J23[ji]*Ez);
-                xx[k][j][i].fx[36]=r2sintheta[yj][xi]*(Jmat.J31[kji]*Ex+Jmat.J32[kji]*Ey);
+                xx[k][j][i].fx[34]=(Jinv.Jiv11[kj]*Ex+Jinv.Jiv21[kj]*Ey+Jinv.Jiv31[(uint64_t)yj]*Ez);
+                xx[k][j][i].fx[35]=(Jinv.Jiv12[kji]*Ex+Jinv.Jiv22[kji]*Ey+Jinv.Jiv32[ji]*Ez);
+                xx[k][j][i].fx[36]=(Jinv.Jiv13[kji]*Ex+Jinv.Jiv23[kji]*Ey);
 
 /*----- check if any variables ar not a number (Nan) or infinity (inf) or ------
  *----- negative density or temperature -----------*/
@@ -136,7 +136,7 @@ int output_solution(DM da, Field ***xx, AppCtx *params)
     uint64_t kj, kji, ji;
     double   Bx, By, Bz, Ex, Ey, Ez;
     double   *xdata;                 /* pointer to data buffer for writing */
-    const double B00=B0*1.0e9, n00=n0*1.0e-6;
+    const double B00=B0*1.0e9, n00=n0*1.0e-6, E00=E0*1.0e-3;
 
     hsize_t  dimsf[data_dim];     /* dataset dimensions */
     hsize_t  offset[data_dim];    /* start location in each dimension */
@@ -185,16 +185,16 @@ int output_solution(DM da, Field ***xx, AppCtx *params)
                 xdata[2+33]=(Kmat.K13[(uint64_t)zk]*Bx+Kmat.K23[(uint64_t)zk]*By)*B00;
 
                 //convert electric field to Cartesian coordinates
-                Ex=( Jinv.Jiv11[kj]*xx[k][j][i].fx[34]+Jinv.Jiv12[kji]*xx[k][j][i].fx[35]
-                    +Jinv.Jiv13[kji]*xx[k][j][i].fx[36])/r2sintheta[yj][xi];
-                Ey=( Jinv.Jiv21[kj]*xx[k][j][i].fx[34]+Jinv.Jiv22[kji]*xx[k][j][i].fx[35]
-                    +Jinv.Jiv23[kji]*xx[k][j][i].fx[36])/r2sintheta[yj][xi];
-                Ez=( Jinv.Jiv31[(uint64_t)yj]*xx[k][j][i].fx[34]+Jinv.Jiv32[ji]*xx[k][j][i].fx[35])/r2sintheta[yj][xi];
+                Ex=( Jmat.J11[kj]*xx[k][j][i].fx[34]+Jmat.J21[kji]*xx[k][j][i].fx[35]
+                    +Jmat.J31[kji]*xx[k][j][i].fx[36]);
+                Ey=( Jmat.J12[kj]*xx[k][j][i].fx[34]+Jmat.J22[kji]*xx[k][j][i].fx[35]
+                    +Jmat.J32[kji]*xx[k][j][i].fx[36]);
+                Ez=( Jmat.J13[(uint64_t)yj]*xx[k][j][i].fx[34]+Jmat.J23[ji]*xx[k][j][i].fx[35]);
 
                 /* E (mV/m) in spherical coordinates */
-                xdata[s+34]=(Kmat.K11[kj]*Ex+Kmat.K21[kj]*Ey+Kmat.K31[(uint64_t)yj]*Ez)*B00;
-                xdata[s+35]=(Kmat.K12[kj]*Ex+Kmat.K22[kj]*Ey+Kmat.K32[(uint64_t)yj]*Ez)*B00;
-                xdata[2+36]=(Kmat.K13[(uint64_t)zk]*Ex+Kmat.K23[(uint64_t)zk]*Ey)*B00;
+                xdata[s+34]=(Kmat.K11[kj]*Ex+Kmat.K21[kj]*Ey+Kmat.K31[(uint64_t)yj]*Ez)*E00;
+                xdata[s+35]=(Kmat.K12[kj]*Ex+Kmat.K22[kj]*Ey+Kmat.K32[(uint64_t)yj]*Ez)*E00;
+                xdata[2+36]=(Kmat.K13[(uint64_t)zk]*Ex+Kmat.K23[(uint64_t)zk]*Ey)*E00;
             }
         }
     }

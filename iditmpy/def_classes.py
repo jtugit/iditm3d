@@ -94,7 +94,7 @@ def about_message():
     tk.Label(popwd, text='Version 0.0',bg='white').pack()
     tk.Label(popwd, text='',bg='white').pack()
     tk.Label(popwd, text='Author: Jiannan Tu',bg='white').pack()
-    tk.Label(popwd, text='2020.11',bg='white').pack()
+    tk.Label(popwd, text='2022.12.20',bg='white').pack()
     tk.Label(popwd, text='',bg='white').pack()
     tk.Label(popwd, text='Space Science Laboratory',bg='white').pack()
     tk.Label(popwd, text='University of Massachusetts Lowell',bg='white').pack()

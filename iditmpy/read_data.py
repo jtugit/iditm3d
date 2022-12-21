@@ -21,7 +21,6 @@ def input_data(fname):
 
     key, iditm_arr=next(iter(hf.items()))
     iditm_arr=np.array(iditm_arr)   #array of type iditm_arr[][][][]
-    print(iditm_arr[0][1][1][0],iditm_arr[0][1][2][0])
 
     print(hf[key])
     dset = hf[key]

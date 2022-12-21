@@ -53,13 +53,16 @@ def main():
 
     ################## Drop boxs and entry fields ##########################
     varList=['nO+','nH+','nHe+','nO2+','nN2+','NO+','N+', \
-             'Vi_r','Vi_theta','Vi_phi','Ti','Te', \
+             'VO+_r','VO+_theta','VO+_phi', \
+             'VH+_r','VH+_theta','VH+_phi', \
+             'VHe+_r','VHe+_theta','VHe+_phi', \
+             'TO+','TH+','THe+','Te', \
              'nO','nH','nHe','nO2','nN2','nNO','nN', \
              'Vn_r','Vn_theta','Vn_phi','Tn', \
              'dB_r','dB_theta','dB_phi', \
+             'E_r','E_theta','E_phi', \
              'Ver','Ve_theta','Ve_phi', \
-             'Er','E_theta','Ephi', \
-             'Ne','Nn','AllIonDen','AllNeutralDen','dB Comps', \
+             'Ne','Nn','AllIonDen','AllNeutralDen','(dBr, dBt, dBp)', \
              'divB','Vfast_r','Vfast_theta','Vfast_phi','Sound Speed',\
              'MaxTimeStep','e-ThermCond','Ion-ThermCond','Neu-ThermCond', \
              'ele coll-freq','O+ coll-freq','H+ coll-freq','He+ coll-freq', \

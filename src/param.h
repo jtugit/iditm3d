@@ -16,10 +16,12 @@ using namespace std;
 
 #define kbmp 8.25481286619634103e3
 #define data_dim 4
-#define a4      37
+//#define a4      37
 #define nion     7
 #define nonu     7
 #define denmin   10.0e4
+
+const int a4=37;
 
 /* variables of interest to be solved at each grid point */
 typedef struct {

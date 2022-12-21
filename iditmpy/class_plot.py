@@ -112,14 +112,17 @@ class plot_button():
             r'O$^+$ Density (cm$^{-3}$)',r'H$^+$ Density (cm$^{-3}$)',r'H$_e^+$ Density (cm$^{-3}$)', \
             r'O$_2^+$ Density (cm$^{-3}$)',r'N$_2^+$ Density (cm$^{-3}$)', r'NO$^+$ Density (cm$^{-3}$)', \
             r'N$^+$ Density (cm$^{-3}$)', \
-            r'V_${i,r}$ (m/s)',r'V$_{i,\theta}$ (m/s)',r'V$_{i,\phi}$ (m/s)',r'T$_i$ (K)', r'T$_e$ (K)', \
+            r'V_${O+,r}$ (m/s)',r'V$_{O+,\theta}$ (m/s)',r'V$_{O+,\phi}$ (m/s)',
+            r'V_${H+,r}$ (m/s)',r'V$_{H+,\theta}$ (m/s)',r'V$_{H+,\phi}$ (m/s)',
+            r'V_${He+,r}$ (m/s)',r'V$_{He+,\theta}$ (m/s)',r'V$_{He+,\phi}$ (m/s)',
+            r'T$_{O+}$ (K)', r'T$_{H+}$ (K)', r'T$_{He+}$ (K)', r'T$_e$ (K)', \
             r'O Density (cm$^{-3}$)',r'H Density (cm$^{-3}$)',r'H$_e$ Density (cm$^{-3}$)', \
             r'O$_2$ Density (cm$^{-3}$)',r'N$_2$ Density (cm$^{-3}$)',r'NO Density (cm$^{-3}$)', \
             r'N Density (cm$^{-3}$)', \
             r'V$_{n,r}$ (m/s)',r'V$_{n,\theta}$ (m/s)',r'V$_{n,\phi}$ (m/s)',r'T$_n$ (K)', \
             r'$\delta$B$_r$ (nT)',r'$\delta$B$_\theta$ (nT)',r'$\delta$B$_\phi$ (nT)', \
-            r'V$_{e,r}$',r'V$_{e,\theta}$',r'V$_{e,\phi}$', \
             r'E$_r$ (mV/m)',r'E$_\theta$ (mV/m)',r'E$_\phi$ (mV/m)', \
+            r'V$_{e,r}$',r'V$_{e,\theta}$',r'V$_{e,\phi}$', \
             r'Electron Density (cm$^{-3}$)', r'Total Neutral Density (cm$^{-3}$)', \
             r'All Ion Density (cm$^{-3}$)',r'All Neutral Density (cm$^{-3}$)', \
             r'$\delta$B Components (nT)', r'Divergence B (nT/km)', \
@@ -206,13 +209,13 @@ class plot_button():
             add_text=date_str+' '+UT_str+' MLat=' +'{:.2f}'.format(-self.lat[j])+' MLT=' +MLT_str
 
             varib=np.zeros(i1-i0)
-            if var_index==34 or var_index==35:
+            if var_index==42 or var_index==43:
                 varib=np.zeros((sl, i1-i0))
-            elif var_index==36:
+            elif var_index==44:
                 varib=np.zeros((3, i1-i0))
 
             for i in range(i0, i1):
-                if var_index < 26:
+                if var_index < 37:
                     if (math.isnan(self.iditm_arr[k][j][i][var_index])):
                         print('(i,j,k,s)=(',i,j,k,var_index,'), Variable Nan')
                         return -1
@@ -224,31 +227,34 @@ class plot_button():
                     #ion density in cm^-3
                     varib[i-i0]=self.iditm_arr[k][j][i][var_index]
  
-                elif var_index >=7 and var_index <=9:
+                elif var_index >=7 and var_index <=15:
                     #ion velocity in m/s
                     varib[i-i0]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=10 and var_index <=11:
+                elif var_index >=16 and var_index <=19:
                     #ion and electron temperature in K
                     varib[i-i0]= self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >= 12 and var_index <=18:
+                elif var_index >= 20 and var_index <=26:
                     #neutral density in cm^-3
                     varib[i-i0]= self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=19 and var_index <=21:
+                elif var_index >=27 and var_index <=29:
                     #neutral velocity in m/s
                     varib[i-i0]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index == 22:
+                elif var_index == 30:
                     #neutral temperature in K
                     varib[i-i0] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=23 and var_index <=25:
+                elif var_index >=31 and var_index <=33:
                     #perturbation magnetic field in nT
-                    varib[i-i0] = self.iditm_arr[k][j][i][var_index]*1.0e9
+                    varib[i-i0] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=26 and var_index <=28: #electron veclocity in m/s
+                elif var_index >=34 and var_index <=36: #electric field in mV/m
+                    varib[i-i0] = self.iditm_arr[k][j][i][var_index]
+
+                elif var_index >=37 and var_index <=39: #electron velocity in m/s
                     evel=ele_velocity.evelocity(self.iditm_arr, i, j, k)
 
                     for s in range(3):
@@ -259,22 +265,9 @@ class plot_button():
                             print('(i,j,k,l)=(',i,j,k,s,'), evel-component Inf')
                             return -1
 
-                    varib[i-i0]=evel[var_index-26]  #evel in m/s
+                    varib[i-i0]=evel[var_index-37]  #evel in m/s
 
-                elif var_index >= 29 and var_index <=31: #e-field in mV/m
-                    efd=efield.efield(self.iditm_arr, self.B0, i, j, k)
-
-                    for s in range(3):
-                        if (math.isnan(efd[s])):
-                            print('(i,j,k,l)=(',i,j,k,s,'), E-component Nan')
-                            return -1
-                        elif(math.isinf(efd[s])):
-                            print('(i,j,k,l)=(',i,j,k,s,'), E-component Inf')
-                            return -1
-
-                    varib[i-i0]=efd[var_index-29]*1.0e3  #e-field in mV/m
-
-                elif var_index == 32: #electron density in cm^-3
+                elif var_index == 40: #electron density in cm^-3
                     varib[i-i0]=0.0
                     for s in range(sl):
                         if (math.isnan(self.iditm_arr[k][j][i][s])):
@@ -286,20 +279,20 @@ class plot_button():
                         else:
                             varib[i-i0]=varib[i-i0]+self.iditm_arr[k][j][i][s]
 
-                elif var_index == 33: #total neutral density in cm^-3
+                elif var_index == 41: #total neutral density in cm^-3
                     varib[i-i0]=0.0
                     for s in range(sm):
-                        s12=12+s
-                        if (math.isnan(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Nan')
+                        s20=20+s
+                        if (math.isnan(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Inf')
                             return -1
                         else:
-                            varib[i-i0]=varib[i-i0]+self.iditm_arr[k][j][i][s12]
+                            varib[i-i0]=varib[i-i0]+self.iditm_arr[k][j][i][s20]
 
-                elif var_index == 34: # every ion density
+                elif var_index == 42: # every ion density
                     for s in range(sl):
                         if (math.isnan(self.iditm_arr[k][j][i][s])):
                             print('(i,j,k,s)=(',i,j,k,s,'), Ion Density Nan')
@@ -310,61 +303,60 @@ class plot_button():
 
                         varib[s][i-i0]=self.iditm_arr[k][j][i][s]
 
-                elif var_index == 35: # every neutral density
+                elif var_index == 43: # every neutral density
                     for s in range(sm):
-                        if (math.isnan(self.iditm_arr[k][j][i][12+s])):
-                            print('(i,j,k,s)=(',i,j,k,12+s,'), Neutral Density Nan')
+                        if (math.isnan(self.iditm_arr[k][j][i][20+s])):
+                            print('(i,j,k,s)=(',i,j,k,20+s,'), Neutral Density Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][12+s])):
-                            print('(i,j,k,s)=(',i,j,k,12+s,'), Neutral Density Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][20+s])):
+                            print('(i,j,k,s)=(',i,j,k,20+s,'), Neutral Density Inf')
                             return -1
 
-                        varib[s][i-i0]=self.iditm_arr[k][j][i][12+s]
+                        varib[s][i-i0]=self.iditm_arr[k][j][i][20+s]
 
-                elif var_index == 36: # every perturbation mfd components in nT
+                elif var_index == 44: # all 3 perturbation mfd components in nT
                     for s in range(3):
-                        if (math.isnan(self.iditm_arr[k][j][i][s+23])):
-                            print('(i,j,k,s)=(',i,j,k,s+23,'), B-field Nan')
+                        if (math.isnan(self.iditm_arr[k][j][i][s+31])):
+                            print('(i,j,k,s)=(',i,j,k,s+31,'), B-field Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s+23])):
-                            print('(i,j,k,s)=(',i,j,k,s+23,'), B-field Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][s+31])):
+                            print('(i,j,k,s)=(',i,j,k,s+31,'), B-field Inf')
                             return -1
 
-                        varib[s][i-i0]=self.iditm_arr[k][j][i][s+23]*1.0e9
+                        varib[s][i-i0]=self.iditm_arr[k][j][i][s+31]
 
-                elif var_index == 37: #div-B in T/m
+                elif var_index == 45: #div-B in T/m
                     for s in range(3):
-                        if (math.isnan(self.iditm_arr[k][j][i][s+23])):
-                            print('(i,j,k,s)=(',i,j,k,s+23,'), B-component Nan')
+                        if (math.isnan(self.iditm_arr[k][j][i][s+31])):
+                            print('(i,j,k,s)=(',i,j,k,s+31,'), B-component Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s+23])):
-                            print('(i,j,k,s)=(',i,j,k,s+23,'), B-component Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][s+31])):
+                            print('(i,j,k,s)=(',i,j,k,s+31,'), B-component Inf')
                             return -1
 
                     varib[i-i0]=divB.divB(self.iditm_arr, i, j, k, self.alt, self.cr, \
                         self.rdth, self.cos_rsinth, self.rsinth_dph, a1, a2, a3)
 
-                elif var_index >= 38 and var_index <= 40: #fast mode speed in km/s
+                elif var_index >= 46 and var_index <= 48: #fast mode speed in km/s
                     vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr, \
                         self.B0,i,j,k,sl)
 
-                    if var_index == 38:
+                    if var_index == 46:
                         varib[i-i0] = vf_r 
-                    elif var_index == 39:
+                    elif var_index == 47:
                         varib[i-i0] = vf_t
-                    elif var_index == 40:
+                    elif var_index == 48:
                         varib[i-i0] = vf_f
 
                     varib[i-i0]=varib[i-i0]*1.0e-3 #fast mode speed in km/s
 
-                elif var_index == 41: #sound speed in m/s 
+                elif var_index == 49: #sound speed in m/s 
                     _, _, _, varib[i-i0] = fast_wave_speed.fast_speed(self.iditm_arr, \
                         self.B0,i,j,k,sl)
 
-                elif var_index == 42: #maximum time step allowed
+                elif var_index == 50: #maximum time step allowed
                     r0=1.0e6
-                    vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr, \
-                        self.B0,i,j,k,sl)
+                    vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr,self.B0,i,j,k,sl)
 
                     if i==0:
                         dr=self.alt[i+1]-self.alt[0]
@@ -373,30 +365,30 @@ class plot_button():
    
                     varib[i-i0]=min(dr/vf_r, self.rdth[i]/vf_t, self.rsinth_dph[j][i]/vf_f)*r0
 
-                elif var_index == 43: # electron thermal conductivity
+                elif var_index == 51: # electron thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[i-i0]=lamda[0] #in J /(m s K)
 
-                elif var_index == 44: # ion thermal conductivities
+                elif var_index == 52: # ion thermal conductivities
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[i-i0]=0.0
                     for s in range(sl):
                         varib[i-i0]=varib[i-i0]+lamda[s+1] #ion thermal conductivity in J /(m s K)
 
-                elif var_index == 45: # neutral thermal conductivity
+                elif var_index == 53: # neutral thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[i-i0]=lamda[8] #in J /(m s K)
 
-                elif var_index == 46: # electron collision frequencies
+                elif var_index == 54: # electron collision frequencies
                     nuet, _, _=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     for s in range(8):
                         varib[i-i0]=varib[i-i0]+nuet[s]
 
-                elif var_index >= 47 and var_index<=80: # ion collision frequencies
+                elif var_index >= 55 and var_index<=167: # ion collision frequencies
                     _, nust, _=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     for s in range(7):
@@ -438,13 +430,13 @@ class plot_button():
             add_text=date_str+' '+UT_str+' Height='+'{:.2f}'.format(self.alt[i])+' MLT='+MLT_str
 
             varib=np.zeros(j1-j0)
-            if var_index==34 or var_index==35:
+            if var_index==42 or var_index==43:
                 varib=np.zeros((sl, j1-j0))
-            elif var_index==36:
+            elif var_index==44:
                 varib=np.zeros((3, j1-j0))
 
             for j in range(j0,j1):
-                if var_index < 26:
+                if var_index < 37:
                     if (math.isnan(self.iditm_arr[k][j][i][var_index])):
                         print('(i,j,k,s)=(',i,j,k,var_index,'), Variable Nan')
                         return -1
@@ -456,31 +448,34 @@ class plot_button():
                     #ion density in cm^-3
                     varib[j1-1-j]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=7 and var_index <=9:
+                elif var_index >=7 and var_index <=15:
                     #ion velocity in m/s
                     varib[j1-1-j]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=10 and var_index <=11:
+                elif var_index >=16 and var_index <=19:
                     #ion and electron temperature in K
                     varib[j1-1-j]= self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >= 12 and var_index <=18:
+                elif var_index >= 20 and var_index <=26:
                     #neutral density in cm^-3
                     varib[j1-1-j]= self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=19 and var_index <=21:
+                elif var_index >=27 and var_index <=29:
                     #neutral velocity in m/s
                     varib[j1-1-j] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index == 22:
+                elif var_index == 30:
                     #neutral temperature in K
                     varib[j1-1-j] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=23 and var_index <=25:
+                elif var_index >=31 and var_index <=33:
                     #perturbation magnetic field in nT
-                    varib[j1-1-j] = self.iditm_arr[k][j][i][var_index]*1.0e9
+                    varib[j1-1-j] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=26 and var_index <=28: #electron veclocity in m/s
+                elif var_index >=34 and var_index <=36: #electron veclocity in m/s
+                    varib[j1-1-j] = self.iditm_arr[k][j][i][var_index]
+
+                elif var_index >=37 and var_index <=39: #electron veclocity in m/s
                     evel=ele_velocity.evelocity(self.iditm_arr, i, j, k)
 
                     for s in range(3):
@@ -491,22 +486,9 @@ class plot_button():
                             print('(i,j,k,l)=(',i,j,k,s,'), evel-component Inf')
                             return -1
 
-                    varib[j1-1-j]=evel[var_index-26]  #evel in m/s
+                    varib[j1-1-j]=evel[var_index-37]  #evel in m/s
 
-                elif var_index >= 29 and var_index <=31: #e-field in mV/m
-                    efd=efield.efield(self.iditm_arr, self.B0, i, j, k)
-
-                    for s in range(3):
-                        if (math.isnan(efd[s])):
-                            print('(i,j,k,l)=(',i,j,k,s,'), E-component Nan')
-                            return -1
-                        elif(math.isinf(efd[s])):
-                            print('(i,j,k,l)=(',i,j,k,s,'), E-component Inf')
-                            return -1
-
-                    varib[j1-1-j]=efd[var_index-29]*1.0e3  #e-field in mV/m
-
-                elif var_index == 32: #electron density in cm^-3
+                elif var_index == 40: #electron density in cm^-3
                     varib[j1-1-j]=0.0
                     for s in range(sl):
                         if (math.isnan(self.iditm_arr[k][j][i][s])):
@@ -518,24 +500,22 @@ class plot_button():
                         else:
                             varib[j1-1-j]=varib[j1-1-j]+self.iditm_arr[k][j][i][s]
 
-                    #varib[j1-1-j]=varib[j1-1-j]*1.0e-6
-
-                elif var_index == 33: #total neutral density in cm^-3
+                elif var_index == 41: #total neutral density in cm^-3
                     varib[j1-1-j]=0.0
                     for s in range(sm):
-                        s12=12+s
-                        if (math.isnan(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Nan')
+                        s20=20+s
+                        if (math.isnan(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Inf')
                             return -1
                         else:
-                            varib[j1-1-j]=varib[j1-1-j]+self.iditm_arr[k][j][i][s12]
+                            varib[j1-1-j]=varib[j1-1-j]+self.iditm_arr[k][j][i][s20]
 
                     #varib[j1-1-j]=varib[j1-1-j]*1.0e-6
 
-                elif var_index == 34: # every ion density
+                elif var_index == 42: # every ion density
                     for s in range(sl):
                         if (math.isnan(self.iditm_arr[k][j][i][s])):
                             print('(i,j,k,s)=(',i,j,k,s,'), Ion Density Nan')
@@ -546,59 +526,58 @@ class plot_button():
 
                         varib[s][j1-1-j]=self.iditm_arr[k][j][i][s]
 
-                elif var_index == 35: # every neutral density
+                elif var_index == 43: # every neutral density
                     for s in range(sm):
-                        s12=12+s
-                        if (math.isnan(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Nan')
+                        s20=20+s
+                        if (math.isnan(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Inf')
                             return -1
 
-                        varib[s][j1-1-j]=self.iditm_arr[k][j][i][s12]
+                        varib[s][j1-1-j]=self.iditm_arr[k][j][i][s20]
 
-                elif var_index == 36: # every perturbation mfd components in nT
-                    for s in range(23,26):
-                        if (math.isnan(self.iditm_arr[k][j][i][s])):
+                elif var_index == 44: # every perturbation mfd components in nT
+                    for s in range(3):
+                        if (math.isnan(self.iditm_arr[k][j][i][s+31])):
                             print('(i,j,k,s)=(',i,j,k,s,'), B-field Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s])):
+                        elif(math.isinf(self.iditm_arr[k][j][i][s+31])):
                             print('(i,j,k,s)=(',i,j,k,s,'), B-field Inf')
                             return -1
 
-                        varib[s-23][j1-1-j]=self.iditm_arr[k][j][i][s]*1.0e9
+                        varib[s][j1-1-j]=self.iditm_arr[k][j][i][s+31]
 
-                elif var_index == 37: #div-B in T/m
-                    for s in range(23,26):
-                        if (math.isnan(self.iditm_arr[k][j][i][s])):
+                elif var_index == 45: #div-B in T/m
+                    for s in range(3):
+                        if (math.isnan(self.iditm_arr[k][j][i][s+31])):
                             print('(i,j,k,s)=(',i,j,k,s,'), B-component Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s])):
+                        elif(math.isinf(self.iditm_arr[k][j][i][s+31])):
                             print('(i,j,k,s)=(',i,j,k,s,'), B-component Inf')
                             return -1
 
                     varib[j1-1-j]=divB.divB(self.iditm_arr, i, j, k, self.alt, self.cr, \
                         self.rdth, self.cos_rsinth, self.rsinth_dph, a1, a2, a3)
 
-                elif var_index >= 38 and var_index <= 40: #fast mode speed in km/s
-                    vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr, \
-                        self.B0,i,j,k,sl)
+                elif var_index >= 46 and var_index <= 48: #fast mode speed in km/s
+                    vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr,self.B0,i,j,k,sl)
 
-                    if var_index == 38:
+                    if var_index == 46:
                         varib[j1-1-j] = vf_r 
-                    elif var_index == 39:
+                    elif var_index == 47:
                         varib[j1-1-j] = vf_t
-                    elif var_index == 40:
+                    elif var_index == 48:
                         varib[j1-1-j] = vf_f
 
                     varib[j1-1-j]=varib[j1-1-j]*1.0e-3 #fast mode speed in km/s
 
-                elif var_index == 41: #sound speed in m/s 
+                elif var_index == 49: #sound speed in m/s 
                     _, _, _, varib[j1-1-j] = fast_wave_speed.fast_speed(self.iditm_arr, \
                         self.B0,i,j,k,sl)
 
-                elif var_index == 42: #maximum time step allowed
+                elif var_index == 50: #maximum time step allowed
                     r0=1.0e6
                     vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr, \
                         self.B0,i,j,k,sl)
@@ -610,19 +589,19 @@ class plot_button():
                     
                     varib[j1-1-j]=min(dr/vf_r, self.rdth[i]/vf_t, self.rsinth_dph[j][i]/vf_f)*r0
 
-                elif var_index == 43: # electron thermal conductivity
+                elif var_index == 41: # electron thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[j1-1-j]=lamda[0] #in J /(m s K)
 
-                elif var_index == 44: # ion thermal conductivities
+                elif var_index == 52: # ion thermal conductivities
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[j1-1-j]=0.0
                     for s in range(sl):
                         varib[j1-1-j]=varib[j1-1-j]+lamda[s+1] #in J /(m s K)
 
-                elif var_index == 45: # neutral thermal conductivity
+                elif var_index == 53: # neutral thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[j1-1-j]=lamda[8] #in J /(m s K)
@@ -661,13 +640,13 @@ class plot_button():
                 +' Latitude='+'{:.2f}'.format(-self.lat[j])
 
             varib=np.zeros(k1-k0)
-            if var_index==34 or var_index==35:
+            if var_index==42 or var_index==43:
                 varib=np.zeros((sl, k1-k0))
-            elif var_index==36:
+            elif var_index==44:
                 varib=np.zeros((3, k1-k0))
 
             for k in range(k0, k1):
-                if var_index < 26:
+                if var_index < 37:
                     if (math.isnan(self.iditm_arr[k][j][i][var_index])):
                         print('(i,j,k,s)=(',i,j,k,var_index,'), Variable Nan')
                         return -1
@@ -679,31 +658,35 @@ class plot_button():
                     #ion density in cm^-3
                     varib[k-k0]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=7 and var_index <=9:
+                elif var_index >=7 and var_index <=15:
                     #ion velocity in m/s
                     varib[k-k0]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=10 and var_index <=11:
+                elif var_index >=16 and var_index <=19:
                     #ion and electron temperature in K
                     varib[k-k0]= self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >= 12 and var_index <=18:
+                elif var_index >= 20 and var_index <=26:
                     #neutral density in cm^-3
                     varib[k-k0]= self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=19 and var_index <=21:
+                elif var_index >=27 and var_index <=29:
                     #neutral velocity in m/s
                     varib[k-k0] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index == 22:
+                elif var_index == 30:
                     #neutral temperature in K
                     varib[k-k0] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=23 and var_index <=25:
+                elif var_index >=31 and var_index <=33:
                     #perturbation magnetic field in nT
-                    varib[k-k0] = self.iditm_arr[k][j][i][var_index]*1.0e9
+                    varib[k-k0] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=26 and var_index <=28: #electron veclocity in m/s
+                elif var_index >=34 and var_index <=36:
+                    #e-field in mV/m
+                    varib[k-k0] = self.iditm_arr[k][j][i][var_index]
+
+                elif var_index >=37 and var_index <=29: #electron veclocity in m/s
                     evel=ele_velocity.evelocity(self.iditm_arr, i, j, k)
 
                     for s in range(3):
@@ -714,22 +697,9 @@ class plot_button():
                             print('(i,j,k,l)=(',i,j,k,s,'), evel-component Inf')
                             return -1
 
-                    varib[k-k0]=evel[var_index-26]  #evel in m/s
+                    varib[k-k0]=evel[var_index-37]  #evel in m/s
 
-                elif var_index >= 29 and var_index <=31: #e-field in mV/m
-                    efd=efield.efield(self.iditm_arr, self.B0, i, j, k)
-
-                    for s in range(3):
-                        if (math.isnan(efd[s])):
-                            print('(i,j,k,l)=(',i,j,k,s,'), E-component Nan')
-                            return -1
-                        elif(math.isinf(efd[s])):
-                            print('(i,j,k,l)=(',i,j,k,s,'), E-component Inf')
-                            return -1
-
-                    varib[k-k0]=efd[var_index-29]*1.0e3  #e-field in mV/m
-
-                elif var_index == 32: #electron density in cm^-3
+                elif var_index == 40: #electron density in cm^-3
                     for s in range(sl):
                         if (math.isnan(self.iditm_arr[k][j][i][s])):
                             print('(i,j,k,s)=(',i,j,k,s,'), Ion Density Nan')
@@ -743,22 +713,22 @@ class plot_button():
                     #electron density in cm^-3
                     #varib[k-k0]=varib[k-k0]*1.0e-6
 
-                elif var_index == 33: #total neutral density in cm^-3
+                elif var_index == 41: #total neutral density in cm^-3
                     for s in range(sm):
-                        s12=12+s
-                        if (math.isnan(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Nan')
+                        s20=20+s
+                        if (math.isnan(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Inf')
                             return -1
                         else:
-                            varib[k-k0]=varib[k-k0]+self.iditm_arr[k][j][i][s12]
+                            varib[k-k0]=varib[k-k0]+self.iditm_arr[k][j][i][s20]
 
                     #total neutral density in cm^-3
                     #varib[k-k0]=varib[k-k0]*1.0e-6
 
-                elif var_index == 34: # every ion density
+                elif var_index == 42: # every ion density
                     for s in range(sl):
                         if (math.isnan(self.iditm_arr[k][j][i][s])):
                             print('(i,j,k,s)=(',i,j,k,s,'), Ion Density Nan')
@@ -769,59 +739,59 @@ class plot_button():
 
                         varib[s][k-k0]=self.iditm_arr[k][j][i][s]
 
-                elif var_index == 35: # every neutral density
+                elif var_index == 43: # every neutral density
                     for s in range(7):
-                        s12=12+s
-                        if (math.isnan(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Nan')
+                        s20=20+s
+                        if (math.isnan(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Inf')
                             return -1
 
-                        varib[s][k-k0]=self.iditm_arr[k][j][i][s12]
+                        varib[s][k-k0]=self.iditm_arr[k][j][i][s20]
 
-                elif var_index == 36: # every perturbation mfd components in nT
-                    for s in range(23, 26):
-                        if (math.isnan(self.iditm_arr[k][j][i][s])):
+                elif var_index == 44: # every perturbation mfd components in nT
+                    for s in range(3):
+                        if (math.isnan(self.iditm_arr[k][j][i][s+31])):
                             print('(i,j,k,s)=(',i,j,k,s,'), B-field Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s])):
+                        elif(math.isinf(self.iditm_arr[k][j][i][s+31])):
                             print('(i,j,k,s)=(',i,j,k,s,'), B-field Inf')
                             return -1
 
-                        varib[s-23][k-k0]=self.iditm_arr[k][j][i][s]*1.0e9
+                        varib[s][k-k0]=self.iditm_arr[k][j][i][s+31]
 
-                elif var_index == 37: #div-B in T/m
-                    for s in range(23, 26):
-                        if (math.isnan(self.iditm_arr[k][j][i][s])):
+                elif var_index == 45: #div-B in T/m
+                    for s in range(3):
+                        if (math.isnan(self.iditm_arr[k][j][i][s+31])):
                             print('(i,j,k,s)=(',i,j,k,s,'), B-field Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s])):
+                        elif(math.isinf(self.iditm_arr[k][j][i][s+31])):
                             print('(i,j,k,s)=(',i,j,k,s,'), B-field Inf')
                             return -1
 
                     varib[k-k0]=divB.divB(self.iditm_arr, i, j, k, self.alt, self.cr, \
                         self.rdth, self.cos_rsinth, self.rsinth_dph, a1, a2, a3)
 
-                elif var_index >= 38 and var_index <= 40: #fast mode speed in km/s
+                elif var_index >= 46 and var_index <= 48: #fast mode speed in km/s
                     vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr, \
                         self.B0,i,j,k,sl)
 
-                    if var_index == 38:
+                    if var_index == 46:
                         varib[k-k0] = vf_r 
-                    elif var_index == 39:
+                    elif var_index == 47:
                         varib[k-k0] = vf_t
-                    elif var_index == 40:
+                    elif var_index == 48:
                         varib[k-k0] = vf_f
 
                     varib[k-k0]=varib[k-k0]*1.0e-3 #fast mode speed in km/s
 
-                elif var_index == 41: #sound speed in m/s 
+                elif var_index == 49: #sound speed in m/s 
                     _, _, _, varib[k-k0] = fast_wave_speed.fast_speed(self.iditm_arr, \
                         self.B0,i,j,k,sl)
 
-                elif var_index == 42: #maximum time step allowed
+                elif var_index == 50: #maximum time step allowed
                     r0=1.0e6
                     vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr, \
                         self.B0,i,j,k,sl)
@@ -833,19 +803,19 @@ class plot_button():
                     
                     varib[k-k0]=min(dr/vf_r, self.rdth[i]/vf_t, self.rsinth_dph[j][i]/vf_f)*r0
 
-                elif var_index == 43: # electron thermal conductivity
+                elif var_index == 51: # electron thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[k-k0]=lamda[0] #electron thermal conductivity in J/(m s K)
 
-                elif var_index == 44: # ion thermal conductivities
+                elif var_index == 52: # ion thermal conductivities
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[k-k0]=0.0
                     for s in range(sl):
                         varib[k-k0]=varib[k-k0]+lamda[s+1] #ion thermal conductivity in J/(m s K)
 
-                elif var_index == 45: # neutral thermal conductivity
+                elif var_index == 53: # neutral thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[k-k0]=lamda[8] #in J /(m s K)
@@ -862,7 +832,7 @@ class plot_button():
 
 ############# make Latitude - Height contour plot #####################################
         elif (ptype == 'Lat-Height_Contour'):
-            if (var_index >= 34 and var_index <= 36) or var_index == 44 or var_index >= 47:
+            if (var_index >= 42 and var_index <= 44):
                 print("Cann't make contour plot for multiple variables!")
                 return -1
 
@@ -896,7 +866,7 @@ class plot_button():
 
             for j in range(j0, j1):
               for i in range(i0, i1):
-                if var_index < 26:
+                if var_index < 37:
                     if (math.isnan(self.iditm_arr[k][j][i][var_index])):
                         print('(i,j,k,s)=(',i,j,k,var_index,'), Variable Nan')
                         return -1
@@ -908,39 +878,39 @@ class plot_button():
                     #ion density in cm^-3
                     varib[i-i0][j1-1-j]=np.log10(self.iditm_arr[k][j][i][var_index])
 
-                elif var_index >=7 and var_index <=9:
+                elif var_index >=7 and var_index <=15:
                     #ion velocity in m/s
                     varib[i-i0][j1-1-j]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=10 and var_index <=11:
+                elif var_index >=16 and var_index <=19:
                     #ion and electron temperature in K
                     varib[i-i0][j1-1-j]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >= 12 and var_index <=18:
+                elif var_index >= 20 and var_index <=26:
                     #neutral density in cm^-3
                     varib[i-i0][j1-1-j]=np.log10(self.iditm_arr[k][j][i][var_index])
 
-                elif var_index >=19 and var_index <=21:
+                elif var_index >=27 and var_index <=29:
                     #neutral velocity in m/s
                     varib[i-i0][j1-1-j]= self.iditm_arr[k][j][i][var_index]
 
-                elif var_index == 22:
+                elif var_index == 30:
                     #neutral temperature in K
                     varib[i-i0][j1-1-j] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=23 and var_index <=25:
+                elif var_index >=31 and var_index <=33:
                     #perturbation magnetic field in nT
-                    varib[i-i0][j1-1-j] = self.iditm_arr[k][j][i][var_index]*1.0e9
+                    varib[i-i0][j1-1-j] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=26 and var_index <=28: #electron veclocity in m/s
+                elif var_index >=34 and var_index <=36:
+                     #e-field in mV/m
+                    varib[i-i0][j1-1-j] = self.iditm_arr[k][j][i][var_index]
+
+                elif var_index >=37 and var_index <=29: #electron veclocity in m/s
                     evel=ele_velocity.evelocity(self.iditm_arr, i, j, k)
-                    varib[i-i0][j1-1-j]=evel[var_index-26] #evel in m/s
+                    varib[i-i0][j1-1-j]=evel[var_index-37] #evel in m/s
 
-                elif var_index >= 29 and var_index <=31: #e-field in mV/m
-                    efd=efield.efield(self.iditm_arr, self.B0, i, j, k)
-                    varib[i-i0][j1-1-j]=efd[var_index-29]*1.0e3 #e-field in mV/m
-
-                elif var_index == 32: #electron density in cm^-3
+                elif var_index == 40: #electron density in cm^-3
                     varib[i-i0][j1-1-j]=0.0
                     for s in range(sl):
                         if (math.isnan(self.iditm_arr[k][j][i][s])):
@@ -955,46 +925,46 @@ class plot_button():
                     #electron density in cm^-3
                     varib[i-i0][j1-1-j]=np.log10(varib[i-i0][j1-1-j])
 
-                elif var_index == 33: #total neutral density in cm^-3
+                elif var_index == 41: #total neutral density in cm^-3
                     varib[i-i0][j1-1-j]=0.0
                     for s in range(sm):
-                        s12=12+s
-                        if (math.isnan(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Nan')
+                        s20=20+s
+                        if (math.isnan(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Inf')
                             return -1
 
-                        varib[i-i0][j1-1-j]=varib[i-i0][j1-1-j]+self.iditm_arr[k][j][i][s12]
+                        varib[i-i0][j1-1-j]=varib[i-i0][j1-1-j]+self.iditm_arr[k][j][i][s20]
 
                     #neutral density in cm^-3
                     varib[i-i0][j1-1-j]=np.log10(varib[i-i0][j1-1-j])
 
-                elif var_index == 37: #div-B in T/m (x 10^12)
+                elif var_index == 45: #div-B in T/m (x 10^12)
                     varib[i-i0][j1-1-j]=divB.divB(self.iditm_arr, i, j, k, \
                         self.alt, self.cr, self.rdth, self.cos_rsinth, \
                         self.rsinth_dph, a1, a2, a3)*1.0e12
 
-                elif var_index >= 38 and var_index <= 40: #fast mode speed in km/s
-                    if var_index == 38:
+                elif var_index >= 46 and var_index <= 48: #fast mode speed in km/s
+                    if var_index == 46:
                         varib[i-i0][j1-1-j], _, _, _ = fast_wave_speed.fast_speed \
                             (self.iditm_arr,self.B0, i, j, k, sl)
-                    elif var_index == 39:
+                    elif var_index == 47:
                         _, varib[i-i0][j1-1-j], _, _ = fast_wave_speed.fast_speed \
                             (self.iditm_arr,self.B0, i, j, k, sl)
-                    elif var_index == 40:
+                    elif var_index == 48:
                         _, _, varib[i-i0][j1-1-j], _ = fast_wave_speed.fast_speed \
                             (self.iditm_arr,self.B0, i, j, k, sl)
 
                     #fast mode speed in km/s
                     varib[i-i0][j1-1-j]=varib[i-i0][j1-1-j]*1.0e-3
 
-                elif var_index == 41: #sound speed in m/s 
+                elif var_index == 49: #sound speed in m/s 
                     _, _, _, varib[i-i0][j1-1-j] = fast_wave_speed.fast_speed \
                             (self.iditm_arr,self.B0, i, j, k, sl)
 
-                elif var_index == 42: #maximum time step allowed
+                elif var_index == 50: #maximum time step allowed
                     vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr, \
                         self.B0,i,j,k,sl)
 
@@ -1007,12 +977,12 @@ class plot_button():
                         self.rsinth_dph[j][i]/vf_f)*r0
                     varib[i-i0][j1-1-j]=np.log10(varib[i-i0][j1-1-j])
 
-                elif var_index == 43: # electron thermal conductivity
+                elif var_index == 51: # electron thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[i-i0][j1-1-j]=math.log10(lamda[0]) #in J /(m s K) logscale
 
-                elif var_index == 44: # ion thermal conductivity
+                elif var_index == 52: # ion thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[i-i0][j1-1-j]=0.0
@@ -1021,7 +991,7 @@ class plot_button():
 
                     varib[i-i0][j1-1-j]=math.log10(varib[i-i0][j1-1-j]) #in J /(m s K) logscale
 
-                elif var_index == 45: # neutral thermal conductivity
+                elif var_index == 53: # neutral thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[i-i0][j1-1-j]=math.log10(lamda[8]) #in J /(m s K) logscale
@@ -1035,12 +1005,12 @@ class plot_button():
             self.canv, self.fig, self.toolbar = \
                 lati_height_cont.latitude_altitude_contour(wd, canv, fig, toolbar, \
                     self.lat, self.alt, gridNumEnt, varib, ptype, var_index, \
-                    add_text, fname)
+                    add_text, fname, paramList)
 ############# completed Latitude - Height contour plot #################################
 
 ############# make Longitude - Latitude contour plot #####################################
         elif (ptype == 'Long-Lat_Contour'):
-            if (var_index >= 34 and var_index <= 36) or var_index == 44 or var_index >= 47:
+            if (var_index >= 42 and var_index <= 44):
                 print("Cann't make contour plot for multiple variables!")
                 return -1
 
@@ -1066,14 +1036,13 @@ class plot_button():
                 print("Start index i must be less than a1")
                 return -1
 
-            add_text=date_str+' '+UT_str+' Altitude='+'{:.2f}'.format(self.alt[i]) \
-                +' km'
+            add_text=date_str+' '+UT_str+' Altitude='+'{:.2f}'.format(self.alt[i])+' km'
 
             varib=np.zeros((j1-j0, k1-k0), dtype=float)
 
             for k in range(k0, k1):
               for j in range(j0, j1):
-                if var_index < 26:
+                if var_index < 37:
                     if (math.isnan(self.iditm_arr[k][j][i][var_index])):
                         print('(i,j,k,s)=(',i,j,k,var_index,'), Variable Nan')
                         return -1
@@ -1085,39 +1054,39 @@ class plot_button():
                     #ion density in cm^-3
                     varib[j1-1-j][k-k0]=math.log10(self.iditm_arr[k][j][i][var_index])
 
-                elif var_index >=7 and var_index <=9:
+                elif var_index >=7 and var_index <=15:
                     #ion velocity in m/s
                     varib[j1-1-j][k-k0]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=10 and var_index <=11:
+                elif var_index >=16 and var_index <=19:
                     #ion and electron temperature in K
                     varib[j1-1-j][k-k0]=self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >= 12 and var_index <=18:
+                elif var_index >= 20 and var_index <=26:
                     #neutral density in cm^-3
                     varib[j1-1-j][k-k0]=np.log10(self.iditm_arr[k][j][i][var_index])
 
-                elif var_index >=19 and var_index <=21:
+                elif var_index >=27 and var_index <=29:
                     #neutral velocity in m/s
                     varib[j1-1-j][k-k0]= self.iditm_arr[k][j][i][var_index]
 
-                elif var_index == 22:
+                elif var_index == 30:
                     #neutral temperature in K
                     varib[j1-1-j][k-k0] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=23 and var_index <=25:
+                elif var_index >=31 and var_index <=33:
                     #perturbation magnetic field in nT
-                    varib[j1-1-j][k-k0] = self.iditm_arr[k][j][i][var_index]*1.0e9
+                    varib[j1-1-j][k-k0] = self.iditm_arr[k][j][i][var_index]
 
-                elif var_index >=26 and var_index <=28: #electron veclocity in m/s
+                elif var_index >=34 and var_index <=36:
+                    #electric field in mV/m
+                    varib[j1-1-j][k-k0] = self.iditm_arr[k][j][i][var_index]
+
+                elif var_index >=37 and var_index <=39: #electron veclocity in m/s
                     evel=ele_velocity.evelocity(self.iditm_arr, i, j, k)
-                    varib[j1-1-j][k-k0]=evel[var_index-26] #evel in m/s
+                    varib[j1-1-j][k-k0]=evel[var_index-37] #evel in m/s
 
-                elif var_index >= 29 and var_index <=31: #e-field in mV/m
-                    efd=efield.efield(self.iditm_arr, self.B0, i, j, k)
-                    varib[i-i0][j1-1-j]=efd[var_index-29]*1.0e3 #e-field in mV/m
-
-                elif var_index == 32: #electron density in cm^-3
+                elif var_index == 40: #electron density in cm^-3
                     varib[j1-1-j][k-k0]=0.0
                     for s in range(sl):
                         if (math.isnan(self.iditm_arr[k][j][i][s])):
@@ -1132,46 +1101,46 @@ class plot_button():
                     #electron density in cm^-3
                     varib[j1-1-j][k-k0]=np.log10(varib[j1-1-j][k-k0])
 
-                elif var_index == 33: #total neutral density in cm^-3
+                elif var_index == 41: #total neutral density in cm^-3
                     varib[j1-1-j][k-k0]=0.0
                     for s in range(sm):
-                        s12=12+s
-                        if (math.isnan(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Nan')
+                        s20=20+s
+                        if (math.isnan(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Nan')
                             return -1
-                        elif(math.isinf(self.iditm_arr[k][j][i][s12])):
-                            print('(i,j,k,s)=(',i,j,k,s12,'), Neutral Density Inf')
+                        elif(math.isinf(self.iditm_arr[k][j][i][s20])):
+                            print('(i,j,k,s)=(',i,j,k,s20,'), Neutral Density Inf')
                             return -1
 
-                        varib[j1-1-j][k-k0]=varib[j1-1-j][k-k0]+self.iditm_arr[k][j][i][s12]
+                        varib[j1-1-j][k-k0]=varib[j1-1-j][k-k0]+self.iditm_arr[k][j][i][s20]
 
                     #neutral density in cm^-3
                     varib[j1-1-j][k-k0]=np.log10(varib[j1-1-j][k-k0])
 
-                elif var_index == 37: #div-B in T/m (x 10^12)
+                elif var_index == 45: #div-B in T/m (x 10^12)
                     varib[j1-1-j][k-k0]=divB.divB(self.iditm_arr, i, j, k, \
                         self.alt, self.cr, self.rdth, self.cos_rsinth, \
                         self.rsinth_dph, a1, a2, a3)*1.0e12
 
-                elif var_index >= 38 and var_index <= 40: #fast mode speed in km/s
-                    if var_index == 38:
+                elif var_index >= 46 and var_index <= 48: #fast mode speed in km/s
+                    if var_index == 46:
                         varib[j1-1-j][k-k0], _, _, _ = fast_wave_speed.fast_speed \
                             (self.iditm_arr,self.B0, i, j, k, sl)
-                    elif var_index == 39:
+                    elif var_index == 47:
                         _, varib[j1-1-j][k-k0], _, _ = fast_wave_speed.fast_speed \
                             (self.iditm_arr,self.B0, i, j, k, sl)
-                    elif var_index == 40:
+                    elif var_index == 48:
                         _, _, varib[j1-1-j][k-k0], _ = fast_wave_speed.fast_speed \
                             (self.iditm_arr,self.B0, i, j, k, sl)
 
                     #fast mode speed in km/s
                     varib[j1-1-j][k-k0]=varib[j1-1-j][k-k0]*1.0e-3
 
-                elif var_index == 41: #sound speed in m/s 
+                elif var_index == 49: #sound speed in m/s 
                     _, _, _, varib[j1-1-j][k-k0] = fast_wave_speed.fast_speed \
                             (self.iditm_arr,self.B0, i, j, k, sl)
 
-                elif var_index == 42: #maximum time step allowed
+                elif var_index == 50: #maximum time step allowed
                     vf_r, vf_t, vf_f, _ = fast_wave_speed.fast_speed(self.iditm_arr, \
                         self.B0,i,j,k,sl)
 
@@ -1184,12 +1153,12 @@ class plot_button():
                         self.rsinth_dph[j][i]/vf_f)*r0
                     varib[j1-1-j][k-k0]=np.log10(varib[i-i0][j1-1-j])
 
-                elif var_index == 43: # electron thermal conductivity
+                elif var_index == 51: # electron thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[j1-1-j][k-k0]=math.log10(lamda[0]) #in J /(m s K) logscale
 
-                elif var_index == 44: # ion thermal conductivity
+                elif var_index == 52: # ion thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[j1-1-j][k-k0]=0.0
@@ -1198,7 +1167,7 @@ class plot_button():
 
                     varib[j1-1-j][k-k0]=math.log10(varib[j1-1-j][k-k0]) #in J /(m s K) logscale
 
-                elif var_index == 45: # neutral thermal conductivity
+                elif var_index == 53: # neutral thermal conductivity
                     _, _, lamda=parameters.paramaters(self.iditm_arr, i, j, k)
 
                     varib[j1-1-j][k-k0]=math.log10(lamda[8]) #in J /(m s K) logscale

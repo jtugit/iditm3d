@@ -92,7 +92,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 if (f20[10]>0.0) numHei++;
 
                 //initialy set three components of O+, H+, and He+ velocity to a small constant (m/s)
-                for (s = 7; s < 15; s++) xx[k][j][i].fx[s] = 0.5/v0;
+                for (s = 7; s < 16; s++) xx[k][j][i].fx[s] = 0.5/v0;
 
                 /* ion O+, H+, and He+, electron and neutral temperatures (K) */
                 for (s = 16; s < 19; s++) xx[k][j][i].fx[s] = f20[6]/T0;
@@ -137,9 +137,9 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 xx[k][j][i].fx[30]=f20[10]/T0;
 
                 /* delta_B */
-                xx[k][j][i].fx[31]=0.0;
-                xx[k][j][i].fx[32]=0.0;
-                xx[k][j][i].fx[33]=0.0;
+                xx[k][j][i].fx[31]=0.0; xx[k][j][i].fx[32]=0.0; xx[k][j][i].fx[33]=0.0;
+
+                xx[k][j][i].fx[34]=0.0; xx[k][j][i].fx[35]=0.0; xx[k][j][i].fx[36]=0.0;
             }
 
             /* extrapolation of densities to region where the density from IRI is zero */
@@ -185,12 +185,6 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                         cout<<"Variable is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s<<") in input_iri_msis"<<endl;
                         exit(-1);
                     }
-                }
-            }
-
-            for (j = Nth/3; j < ys+ym; j++) {
-                for (i = xs; i < xs+xm; i++) {
-                    for (s = 3; s < 7; s++) xx[k][j][i].fx[s]=xx[k][j-1][i].fx[s];
                 }
             }
         }

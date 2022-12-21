@@ -35,7 +35,7 @@ from matplotlib.ticker import AutoMinorLocator
 #####################################################################################
 #####################################################################################
 def latitude_altitude_contour(wd, canv, fig, toolbar, latf, altf, gridNumEnt, varib, \
-    ptype, var_index, add_text, fname):
+    ptype, var_index, add_text, fname, paramList):
 
     j0=int(gridNumEnt[1].get())
     j1=int(gridNumEnt[4].get())
@@ -44,35 +44,6 @@ def latitude_altitude_contour(wd, canv, fig, toolbar, latf, altf, gridNumEnt, va
 
     lat=latf[j0:j1]
     alt=altf[i0:i1]
-
-    paramList=[ \
-            r'O$^+$ Density (cm$^{-3}$)',r'H$^+$ Density (cm$^{-3}$)',r'H$_e^+$ Density (cm$^{-3}$)', \
-            r'O$_2^+$ Density (cm$^{-3}$)',r'N$_2^+$ Density (cm$^{-3}$)', r'NO$^+$ Density (cm$^{-3}$)', \
-            r'N$^+$ Density (cm$^{-3}$)', \
-            r'V_${i,r}$ (m/s)',r'V$_{i,\theta}$ (m/s)',r'V$_{i,\phi}$ (m/s)',r'T$_i$ (K)', r'T$_e$ (K)', \
-            r'O Density (cm$^{-3}$)',r'H Density (cm$^{-3}$)',r'H$_e$ Density (cm$^{-3}$)', \
-            r'O$_2$ Density (cm$^{-3}$)',r'N$_2$ Density (cm$^{-3}$)',r'NO Density (cm$^{-3}$)', \
-            r'N Density (cm$^{-3}$)', \
-            r'V$_{n,r}$ (m/s)',r'V$_{n,\theta}$ (m/s)',r'V$_{n,\phi}$ (m/s)',r'T$_n$ (K)', \
-            r'$\delta$B$_r$ (nT)',r'$\delta$B$_\theta$ (nT)',r'$\delta$B$_\phi$ (nT)', \
-            r'V$_{e,r}$',r'V$_{e,\theta}$',r'V$_{e,\phi}$', \
-            r'E$_r$ (mV/m)',r'E$_\theta$ (mV/m)',r'E$_\phi$ (mV/m)', \
-            r'Electron Density (cm$^{-3}$)', r'Total Neutral Density (cm$^{-3}$)', \
-            r'All Ion Density (cm$^{-3}$)',r'All Neutral Density (cm$^{-3}$)', \
-            r'$\delta$B Components (nT)', r'Divergence B (nT/km)', \
-            r'V$_{f,r}$ (km/s)',r'V$_{f,\theta}$ (km/s)',r'V$_{f,\phi}$ (km/s)', \
-            r'C$_s$ (km/s)','Max Time Step (s)', \
-            r'Electron Thermal Conductivity (Joule m$^{-1}$ s$^{-1}$ K$^{-1}$)' ,\
-            r'Ion Thermal Conductivity (Joule m$^{-1}$ s$^{-1}$ K$^{-1}$)', \
-            r'Neutral Thermal Conductivity (Joule m$^{-1}$ s$^{-1}$ K$^{-1}$)', \
-            r'Electron Collision Frequency (s$^{-1}$)', \
-            r'O$^+$ Collision Frequency (s$^{-1}$)', \
-            r'H$^+_{2}$ Collision Frequency (s$^{-1}$)', \
-            r'He$^+_{2}$ Collision Frequency (s$^{-1}$)', \
-            r'O$^+_{2}$ Collision Frequency (s$^{-1}$)', \
-            r'N$^+_{2}$ Collision Frequency (s$^{-1}$)', \
-            r'NO$^+_{2}$ Collision Frequency (s$^{-1}$)', \
-            r'N$^+_{2}$ Collision Frequency (s$^{-1}$)']
 
     print("\nPlot contour of "+paramList[var_index]+" ...")
 
@@ -133,11 +104,8 @@ def latitude_altitude_contour(wd, canv, fig, toolbar, latf, altf, gridNumEnt, va
     axes.text(0.01,1.02,add_text,ha='left',va='bottom',fontsize=2.6, \
         transform=axes.transAxes)
 
-    if (((var_index-4) % 5 ==0 and var_index <34) or \
-        (var_index>=34 and var_index<=40) or (var_index>=50 and var_index < 54) \
-        or var_index==65 or var_index==70):
-            axes.text(1.02,0.97,'Log Scale',ha='left',va='bottom',fontsize=2.5, \
-                transform=axes.transAxes)
+    if var_index < 7 or (var_index>=20 and var_index<=26) or (var_index>=40 and var_index <= 43):
+        axes.text(1.02,0.97,'Log Scale',ha='left',va='bottom',fontsize=2.5,transform=axes.transAxes)
 
     #--------------------- plot contour -------------------------------
     sc=axes.contourf(lat, alt, varib, levels=30, cmap=colormap)
