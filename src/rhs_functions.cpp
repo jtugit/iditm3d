@@ -51,39 +51,13 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
         zk=k-zs;
 
         for (j = ys; j< ys+ym; j++) {
-            //boundary conditions at j=0 and j=Nth
-            if (j == 0) {
-                for (i = xs; i < xs+xm; i++) {
-                    for (s = 0; s < a4; s++) {
-                        if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32 || s == 35)
-                            gg[k][0][i].fx[s]=-xx[(k+a3/2) % a3][1][i].fx[s];
-                        else gg[k][0][i].fx[s]=xx[(k+a3/2) % a3][1][i].fx[s];
-                    }
-                }
-                continue;
-            }
-            else if (j == Nth) {
-                for (i = xs; i < xs+xm; i++) {
-                    for (s = 0; s < a4; s++) {
-                        if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32 || s == 35)
-                            gg[k][Nth][i].fx[s]=-xx[(k+a3/2) % a3][Nthm][i].fx[s];
-                        else gg[k][Nth][i].fx[s]=xx[(k+a3/2) % a3][Nthm][i].fx[s];
-                    }
-                }
-                continue;
-            }
+            //boundary conditions at j=0 and j=Nth are set later
+            if (j == 0 || j == Nth) continue;
 
             yj=j-ys; kj=(uint64_t)(zk*ym+yj);
 
             for (i = xs; i < xs+xm; i++) {
                 xi=i-xs; ji=(uint64_t)(yj*xm+xi); kji=(uint64_t)(zk*ym*xm+yj*ym+xi);
-
-                if (i == 0) {
-                    lower_boundary_bc(xx, gg, j, k); continue;
-                }
-                else if (i == Nr) {
-                    upper_boundary_bc(xx, gg, j, k, yj, zk); continue;
-                }
 
                 uir[0]=xx[k][j][i].fx[7];  uith[0]=xx[k][j][i].fx[8];  uiph[0]=xx[k][j][i].fx[9];
                 uir[1]=xx[k][j][i].fx[10]; uith[1]=xx[k][j][i].fx[11]; uiph[1]=xx[k][j][i].fx[12];
@@ -208,6 +182,26 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
 
             if (xs == 0) lower_boundary_bc(xx, gg, j, k);
             if (xs+xm == a1) upper_boundary_bc(xx, gg, j, k, yj, zk);
+        }
+
+        //set boundary conditions at j=0 and j=Nth
+        if (ys == 0) {
+            for (i = xs; i < xs+xm; i++) {
+                for (s = 0; s < a4; s++) {
+                    if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32 || s == 35)
+                        gg[k][0][i].fx[s]=-xx[(k+a3/2) % a3][1][i].fx[s];
+                    else gg[k][0][i].fx[s]=xx[(k+a3/2) % a3][1][i].fx[s];
+                }
+            }
+        }
+        else if (ys+ym == a2) {
+            for (i = xs; i < xs+xm; i++) {
+                for (s = 0; s < a4; s++) {
+                    if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32 || s == 35)
+                        gg[k][Nth][i].fx[s]=-xx[(k+a3/2) % a3][Nthm][i].fx[s];
+                    else gg[k][Nth][i].fx[s]=xx[(k+a3/2) % a3][Nthm][i].fx[s];
+                }
+            }
         }
     }
 

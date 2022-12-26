@@ -94,7 +94,8 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 //initialy set three components of O+, H+, and He+ velocity to a small constant (m/s)
                 for (s = 7; s < 16; s++) xx[k][j][i].fx[s] = 0.5/v0;
 
-                /* ion O+, H+, and He+, electron and neutral temperatures (K) */
+                /* neutral, ion O+, H+, and He+, electron temperatures (K) */
+                xx[k][j][i].fx[30] =  f20[5]/T0;
                 for (s = 16; s < 19; s++) xx[k][j][i].fx[s] = f20[6]/T0;
                 xx[k][j][i].fx[19] = f20[7]/T0;
 
@@ -134,12 +135,12 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                     exit(-1);
                 }
 
-                xx[k][j][i].fx[30]=f20[10]/T0;
+                //xx[k][j][i].fx[30]=f20[10]/T0;
 
                 /* delta_B */
-                xx[k][j][i].fx[31]=0.0; xx[k][j][i].fx[32]=0.0; xx[k][j][i].fx[33]=0.0;
+                xx[k][j][i].fx[31]=1.0e-9; xx[k][j][i].fx[32]=1.0e-9; xx[k][j][i].fx[33]=1.0e-9;
 
-                xx[k][j][i].fx[34]=0.0; xx[k][j][i].fx[35]=0.0; xx[k][j][i].fx[36]=0.0;
+                xx[k][j][i].fx[34]=1.0e-4; xx[k][j][i].fx[35]=1.0e-4; xx[k][j][i].fx[36]=1.0e-4;
             }
 
             /* extrapolation of densities to region where the density from IRI is zero */
@@ -158,7 +159,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                         y1 = log(localxx[k][j][i+1].fx[s]);
                         y2 = log(localxx[k][j][i+2].fx[s]);
                         localxx[k][j][i].fx[s] = exp(y1+(rr[i]-rr[i+1])/(rr[i+2]-rr[i+1])*(y2-y1));
-                        if (localxx[k][j][i].fx[s] < denmin) localxx[k][j][i].fx[s]=denmin;
+                        if (localxx[k][j][i].fx[s] < denmin/n0) localxx[k][j][i].fx[s]=denmin/n0;
                     }
                 }
                 if (im[s] > 0) {
@@ -172,7 +173,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                         y1 = log(localxx[k][j][i-2].fx[s]);
                         y2 = log(localxx[k][j][i-1].fx[s]);
                         localxx[k][j][i].fx[s] = exp(y1+(rr[i]-rr[i-2])/(rr[i-1]-rr[i-2])*(y2-y1));
-                        if (localxx[k][j][i].fx[s] < denmin) localxx[k][j][i].fx[s]=denmin;
+                        if (localxx[k][j][i].fx[s] < denmin/n0) localxx[k][j][i].fx[s]=denmin/n0;
                     }
                 }
             }

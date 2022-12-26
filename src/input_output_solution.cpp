@@ -182,7 +182,7 @@ int output_solution(DM da, Field ***xx, AppCtx *params)
                 /* perturbation magnetic field (nT) in spherical coordinates */
                 xdata[s+31]=(Kmat.K11[kj]*Bx+Kmat.K21[kj]*By+Kmat.K31[(uint64_t)yj]*Bz)*B00;
                 xdata[s+32]=(Kmat.K12[kj]*Bx+Kmat.K22[kj]*By+Kmat.K32[(uint64_t)yj]*Bz)*B00;
-                xdata[2+33]=(Kmat.K13[(uint64_t)zk]*Bx+Kmat.K23[(uint64_t)zk]*By)*B00;
+                xdata[s+33]=(Kmat.K13[(uint64_t)zk]*Bx+Kmat.K23[(uint64_t)zk]*By)*B00;
 
                 //convert electric field to Cartesian coordinates
                 Ex=( Jmat.J11[kj]*xx[k][j][i].fx[34]+Jmat.J21[kji]*xx[k][j][i].fx[35]
@@ -194,7 +194,7 @@ int output_solution(DM da, Field ***xx, AppCtx *params)
                 /* E (mV/m) in spherical coordinates */
                 xdata[s+34]=(Kmat.K11[kj]*Ex+Kmat.K21[kj]*Ey+Kmat.K31[(uint64_t)yj]*Ez)*E00;
                 xdata[s+35]=(Kmat.K12[kj]*Ex+Kmat.K22[kj]*Ey+Kmat.K32[(uint64_t)yj]*Ez)*E00;
-                xdata[2+36]=(Kmat.K13[(uint64_t)zk]*Ex+Kmat.K23[(uint64_t)zk]*Ey)*E00;
+                xdata[s+36]=(Kmat.K13[(uint64_t)zk]*Ex+Kmat.K23[(uint64_t)zk]*Ey)*E00;
             }
         }
     }

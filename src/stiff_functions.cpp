@@ -13,7 +13,7 @@ using namespace std;
 int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 {
     int    s, t, s3, s14, rank;
-    double Br, Bt, Bp, Ec_VxB[3], Ec_gradPe[3], Ex, Ey, Ez;
+    double Br, Bt, Bp, Ec_VxB[3];
     double usr[3], ust[3], usp[3], ui[3], unr, unt, unp, ns[3], nn[7], rhos[7];
     double ne, Te, Nn, rhon, Tn, Ts[3]; //ne = ni
     double nusn[7], mtnust_msmt, nusq_msmq[7], nuen, sum_nueq_div_mq, nusttemp, nuis;
@@ -93,7 +93,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                     s14=14*s;
                     for (t = 0; t< sm; t++) {
                         nusttemp=nust[zk][yj][xi][21+s14+t]; nusn[s] += nusttemp;
-                        mqnusq_msmq[s] += ms[t]*nusttemp/(ams[s]+ams[t]);
+                        mqnusq_msmq[s] += ams[t]*nusttemp/(ams[s]+ams[t]);
                         nusq_msmq[s] += nusttemp/(ams[s]+ams[t]);
                     }
 
@@ -107,13 +107,12 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                         s3=s*3; usr[s]=xx[k][j][i].fx[7+s3]; ust[s]=xx[k][j][i].fx[8+s3];
                         usp[s]=xx[k][j][i].fx[9+s3];
 
-                        ui[0] += xx[k][j][i].fx[s]*usr[s]; ui[1] += xx[k][j][i].fx[s]*ust[s];
-                        ui[2] += xx[k][j][i].fx[s]*usp[s];
+                        ui[0] += nns*usr[s]; ui[1] += nns*ust[s]; ui[2] += nns*usp[s];
                     }
                 }
 
                 //ion bulk velocity
-                deni=xx[k][j][i].fx[3]+xx[k][j][i].fx[4]+xx[k][j][i].fx[5]+xx[k][j][i].fx[6];
+                deni=exp(xx[k][j][i].fx[3])+exp(xx[k][j][i].fx[4])+exp(xx[k][j][i].fx[5])+exp(xx[k][j][i].fx[6]);
                 ui[0]=(ui[0]+deni*xx[k][j][i].fx[7])/ne;
                 ui[1]=(ui[1]+deni*xx[k][j][i].fx[8])/ne;
                 ui[2]=(ui[2]+deni*xx[k][j][i].fx[9])/ne;
@@ -147,7 +146,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 nuis= nust[zk][yj][xi][43]+nust[zk][yj][xi][45]+nust[zk][yj][xi][46]+nust[zk][yj][xi][47]
                      +nust[zk][yj][xi][48];
 
-                ff[k][j][i].fx[13]= dxdt[k][j][i].fx[13] + qms[2]*((ui[0]-ust[2])*Bp-(ui[2]-usp[2])*Bt)
+                ff[k][j][i].fx[13]= dxdt[k][j][i].fx[13] + qms[2]*((ui[1]-ust[2])*Bp-(ui[2]-usp[2])*Bt)
                                    +nusn[2]*(usr[2]-unr) + nuis*(usr[2]-usr[0]) + nust[zk][yj][xi][44]*(usr[2]-usr[1]);
                 ff[k][j][i].fx[14]= dxdt[k][j][i].fx[14] + qms[2]*((ui[2]-usp[2])*Br-(ui[0]-usr[2])*Bp)
                                    +nusn[2]*(ust[2]-unt) + nuis*(ust[2]-ust[0]) + nust[zk][yj][xi][44]*(ust[2]-ust[1]);
@@ -199,7 +198,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                           +nust[zk][yj][xi][48]/(ams[2]+ams[6]);
 
                 ff[k][j][i].fx[18] = dxdt[k][j][i].fx[18]
-                                    -two3rd*ams[1]*( mqnusq_msmq[2]*uiminusun_sq[2]+mtnust_msmt*uOi_uHei_sq
+                                    -two3rd*ams[2]*( mqnusq_msmq[2]*uiminusun_sq[2]+mtnust_msmt*uOi_uHei_sq
                                                     +ams[1]*nust[zk][yj][xi][44]/(ams[2]+ams[1])*uHi_uHei_sq)
                                     +2.0*ams[2]*( nusq_msmq[2]*(Ts[2]-Tn)+nust_msmt*(Ts[2]-Ts[0])
                                                  +nust[zk][yj][xi][44]/(ams[2]+ams[1])*(Ts[2]-Ts[1])
@@ -216,7 +215,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                                     +2.0*ame*( nuis_ms*(Te-Ts[0])+nust[zk][yj][xi][1]/ams[1]*(Te-Ts[1])
                                               +nust[zk][yj][xi][2]/ams[2]*(Te-Ts[2])+sum_nueq_div_mq*(Te-Tn))
                                     -two3rd*ame*((ui[0]-unr)*(ui[0]-unr)+(ui[1]-unr)*(ui[1]-unt)+(ui[2]-unp)*(ui[2]-unp))
-                                    +two3rd/ne*Ce;
+                                    -two3rd/ne*Ce;
 
                 //----- neutral momentum equation
                 rhosnusn_rhon[0]=(rhos[0]*nusn[0]+rhos[3]*nusn[3]+rhos[4]*nusn[4]+rhos[5]*nusn[5]+rhos[6]*nusn[6])/rhon;
@@ -234,11 +233,10 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                          +rhos[5]*ams[5]*nusq_msmq[5]+rhos[6]*ams[6]*nusq_msmq[6];
                 nuis = rhos[0]*nusq_msmq[0]+rhos[3]*nusq_msmq[3]+rhos[4]*nusq_msmq[4]
                       +rhos[5]*nusq_msmq[5]+rhos[6]*nusq_msmq[6];
-                ff[k][j][i].fx[30] =  
+                ff[k][j][i].fx[30] =2.0/Nn*( nuis*(Tn-Ts[0])+rhos[1]*nusq_msmq[1]*(Tn-Ts[1])
+                                             +rhos[2]*nusq_msmq[2]*(Tn-Ts[2]))
                                     -two3rd/Nn*( nuis_ms*uiminusun_sq[0]+rhos[1]*ams[1]*nusq_msmq[1]*uiminusun_sq[1]
-                                                +rhos[2]*ams[2]*nusq_msmq[2]*uiminusun_sq[2])
-                                    +2.0/Nn*( nuis*(Tn-Ts[0])+rhos[1]*nusq_msmq[1]*(Tn-Ts[1])
-                                             +rhos[2]*nusq_msmq[2]*(Tn-Ts[2]));
+                                                +rhos[2]*ams[2]*nusq_msmq[2]*uiminusun_sq[2]);
 
                 //----------- B^r equation
                 ff[k][j][i].fx[31]= dxdt[k][j][i].fx[31]+0.5*( (xx[k][jp][i].fx[33]-xx[k][jm][i].fx[33])/dth
@@ -253,22 +251,20 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                                                               -(xx[k][jp][i].fx[31]-xx[k][jm][i].fx[31])/dth);
 
                 electric_field_vxB(xx, uu, ui, i, j, k, xi, yj, zk, xm, ym, Ec_VxB);
-                E_gradPe(xx, uu, i, j, k, xi, yj, zk, xm, ym, Ec_gradPe);
-                Ex=Ec_VxB[0]+Ec_gradPe[0]; Ey=Ec_VxB[1]+Ec_gradPe[1]; Ez=Ec_VxB[2]+Ec_gradPe[2];
 
                 //----------- E^r equation
-                ff[k][j][i].fx[34]=Jinv.Jiv11[kj]*Ex+Jinv.Jiv21[kj] *Ey+Jinv.Jiv31[(uint64_t)yj]*Ez;
+                ff[k][j][i].fx[34]=Jinv.Jiv11[kj]*Ec_VxB[0]+Jinv.Jiv21[kj]*Ec_VxB[1]+Jinv.Jiv31[(uint64_t)yj]*Ec_VxB[1];
 
                 //----------- E^theta equation
-                ff[k][j][i].fx[35]=Jinv.Jiv12[kji]*Ex+Jinv.Jiv22[kji]*Ey+Jinv.Jiv32[ji]*Ez;
+                ff[k][j][i].fx[35]=Jinv.Jiv12[kji]*Ec_VxB[0]+Jinv.Jiv22[kji]*Ec_VxB[1]+Jinv.Jiv32[ji]*Ec_VxB[1];
 
                 //----------- E^phi equation
-                ff[k][j][i].fx[36]=Jinv.Jiv13[kji]*Ex+Jinv.Jiv23[kji]*Ey;
+                ff[k][j][i].fx[36]=Jinv.Jiv13[kji]*Ec_VxB[0]+Jinv.Jiv23[kji]*Ec_VxB[1];
 
                 for (s=0; s<a4; s++) {
                     if (isnan(ff[k][j][i].fx[s]) || isinf(ff[k][j][i].fx[s])) {
                         cout<<"Stiff function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
-                            <<") in stiffunction "<<ff[k][j][i].fx[s]<<endl;
+                            <<") in stiffunction "<<ff[k][j][i].fx[s]<<" "<<a4<<endl;
                         exit(-1);
                     }
                 }

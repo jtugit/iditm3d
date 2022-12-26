@@ -25,15 +25,15 @@ inline void E_gradPe(Field ***xx, Field ***uu, int i, int j, int k, int xi, int 
     dpe_dth=(ne*dTe_dth+Te*dne_dth)/rr[i];
     dpe_dph=(ne*dTe_dph+Te*dne_dph)/rsin[yj][xi];
 
-    //part of electric field due to electron pressure gradient in Cartesian coordinates
+    //negative of electric field part due to electron pressure gradient in Cartesian coordinates
     inv_ene=1.0/(e*uu[k][j][i].fx[6]);
-    Ec_gradPe[0] =-(Jmat.J11[kj]*dpe_dr+Jmat.J21[kji]*dpe_dth+Jmat.J31[kji]*dpe_dph)*inv_ene;
-    Ec_gradPe[1] =-(Jmat.J12[kj]*dpe_dr+Jmat.J22[kji]*dpe_dth+Jmat.J32[kji]*dpe_dph)*inv_ene;
-    Ec_gradPe[2] =-(Jmat.J13[(uint64_t)yj]*dpe_dr+Jmat.J23[ji] *dpe_dth)*inv_ene;
+    Ec_gradPe[0] =(Jmat.J11[kj]*dpe_dr+Jmat.J21[kji]*dpe_dth+Jmat.J31[kji]*dpe_dph)*inv_ene;
+    Ec_gradPe[1] =(Jmat.J12[kj]*dpe_dr+Jmat.J22[kji]*dpe_dth+Jmat.J32[kji]*dpe_dph)*inv_ene;
+    Ec_gradPe[2] =(Jmat.J13[(uint64_t)yj]*dpe_dr+Jmat.J23[ji] *dpe_dth)*inv_ene;
 }
 
 /*-------------------------------------------------------------------------------------------------------
- *  special spherical components of electric field: -(u_e x B) part
+ *  Cartesian components of electric field: -(u_e x B) part
  *-------------------------------------------------------------------------------------------------------*/
 inline void electric_field_vxB(Field ***xx, Field ***uu, double ue[], int i, int j, int k, int xi,
     int yj, int zk, int xm, int ym, double Ec_VxB[])
