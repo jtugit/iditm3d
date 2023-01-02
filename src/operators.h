@@ -106,9 +106,9 @@ inline double difference_theta(Field ***xx, int i, int j, int k, int s)
     int    kc, jm, jp;
 
     if (j == 1) {
-        kc = (k+a3/2) % a3; jm = j; 
+        kc = (k+a3/2) % a3; 
         if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32)
-            yL = -(xx[kc][j][i].fx[s] + limited_slope_theta(xx, i, j, kc, s)*(thetah[j]-theta[j]));
+            yL = -(xx[kc][j][i].fx[s] - limited_slope_theta(xx, i, j, kc, s)*(thetah[j]-theta[j]));
         else yL = xx[kc][j][i].fx[s] + limited_slope_theta(xx, i, j, kc, s)*(thetah[j]-theta[j]);
     }
     else {
@@ -127,11 +127,11 @@ inline double difference_theta(Field ***xx, int i, int j, int k, int s)
     if (j == Nthm) {
         kc = (k+a3/2) % a3;
         if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32)
-            yR = -(xx[kc][j][i].fx[s] + limited_slope_r(xx, i, j, kc, s)*(thetah[jp]-theta[j]));
-        else yR = xx[kc][j][i].fx[s] + limited_slope_r(xx, i, j, kc, s)*(thetah[jp]-theta[j]);
+            yR = -(xx[kc][j][i].fx[s] - limited_slope_theta(xx, i, j, kc, s)*(thetah[jp]-theta[j]));
+        else yR = xx[kc][j][i].fx[s] + limited_slope_theta(xx, i, j, kc, s)*(thetah[jp]-theta[j]);
     }
     else {
-        yR = xx[k][jp][i].fx[s] + limited_slope_r(xx, i, jp, k, s)*(thetah[jp]-theta[jp]);
+        yR = xx[k][jp][i].fx[s] + limited_slope_theta(xx, i, jp, k, s)*(thetah[jp]-theta[jp]);
     }
 
     yjp = 0.5*(yL + yR);
@@ -154,10 +154,10 @@ inline double difference_phi(Field ***xx, int i, int j, int k, int s)
 
     ykm = 0.5*(yL + yR);
 
-    yL = xx[k][j][i].fx[s] + slope_phk*(thetah[kp]-theta[k]);
+    yL = xx[k][j][i].fx[s] + slope_phk*(phih[kp]-phi[k]);
 
-    if (k == Np) yR = xx[0][j][i].fx[s] + limited_slope_r(xx, i, j, 0, s)*(thetah[0]-theta[0]);
-    else yR = xx[kp][j][i].fx[s] + limited_slope_r(xx, i, j, kp, s)*(thetah[kp]-theta[kp]);
+    if (k == Np) yR = xx[0][j][i].fx[s] + limited_slope_phi(xx, i, j, 0, s)*(phih[0]-phi[0]);
+    else yR = xx[kp][j][i].fx[s] + limited_slope_phi(xx, i, j, kp, s)*(phih[kp]-phi[kp]);
 
     ykp = 0.5*(yL + yR);
 

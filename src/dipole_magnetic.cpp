@@ -90,9 +90,9 @@ void dipole_magnetic(DM da, AppCtx *params)
                 uu[k][j][i].fx[0]=Br/B0; uu[k][j][i].fx[1]=Bt/B0; uu[k][j][i].fx[2]=Bp/B0;
 
                 /* dipole magnetic field in special spherical coordinates */
-                B0x=(Kmat.K11[kj]*Br+Kmat.K12[kj]*Bt+Kmat.K13[(uint64_t)zk]*Bp)/B0;
-                B0y=(Kmat.K21[kj]*Br+Kmat.K22[kj]*Bt+Kmat.K23[(uint64_t)zk]*Bp)/B0;
-                B0z=(Kmat.K31[(uint64_t)yj]*Br+Kmat.K32[(uint64_t)yj]*Bt)/B0;
+                B0x=(Kmat.K11[kj]*Br+Kmat.K12[kj]*Bt+Kmat.K13[(uint64_t)zk]*Bp);
+                B0y=(Kmat.K21[kj]*Br+Kmat.K22[kj]*Bt+Kmat.K23[(uint64_t)zk]*Bp);
+                B0z=(Kmat.K31[(uint64_t)yj]*Br+Kmat.K32[(uint64_t)yj]*Bt);
 
                 uu[k][j][i].fx[3]=B0x/B0; uu[k][j][i].fx[4]=B0y/B0; uu[k][j][i].fx[5]=B0z/B0;
 

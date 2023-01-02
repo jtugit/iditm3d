@@ -58,16 +58,17 @@ inline void electric_field_vxB(Field ***xx, Field ***uu, double ue[], int i, int
     Ec_VxB[0]=By*uez - Bz*uey; Ec_VxB[1]=Bz*uex - Bx*uez; Ec_VxB[2]=Bx*uey - By*uex;
 }
 
-inline void currents(Field ***xx, Field ***uu, int i, int j, int k, int yj, int xi)
+inline void currents(Field ***localuu, Field ***uu, int i, int j, int k, int yj, int xi)
 {
-    double dBphi_dtheta = difference_theta(xx, i, j, k, 33);
-    double dBtheta_dphi = difference_phi(xx, i, j, k, 32);
-    double dBr_dphi = difference_phi(xx, i, j, k, 31);
-    double dBphi_dr = difference_r(xx, i, j, k, 33);
-    double dBtheta_dr = difference_r(xx, i, j, k, 32);
-    double dBr_dtheta = difference_theta(xx, i, j, k, 31);
+    double dBphi_dtheta = difference_theta(localuu, i, j, k, 27);
+    double dBtheta_dphi = difference_phi(localuu, i, j, k, 26);
+    double dBr_dphi = difference_phi(localuu, i, j, k, 25);
+    double dBphi_dr = difference_r(localuu, i, j, k, 27);
+    double dBtheta_dr = difference_r(localuu, i, j, k, 26);
+    double dBr_dtheta = difference_theta(localuu, i, j, k, 25);
 
-    uu[k][j][i].fx[20]=(cot_div_r[yj][xi]*xx[k][j][i].fx[33]+dBphi_dtheta/rr[i] - dBtheta_dphi/rsin[yj][xi])/mu0;
-    uu[k][j][i].fx[21]=(dBr_dphi/rsin[yj][xi] - dBphi_dr - xx[k][j][i].fx[31]/rr[i])/mu0;
-    uu[k][j][i].fx[22]=(xx[k][j][i].fx[32]/rr[i]+dBtheta_dr - dBr_dtheta/rr[i])/mu0;
+    uu[k][j][i].fx[20]=( cot_div_r[yj][xi]*localuu[k][j][i].fx[27]+dBphi_dtheta/rr[i]
+                        -dBtheta_dphi/rsin[yj][xi])/mu0;
+    uu[k][j][i].fx[21]=(dBr_dphi/rsin[yj][xi] - dBphi_dr - localuu[k][j][i].fx[27]/rr[i])/mu0;
+    uu[k][j][i].fx[22]=(localuu[k][j][i].fx[26]/rr[i]+dBtheta_dr - dBr_dtheta/rr[i])/mu0;
 }

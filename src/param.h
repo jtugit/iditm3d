@@ -160,7 +160,7 @@ extern double ***fluxn;
 
 extern double **vt, **vp;
 
-extern double ****Ps, ****Ls, ***Qee, ***Qeuv;
+extern double ****Ps, ****Ls;
 
 typedef struct{
     vector<double> J11, J12;     //J11[zk][yj], J12[zk][yj] - use 1-D indexing kj=k*ym+j

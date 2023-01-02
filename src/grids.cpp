@@ -156,7 +156,7 @@ int grids(DM da, AppCtx *params)
         for (i = xs; i < xs+xm; i++) {
             r2sintheta[j-ys][i-xs]=rr[i]*rr[i]*sin(theta[j]);
             cot_div_r[j-ys][i-xs]=cos(theta[j])/(rr[i]*sin(theta[j]));
-            rsin[j-ys][i-xs]=rr[i]*sin(theta[j])*dph;
+            rsin[j-ys][i-xs]=rr[i]*sin(theta[j]);
         }
     }
 

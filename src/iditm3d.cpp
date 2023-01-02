@@ -135,8 +135,6 @@ int main(int argc,char **argv)
 
     if (!rank) cout <<endl<< "Start time advancing ..." <<endl;
 
-    parameters(da, X, &params);
-
     params.ntot = params.ntot + params.npre;
     /*************** start time advancing *************************************/
     for (params.ndt = params.npre+1; params.ndt < params.ntot+1; params.ndt++) {
@@ -149,11 +147,15 @@ int main(int argc,char **argv)
 
         check_positivity(da, xx);
 
+/*-----------------------------------------------------------------------------------------
+ *----- smooth O+, H+, He+ ion velocities and temperatures 
+ *----- multidomensional Shapiro filter is used to conduct smoothing (Falissard, JCP 2013)
+ -----------------------------------------------------------------------------------------*/
+        smooth_multi_dim(da, X, 7, 19);
+
         // output in parallel to a hdf5 file at chosen time steps
         if (params.ndt % params.nout ==0 || params.ndt==params.ntot) output_solution(da, xx, &params);
         DMDAVecRestoreArray(da, X, &xx);
-
-        parameters(da, X, &params);
 
         if (params.ndt % params.lognum ==0 || params.ndt==params.ntot) {
             end_t=time(NULL);

@@ -19,9 +19,9 @@
 
 using namespace std;
 
-void neu_cooling_rate(Field ***xx, Field ***uu, int i, int j, int k)
+inline double neu_cooling_rate(Field ***xx, int i, int j, int k)
 {
-    double Tn, nO, nNO, Tx1, Tx2; //chi, , E21, E22;
+    double Tn, nO, nNO, Tx1, Tx2, Cn; //chi, , E21, E22;
     const double t0divp0=t0/p0;
 
     //double *tao = new double[xm];
@@ -55,9 +55,11 @@ void neu_cooling_rate(Field ***xx, Field ***uu, int i, int j, int k)
     //chi=0.5*(Tx1-1.0)*((2.0-E21-E22)/(Tx1-1.0)+E22/(exp(228.0/TOb)-1.0));
 
     /* cooling rate in Joule m^-3 s^-1 */
-    uu[k][j][i].fx[33]=nO*( (1.69e-25*Tx1+4.59e-27*Tx2)/(1.0+0.6*Tx1+0.2*Tx2)
-                           +3.24015e-29*nNO*exp(-2714.57/Tn)/(6.5e-11*nO+13.3))*t0divp0;
+    Cn=nO*( (1.69e-25*Tx1+4.59e-27*Tx2)/(1.0+0.6*Tx1+0.2*Tx2)
+           +3.24015e-29*nNO*exp(-2714.57/Tn)/(6.5e-11*nO+13.3))*t0divp0;
 
     //delete[] tao;
+
+    return Cn;
 }
 

@@ -84,8 +84,6 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
     nust=new double***[zm];
     Ps = new double***[zm];
     Ls = new double***[zm];
-    //Qee= new double**[zm];
-    //Qeuv=new double**[zm];
 
     for (k = 0; k< zm; k++) {
         nust[k]=new double**[ym];
@@ -93,17 +91,11 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
         Ps[k] = new double**[ym];
         Ls[k] = new double**[ym];
 
-        //Qee[k]= new double*[ym];
-        //Qeuv[k]=new double*[ym];
-
         for (j = 0; j < ym; j++) {
             nust[k][j]=new double*[xm];
 
             Ps[k][j] = new double*[xm];
             Ls[k][j] = new double*[xm];
-
-            //Qee[k][j]= new double[xm];
-            //Qeuv[k][j]=new double[xm];
 
             for (i = 0 ; i < xm; i++) {
                 nust[k][j][i]=new double[112];

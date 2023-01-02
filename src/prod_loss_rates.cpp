@@ -16,7 +16,8 @@ using namespace std;
 double pesimp(double ALT,double SZA,double F107,double TE,double TN,double XNE,
         double nO,double nO2,double nN2);
 
-void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int yj, int xi)
+void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int yj, int xi,
+    double &Qeuv, double &Qphoto)
 {
     int    m, s, isza;
     double Xp, euvf, Hn[5], Ch[5], Nnn[5], tao, CCi;
@@ -43,9 +44,9 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     for (m = 0; m < 8; m++) qi[m]=0.0;
 
     // ionization rates normalized by n0/t0
-    uu[k][j][i].fx[32]=0.0;
+    Qeuv=0.0;
 
-    Tn=uu[k][j][i].fx[30]*T0;
+    Tn=xx[k][j][i].fx[30]*T0;
     ne =uu[k][j][i].fx[6]*n00;  //electron density in cm^{-3}
 
     /* day time photo-ionization */
@@ -99,7 +100,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
 
             /* EUV heating of neutrals due to O, O2, N2 
              * absorption of EUV flux normalized by t0/p0, assuming heating efficiency of 0.45 */
-            uu[k][j][i].fx[32] += 0.45e6*(segabs[s][0]*Nnn[0]+segabs[s][1]*Nnn[1]+segabs[s][3]*Nnn[2])*euvf*pene[s]*t0divp0;
+            Qeuv += 0.45e6*(segabs[s][0]*Nnn[0]+segabs[s][1]*Nnn[1]+segabs[s][3]*Nnn[2])*euvf*pene[s]*t0divp0;
         }
     }
     else  {
@@ -127,7 +128,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     kk[19]=3.7e-11;        // N+  + O2 --> O+ + NO
     kk[20]=2.0e-11;        // N+  + NO --> NO+ + N
 
-    Ti=uu[k][j][i].fx[16]*T0;
+    Ti=xx[k][j][i].fx[16]*T0;
 
     // O+ + N2 --> NO+ + N (note kk[0] not used)
     T1=(0.6363*Ti+0.3637*Tn);
@@ -173,7 +174,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     kk[11]=2.2e-11*sqrt(xx[k][j][i].fx[17]);
 
     // O+ + e --> O + hv
-    Te=uu[k][j][i].fx[19]*T0;
+    Te=xx[k][j][i].fx[19]*T0;
     double Te300 = pow(Te/300.0, 0.7);
     kk[21]=4.0e-12*Te300;
 
@@ -409,8 +410,8 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
         R2=R*R;
         epsl=exp(-(cc[0]+cc[1]*R+cc[2]*R2+cc[3]*R2*R+cc[4]*R2*R2)); //man energy per photon (eV)
 
-        uu[k][j][i].fx[31]=e*epsl*( photoIon[0]+photoIon[1]+photoIon[2]+photoIon[3]
-                                   +photoIon[4]+photoIon[5]+photoIon[6]+photoIon[7])*t0divp0;
+        Qphoto=q*epsl*( photoIon[0]+photoIon[1]+photoIon[2]+photoIon[3]
+                       +photoIon[4]+photoIon[5]+photoIon[6]+photoIon[7])*t0divp0;
     }
     //else {
     /* P. Richards et al., JGR, [1984] */

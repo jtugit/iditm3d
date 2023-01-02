@@ -37,9 +37,9 @@ int hdf5parallelread(MPI_Comm, hsize_t*, hsize_t*, hsize_t*,  char*, char *, dou
 int input_psolutions(DM, Field ***, AppCtx*);
 int output_solution(DM,Field***,AppCtx*);
 
-void neu_cooling_rate(Field ***, Field***, int, int, int);
+//void neu_cooling_rate(Field ***, Field***, int, int, int);
 
-void prod_loss_rates(Field***, Field ***, int, int, int, int, int, int);
+void prod_loss_rates(Field***, Field ***, int, int, int, int, int, int, double &Qeuv, double &Qphoto);
 
 void solar_zenith(AppCtx*, PetscInt, PetscInt, PetscInt, PetscInt);
 
@@ -69,5 +69,6 @@ void boundary_V_T(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm);
 
 int check_positivity(DM, Field ***xx);
 void const_normalize();
+void smooth_multi_dim(DM da, Vec U, int startIndex, int endIndex);
 
 //#endif  /* INC FUNCDEF */

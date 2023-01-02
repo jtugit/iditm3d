@@ -2,19 +2,15 @@
 
 #include "param.h"
 
-inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int zk)
+inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j, int k, int xi, int yj, int zk)
 {
     int    s;
-    double ni[7], nn[7], ne=0.0, Nn=0.0, Te, Te12;
+    double ni[7], nn[7], Te, Te12;
     double Ti, Tn, Ti12, Ti32, logTi, Tr, logTr, Tr12, logTrOi, Tr12Oi;
     const double n00=n0*1.0e-6;
 
     for (s = 0; s < sl; s++) {
-        ni[s] = exp(xx[k][j][i].fx[s])*n00;   //density in cm^{-3}
-        ne += ni[s];
-
-        nn[s] = exp(xx[k][j][i].fx[120+s])*n00;
-        Nn += nn[s];
+        ni[s] = nis[s]*n00; nn[s] = nns[s]*n00; //density in cm^{-3} (ne && Nn already in cm^{-3})
     }
 
 /*--------------------------------------------------*/
@@ -42,7 +38,7 @@ inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int
     Tr=0.5*(Ti+Tn); logTrOi=log10(Tr); Tr12Oi=sqrt(Tr);
 
 /* O+ Coulomb collision frequencies */
-    nust[zk][yj][xi][14]=ne*ame/(ni[0]*ams[0])*nust[zk][yj][xi][0]; // O+ - e
+    //nust[zk][yj][xi][14]=ne*ame/(ni[0]*ams[0])*nust[zk][yj][xi][0]; // O+ - e
     nust[zk][yj][xi][15]=coiO[0]*ni[1]/Ti32;     // O+ - H+
     nust[zk][yj][xi][16]=coiO[1]*ni[2]/Ti32;     // O+ - He+
     nust[zk][yj][xi][17]=coiO[2]*ni[3]/Ti32;     // O+ - O2+
@@ -65,7 +61,7 @@ inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int
     logTr=log10(0.5*(Ti+Tn)); Tr12=sqrt(Tr);
 
     /* H+ Coulomb collision frequencies */
-    nust[zk][yj][xi][28]=ne*ame/(ni[1]*ams[1])*nust[zk][yj][xi][1]; // H+ - e
+    //nust[zk][yj][xi][28]=ne*ame/(ni[1]*ams[1])*nust[zk][yj][xi][1]; // H+ - e
     nust[zk][yj][xi][29]=coiH[0]*ni[0]/Ti32;     // H+ - O+
     nust[zk][yj][xi][30]=coiH[1]*ni[2]/Ti32;     // H+ - He+
     nust[zk][yj][xi][31]=coiH[2]*ni[3]/Ti32;     // H+ - O2+
@@ -87,7 +83,7 @@ inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int
     logTr=log10(0.5*(Ti+Tn)); Tr12=sqrt(Tr);
 
     /* He+ Coulomb collision frequencies */
-    nust[zk][yj][xi][42]=ne*ame/(ni[2]*ams[2])*nust[zk][yj][xi][2];   // He+ - e
+    //nust[zk][yj][xi][42]=ne*ame/(ni[2]*ams[2])*nust[zk][yj][xi][2];   // He+ - e
     nust[zk][yj][xi][43]=coiHe[0]*ni[0]/Ti32;      // He+ - O+
     nust[zk][yj][xi][44]=coiHe[1]*ni[1]/Ti32;      // He+ - H+
     nust[zk][yj][xi][45]=coiHe[2]*ni[3]/Ti32;      // He+ - O2+
@@ -124,7 +120,7 @@ inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int
 
 /* ---- N2+ collision frequencies --------------------------------------------------------*/
     /* N2+ Coulomb collision frequencies */
-    nust[zk][yj][xi][70]=ne*ame/(ni[4]*ams[4])*nust[zk][yj][xi][4];   // N2+ - e
+    //nust[zk][yj][xi][70]=ne*ame/(ni[4]*ams[4])*nust[zk][yj][xi][4];   // N2+ - e
     nust[zk][yj][xi][71]=1.50e-1*ni[0]/Ti32;      // N2+ - O+
     nust[zk][yj][xi][72]=4.50e-2*ni[1]/Ti32;      // N2+ - H+
     nust[zk][yj][xi][73]=8.50e-2*ni[2]/Ti32;      // N2+ - He+
@@ -143,7 +139,7 @@ inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int
 
 /* ---- NO+ collision frequencies -------------------------------------------------------*/
     /* NO+ Coulomb collision frequencies */
-    nust[zk][yj][xi][84]=ne*ame/(ni[5]*ams[5])*nust[zk][yj][xi][5]; // NO+ - e
+    //nust[zk][yj][xi][84]=ne*ame/(ni[5]*ams[5])*nust[zk][yj][xi][5]; // NO+ - e
     nust[zk][yj][xi][85]=1.40e-1*ni[0]/Ti32;    // NO+ - O+
     nust[zk][yj][xi][86]=4.20e-2*ni[1]/Ti32;    // NO+ - H+
     nust[zk][yj][xi][87]=8.00e-2*ni[2]/Ti32;    // NO+ - H+e
@@ -162,7 +158,7 @@ inline void collision_freq(Field ***xx, int i, int j, int k, int xi, int yj, int
 
 /* ---- N+ collision frequencies -------------------------------------------------------*/
     /* N+ Coulomb collision frequencies */
-    nust[zk][yj][xi][98] =ne*ame/(ni[6]*ams[6])*nust[zk][yj][xi][6]; // NO+ - e
+    //nust[zk][yj][xi][98] =ne*ame/(ni[6]*ams[6])*nust[zk][yj][xi][6]; // NO+ - e
     nust[zk][yj][xi][99] =0.25*ni[0]/Ti32;    // N+ - O+
     nust[zk][yj][xi][100]=0.088*ni[1]/Ti32;   // N+ - H+
     nust[zk][yj][xi][101]=0.16*ni[2]/Ti32;    // N+ - H+e

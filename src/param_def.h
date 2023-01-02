@@ -59,7 +59,7 @@ double ***fluxn;
 
 double **vt, **vp;
 
-double ****Ps, ****Ls, ***Qee, ***Qeuv;
+double ****Ps, ****Ls;
 
 Jmatrix Jmat;
 Jinvmatrix Jinv;

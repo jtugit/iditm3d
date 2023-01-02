@@ -9,6 +9,7 @@ using namespace std;
 #include "electric_field.h"
 #include "ele_cooling_rate.h"
 #include "operators.h"
+#include "neu_cooling_rate.h"
 
 int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
 {
@@ -21,6 +22,8 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
     TSGetDM(ts, &da);
 
     params->sec = ftime;
+
+    parameters(da, X, params);
 
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
 
@@ -43,7 +46,7 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
     vector3D grad_usr, grad_ustheta, grad_usphi, grad_unr, grad_untheta, grad_unphi;
     double   uir[3], uith[3], uiph[3], uirr, uitht, uiphp, unr, unth, unph, uer, ueth, ueph;
     double   div_ui[3], div_un, div_ue, divui, ne, Te, Ts, Ec_gradPe[3];
-    double   jr, jtheta, jphi, Br0, Btheta0, Bphi0, ms_ne;
+    double   jr, jtheta, jphi, B0r, B0t, B0p, ms_ne, Qeuv, Qphoto, Cn;
 
     const double two3rd=2.0/3.0;
 
@@ -57,7 +60,9 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
             yj=j-ys; kj=(uint64_t)(zk*ym+yj);
 
             for (i = xs; i < xs+xm; i++) {
-                xi=i-xs; ji=(uint64_t)(yj*xm+xi); kji=(uint64_t)(zk*ym*xm+yj*ym+xi);
+                if (i == 0 || i == Nr) continue;
+
+                xi=i-xs; ji=(uint64_t)(yj*xm+xi); kji=(uint64_t)(zk*ym*xm+yj*xm+xi);
 
                 uir[0]=xx[k][j][i].fx[7];  uith[0]=xx[k][j][i].fx[8];  uiph[0]=xx[k][j][i].fx[9];
                 uir[1]=xx[k][j][i].fx[10]; uith[1]=xx[k][j][i].fx[11]; uiph[1]=xx[k][j][i].fx[12];
@@ -74,10 +79,11 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                 ne=uu[k][j][i].fx[6]; Te=xx[k][j][i].fx[19];
 
                 jr=uu[k][j][i].fx[20]; jtheta=uu[k][j][i].fx[21]; jphi=uu[k][j][i].fx[22];
-                Br0=uu[k][j][i].fx[0]; Btheta0=uu[k][j][i].fx[1]; Bphi0=uu[k][j][i].fx[2];
+                B0r=uu[k][j][i].fx[0]; B0t=uu[k][j][i].fx[1]; B0p=uu[k][j][i].fx[2];
+                unr=xx[k][j][i].fx[27]; unth=xx[k][j][i].fx[28]; unph=xx[k][j][i].fx[29];
 
                 //production and loss rates
-                prod_loss_rates(xx, uu, i, j, k, zk, yj, xi);
+                prod_loss_rates(xx, uu, i, j, k, zk, yj, xi, Qeuv, Qphoto);
 
                 for (s = 0; s < sl; s++) {
                     gradNs = gradient(xx, i, j, k, yj, xi, s);
@@ -90,9 +96,9 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                         divui=div_ui[0]; uirr=uir[0]; uitht=uith[0]; uiphp=uiph[0];
                     }
 
-                    gg[k][j][i].fx[s]= Ps[zk][yj][xi][s]*1.0e6*exp(-xx[k][j][i].fx[s])-Ls[zk][yj][xi][s]
+                    gg[k][j][i].fx[s]= Ps[zk][yj][xi][s]*exp(-xx[k][j][i].fx[s])-Ls[zk][yj][xi][s]
                                       -divui - uirr*gradNs.r-uitht*gradNs.t-uiphp*gradNs.p;
-                    gg[k][j][i].fx[s+20]= Ps[zk][yj][xi][s+7]*1.0e6*exp(-xx[k][j][i].fx[s+20])-Ls[zk][yj][xi][s+7]
+                    gg[k][j][i].fx[s+20]= Ps[zk][yj][xi][s+7]*exp(-xx[k][j][i].fx[s+20])-Ls[zk][yj][xi][s+7]
                                          -div_un - unr*gradNq.r-unth*gradNq.t-unph*gradNq.p;
 
                     if (s >= 3) continue;
@@ -106,32 +112,31 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                     grad_usphi=gradient(xx, i, j, k, yj, xi, s9);
 
                     gradTs = gradient(xx, i, j, k, yj, xi, s16);
-                    gradNs = gradient(uu, i, j, k, yj, xi, 20+s);
 
-                    gg[k][j][i].fx[s7]= (jtheta*Bphi0-jphi*Btheta0)/ms_ne-gr[xi]+(uith[s]*uith[s]+uiph[s]*uiph[s])/rr[i]
+                    gg[k][j][i].fx[s7]= (jtheta*B0p-jphi*B0t)/ms_ne-gr[xi]+(uith[s]*uith[s]+uiph[s]*uiph[s])/rr[i]
                                        -(uir[s]*grad_usr.r + uith[s]*grad_usr.t + uiph[s]*grad_usr.p)
                                        -(gradTs.r + Ts*gradNs.r + gradTe.r + Te/ne*gradne.r)/ams[s];
 
                     //----------- non-stiff terms of uitheta equation
-                    gg[k][j][i].fx[s8]= (jphi*Br0-jr*Bphi0)/ms_ne-uith[s]*uir[s]/rr[i]+uiph[s]*uiph[s]*cot_div_r[yj][xi]
+                    gg[k][j][i].fx[s8]= (jphi*B0r-jr*B0p)/ms_ne-uith[s]*uir[s]/rr[i]+uiph[s]*uiph[s]*cot_div_r[yj][xi]
                                        -(uir[s]*grad_ustheta.r + uith[s]*grad_ustheta.t + uiph[s]*grad_ustheta.p)
                                        -(gradTs.t + Ts*gradNs.t + gradTe.t + Te/ne*gradne.t)/ams[s];
 
                     //----------- non-stiff terms of uiphi equation
-                    gg[k][j][i].fx[s9]= (jr*Btheta0-jtheta*Br0)/ms_ne-uiph[s]*uir[s]/rr[i]-uith[s]*uiph[s]*cot_div_r[yj][xi]
+                    gg[k][j][i].fx[s9]= (jr*B0t-jtheta*B0r)/ms_ne-uiph[s]*uir[s]/rr[i]-uith[s]*uiph[s]*cot_div_r[yj][xi]
                                        -(uir[s]*grad_usphi.r + uith[s]*grad_usphi.t + uiph[s]*grad_usphi.p)
                                        -(gradTs.p + Ts*gradNs.p + gradTe.p + Te/ne*gradne.p)/ams[s];
 
                     //----------- non-stiff terms of Ti equation
                     gg[k][j][i].fx[s16]=-(uir[s]*gradTs.r + uith[s]*gradTs.t + uiph[s]*gradTs.p)
-                                        -two3rd*Ts*(div_ui[s] + uu[k][j][i].fx[s+15]*exp(-xx[k][j][i].fx[s]));
+                                        -two3rd*(Ts*div_ui[s] + uu[k][j][i].fx[s+11]*exp(-xx[k][j][i].fx[s]));
                 }
 
                 //----------- non-stiff terms of Te equation
                 uer = uu[k][j][i].fx[7]; ueth = uu[k][j][i].fx[8]; ueph = uu[k][j][i].fx[9];
                 div_ue  = divergence(uu, i, j, k, yj, xi, 7);
 
-                gg[k][j][i].fx[19]= two3rd/ne*(uu[k][j][i].fx[31]-uu[k][j][i].fx[18])
+                gg[k][j][i].fx[19]= two3rd/ne*(Qphoto-uu[k][j][i].fx[14])
                                    -(uer*gradTe.r + ueth*gradTe.t + ueph*gradTe.p)-two3rd*Te*div_ue;
 
                 //----------- non-stiff terms of unr equation
@@ -162,7 +167,9 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                                    -2.0*(rotat_r[zk][yj]*unth-rotat_t[zk][yj]*unr)-cenf_p[zk][yj][xi];
 
                 //----------- non-stiff terms of Tn equation
-                gg[k][j][i].fx[30]= two3rd*((uu[k][j][i].fx[12]-uu[k][j][i].fx[13]-uu[k][j][i].fx[19])/Nn-Tn*div_un)
+                Cn=neu_cooling_rate(xx, i, j, k);
+
+                gg[k][j][i].fx[30]= two3rd*((Qeuv-Cn-uu[k][j][i].fx[15])/Nn-Tn*div_un)
                                    -(unr*gradTn.r + unth*gradTn.t + unph*gradTn.p);
 
                 //----------- non-stiff magnetic field equation
@@ -183,9 +190,11 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
             if (xs == 0) lower_boundary_bc(xx, gg, j, k);
             if (xs+xm == a1) upper_boundary_bc(xx, gg, j, k, yj, zk);
         }
+    }
 
         //set boundary conditions at j=0 and j=Nth
-        if (ys == 0) {
+    if (ys == 0) {
+        for (k = zs; k < zs+zm; k++) {
             for (i = xs; i < xs+xm; i++) {
                 for (s = 0; s < a4; s++) {
                     if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32 || s == 35)
@@ -194,7 +203,9 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                 }
             }
         }
-        else if (ys+ym == a2) {
+    }
+    if (ys+ym == a2) {
+        for (k = zs; k < zs+zm; k++) {
             for (i = xs; i < xs+xm; i++) {
                 for (s = 0; s < a4; s++) {
                     if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32 || s == 35)

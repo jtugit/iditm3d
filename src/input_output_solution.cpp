@@ -54,7 +54,7 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
                 s=a4*(int)kji;
 
                 //ion density (O+, H+, He+, O2+, N2+, NO+, N+), ion mass density, and electron density
-                for (m = 0; m < sl; m++) xx[k][j][i].fx[m] = log(xdata[s+m]*1.0e6/n0); //density in m^{-3} converted to log scale 
+                for (m = 0; m < sl; m++) xx[k][j][i].fx[m] = log(xdata[s+m]*5.0e4/n0); //density in m^{-3} converted to log scale 
 
                 //ion velocity in m/s, ion and electron temperatuer in K 
                 for (m = sl; m < 16; m++) xx[k][j][i].fx[m] = xdata[s+m]/v0;
