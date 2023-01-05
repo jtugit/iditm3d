@@ -14,51 +14,51 @@ inline double heat_flow_divergence(Field ***xx, Field ***localuu, int i, int j, 
 {
     double dlamdadr, dlamdadth, dlamdadph, dTdr, dTdth, dTdph;
     double d2Tdr2, d2Tdth2, d2Tdph2;
-    int    kc, s4=s+4;
+    int    im=i-1, ip=i+1, jm=j-1, jp=j+1, km=k-1, kp=k+1, kc, s3=s+3;
 
-    //dlamdadr = difference_r(localuu, i, j, k, s+4);
-    //dlamdadth = difference_theta(localuu, i, j, k, s+4);
-    //dlamdadph = difference_phi(localuu, i, j, k, s+4);
+    //dlamdadr = difference_r(localuu, i, j, k, s3);
+    //dlamdadth = difference_theta(localuu, i, j, k, s3);
+    //dlamdadph = difference_phi(localuu, i, j, k, s3);
 
     //dTdr = difference_r(xx, i, j, k, s);
     //dTdth = difference_theta(xx, i, j, k, s);
     //dTdph = difference_phi(xx, i, j, k, s);
 
-    dlamdadr=(localuu[k][j][i+1].fx[s4]-localuu[k][j][i-1].fx[s4])/dr;
-    dlamdadph=(localuu[k+1][j][i].fx[s4]-localuu[k-1][j][i].fx[s4])/dph;
+    dlamdadr=(localuu[k][j][ip].fx[s3]-localuu[k][j][im].fx[s3])/dr;
+    dlamdadph=(localuu[kp][j][i].fx[s3]-localuu[km][j][i].fx[s3])/dph;
 
-    dTdr=(xx[k][j][i+1].fx[s]-xx[k][j][i-1].fx[s])/dr;
-    dTdph=(xx[k+1][j][i].fx[s]-xx[k-1][j][i].fx[s])/dph;
+    dTdr=(xx[k][j][ip].fx[s]-xx[k][j][im].fx[s])/dr;
+    dTdph=(xx[kp][j][i].fx[s]-xx[km][j][i].fx[s])/dph;
 
-    d2Tdr2 = (xx[k][j][i+1].fx[s]-2.0*xx[k][j][i].fx[s]+xx[k][j][i-1].fx[s])/(dr*dr);
+    d2Tdr2 = (xx[k][j][ip].fx[s]-2.0*xx[k][j][i].fx[s]+xx[k][j][im].fx[s])/(dr*dr);
 
     if (j==1) {
         kc=(k+a3/2) % a3;
-        dlamdadth=(localuu[k][j+1][i].fx[s4]-localuu[kc][j][i].fx[s4])/dth;
-        dTdth=(xx[k][j+1][i].fx[s]-xx[kc][j][i].fx[s])/dth;
+        dlamdadth=(localuu[k][jp][i].fx[s3]-localuu[kc][j][i].fx[s3])/dth;
+        dTdth=(xx[k][jp][i].fx[s]-xx[kc][j][i].fx[s])/dth;
 
-        d2Tdth2=(xx[k][j+1][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[kc][j][i].fx[s])/(dth*dth);
+        d2Tdth2=(xx[k][jp][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[kc][j][i].fx[s])/(dth*dth);
     }
     if (j > 1 && j < Nthm) {
-        dlamdadth=(localuu[k][j+1][i].fx[s4]-localuu[k][j-1][i].fx[s4])/dth;
-        dTdth=(xx[k][j+1][i].fx[s]-xx[k][j-1][i].fx[s])/dth;
+        dlamdadth=(localuu[k][jp][i].fx[s3]-localuu[k][jm][i].fx[s3])/dth;
+        dTdth=(xx[k][jp][i].fx[s]-xx[k][jm][i].fx[s])/dth;
 
-        d2Tdth2=(xx[k][j+1][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[k][j-1][i].fx[s])/(dth*dth);
+        d2Tdth2=(xx[k][jp][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[k][jm][i].fx[s])/(dth*dth);
     }
     else {
         kc=(k+a3/2) % a3;
-        dlamdadth=(localuu[kc][j][i].fx[s4]-localuu[k][j-1][i].fx[s4])/dth;
-        dTdth=(xx[kc][j][i].fx[s]-xx[k][j-1][i].fx[s])/dth;
+        dlamdadth=(localuu[kc][j][i].fx[s3]-localuu[k][jm][i].fx[s3])/dth;
+        dTdth=(xx[kc][j][i].fx[s]-xx[k][jm][i].fx[s])/dth;
 
-        d2Tdth2=(xx[kc][j][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[k][j-1][i].fx[s])/(dth*dth);
+        d2Tdth2=(xx[kc][j][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[k][jm][i].fx[s])/(dth*dth);
     }
 
-    d2Tdph2=(xx[k+1][j][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[k-1][j][i].fx[s])/(dph*dph);
+    d2Tdph2=(xx[kp][j][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[km][j][i].fx[s])/(dph*dph);
 
     double r2sin2=rsin[yj][xi]*rsin[yj][xi], rr2=rr[i]*rr[i];
 
     double div_q = dlamdadr*dTdr+dlamdadth*dTdth/rr2+dlamdadph*dTdph/r2sin2
-                  +localuu[k][j][i].fx[s4]*(2.0*dTdr/rr[i]+cot_div_r[yj][xi]/rr[i]*dTdth
+                  +localuu[k][j][i].fx[s3]*(2.0*dTdr/rr[i]+cot_div_r[yj][xi]/rr[i]*dTdth
                   +d2Tdr2 + d2Tdth2/rr2 + d2Tdph2/r2sin2);
 
     return div_q;
@@ -71,51 +71,51 @@ inline double neu_heat_flow_divergence(Field ***xx, Field ***localuu, int i, int
 {
     double dlamdadr, dlamdadth, dlamdadph, dTdr, dTdth, dTdph;
     double d2Tdr2, d2Tdth2, d2Tdph2;
-    int    kc;
+    int    im=i-1, ip=i+1, jm=j-1, jp=j+1, km=k-1, kp=k+1, kc;
 
-    //dlamdadr = difference_r(localuu, i, j, k, 24);       //\Delta{lambda_s}/dr
-    //dlamdadth = difference_theta(localuu, i, j, k, 24);  //\Delta{lambda_s}/dtheta
-    //dlamdadph = difference_phi(localuu, i, j, k, 24);    //\Delta{lambda_s}/dphi
+    //dlamdadr = difference_r(localuu, i, j, k, 23);       //\Delta{lambda_s}/dr
+    //dlamdadth = difference_theta(localuu, i, j, k, 23);  //\Delta{lambda_s}/dtheta
+    //dlamdadph = difference_phi(localuu, i, j, k, 23);    //\Delta{lambda_s}/dphi
 
     //dTdr = difference_r(xx, i, j, k, 30);               //Delta{T_s}/dr
     //dTdth = difference_theta(xx, i, j, k, 30);          //Delta{T_s}/dtheta
     //dTdph = difference_phi(xx, i, j, k, 30);            //Delta{T_s}/dphi
 
-    dlamdadr=(localuu[k][j][i+1].fx[24]-localuu[k][j][i-1].fx[24])/dr;
-    dlamdadph=(localuu[k+1][j][i].fx[24]-localuu[k-1][j][i].fx[24])/dph;
+    dlamdadr=(localuu[k][j][ip].fx[23]-localuu[k][j][im].fx[23])/dr;
+    dlamdadph=(localuu[kp][j][i].fx[23]-localuu[km][j][i].fx[23])/dph;
 
-    dTdr=(xx[k][j][i+1].fx[30]-xx[k][j][i-1].fx[30])/dr;
-    dTdph=(xx[k+1][j][i].fx[30]-xx[k-1][j][i].fx[30])/dph;
+    dTdr=(xx[k][j][ip].fx[30]-xx[k][j][im].fx[30])/dr;
+    dTdph=(xx[kp][j][i].fx[30]-xx[km][j][i].fx[30])/dph;
 
-    d2Tdr2 = (xx[k][j][i+1].fx[30]-2.0*xx[k][j][i].fx[30]+xx[k][j][i-1].fx[30])/(dr*dr);
+    d2Tdr2 = (xx[k][j][ip].fx[30]-2.0*xx[k][j][i].fx[30]+xx[k][j][im].fx[30])/(dr*dr);
 
     if (j==1) {
         kc=(k+a3/2) % a3;
-        dlamdadth=(localuu[k][j+1][i].fx[24]-localuu[kc][j][i].fx[24])/dth;
-        dTdth=(xx[k][j+1][i].fx[30]-xx[kc][j][i].fx[30])/dth;
+        dlamdadth=(localuu[k][jp][i].fx[23]-localuu[kc][j][i].fx[23])/dth;
+        dTdth=(xx[k][jp][i].fx[30]-xx[kc][j][i].fx[30])/dth;
 
-        d2Tdth2=(xx[k][j+1][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[kc][j][i].fx[30])/(dth*dth);
+        d2Tdth2=(xx[k][jp][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[kc][j][i].fx[30])/(dth*dth);
     }
     if (j > 1 && j < Nthm) {
-        dlamdadth=(localuu[k][j+1][i].fx[24]-localuu[k][j-1][i].fx[24])/dth;
-        dTdth=(xx[k][j+1][i].fx[30]-xx[k][j-1][i].fx[30])/dth;
+        dlamdadth=(localuu[k][jp][i].fx[23]-localuu[k][jm][i].fx[23])/dth;
+        dTdth=(xx[k][jp][i].fx[30]-xx[k][jm][i].fx[30])/dth;
 
-        d2Tdth2=(xx[k][j+1][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[k][j-1][i].fx[30])/(dth*dth);
+        d2Tdth2=(xx[k][jp][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[k][jm][i].fx[30])/(dth*dth);
     }
     else {
         kc=(k+a3/2) % a3;
-        dlamdadth=(localuu[kc][j][i].fx[24]-localuu[k][j-1][i].fx[24])/dth;
-        dTdth=(xx[kc][j][i].fx[30]-xx[k][j-1][i].fx[30])/dth;
+        dlamdadth=(localuu[kc][j][i].fx[23]-localuu[k][jm][i].fx[23])/dth;
+        dTdth=(xx[kc][j][i].fx[30]-xx[k][jm][i].fx[30])/dth;
 
-        d2Tdth2=(xx[kc][j][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[k][j-1][i].fx[30])/(dth*dth);
+        d2Tdth2=(xx[kc][j][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[k][jm][i].fx[30])/(dth*dth);
     }
 
-    d2Tdph2=(xx[k+1][j][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[k-1][j][i].fx[30])/(dph*dph);
+    d2Tdph2=(xx[kp][j][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[km][j][i].fx[30])/(dph*dph);
 
     double r2sin2=rsin[yj][xi]*rsin[yj][xi], rr2=rr[i]*rr[i];
 
     double div_q = dlamdadr*dTdr+dlamdadth*dTdth/rr2+dlamdadph*dTdph/r2sin2
-                  +localuu[k][j][i].fx[24]*( 2.0*dTdr/rr[i]+cot_div_r[yj][xi]/rr[i]*dTdth
+                  +localuu[k][j][i].fx[23]*( 2.0*dTdr/rr[i]+cot_div_r[yj][xi]/rr[i]*dTdth
                                             +d2Tdr2 + d2Tdth2/rr2 + d2Tdph2/r2sin2);
 
     return div_q;
@@ -128,7 +128,7 @@ inline void Bspecial_sphereto_Bpshere(Field ***xx, Field ***uu, int xm, int ym, 
 
     kj=(uint64_t)(zk*ym+yj); ji=(uint64_t)(yj*xm+xi); kji=(uint64_t)(zk*ym*xm+yj*xm+xi);
 
-    uu[k][j][i].fx[25]=( Kmat.K11[kj]*( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]
+    uu[k][j][i].fx[24]=( Kmat.K11[kj]*( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]
                                        +Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
                                        +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])
                         +Kmat.K21[kj]*( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]
@@ -137,7 +137,7 @@ inline void Bspecial_sphereto_Bpshere(Field ***xx, Field ***uu, int xm, int ym, 
                         +Kmat.K31[yj64]*( Jinv.Jiv31[yj64]*xx[k][j][i].fx[31]
                                          +Jinv.Jiv32[ji]*xx[k][j][i].fx[32]))/r2sintheta[yj][xi];
 
-    uu[k][j][i].fx[26]=( Kmat.K12[kj]*( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]
+    uu[k][j][i].fx[25]=( Kmat.K12[kj]*( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]
                                        +Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
                                        +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])
                         +Kmat.K22[kj]*( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]
@@ -146,7 +146,7 @@ inline void Bspecial_sphereto_Bpshere(Field ***xx, Field ***uu, int xm, int ym, 
                         +Kmat.K32[yj64]*( Jinv.Jiv31[yj64]*xx[k][j][i].fx[31]
                                          +Jinv.Jiv32[ji]*xx[k][j][i].fx[32]))/r2sintheta[yj][xi];
 
-    uu[k][j][i].fx[27]=( Kmat.K13[zk64]*( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]
+    uu[k][j][i].fx[26]=( Kmat.K13[zk64]*( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]
                                          +Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
                                          +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])
                         +Kmat.K23[zk64]*( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]
@@ -245,7 +245,7 @@ int parameters(DM da, Vec X, AppCtx *params)
 
                 /* normalized electron thermal conductivity */
                 nqd=nO*qn[0]+nO2*qn[1]+nN2*qn[2]+nH*qn[3]+nHe*qn[4];
-                uu[k][j][i].fx[23]=1.233694e-11*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd)/lamda0;
+                uu[k][j][i].fx[22]=1.233694e-11*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd)/lamda0;
 
                 amt=rhon/uu[k][j][i].fx[10];  //averaged neutral mass in amu
 
@@ -276,12 +276,12 @@ int parameters(DM da, Vec X, AppCtx *params)
                     nuss[m]=1.27*ni[m]*n0/(sqrt(ams[m])*Td); //Schunk & Nagy eq(4.142)
                     nqd=1.0+1.25*nqd/nuss[m];
 
-                    uu[k][j][i].fx[20+m]=4.96682e-13*Td*xx[k][j][i].fx[16+m]/(sqrt(ams[m])*nqd)/lamda0;
+                    uu[k][j][i].fx[19+m]=4.96682e-13*Td*xx[k][j][i].fx[16+m]/(sqrt(ams[m])*nqd)/lamda0;
                 }
 
                 /* normalized neutral thermal conductivity */
                 Tn=xx[k][j][i].fx[30]*T0; Td=pow(Tn, 0.69);
-                uu[k][j][i].fx[24]=( 7.59e-4*Td + (3.93e-4*Td+0.255e-4*Tn-9.27e-4)    //O, O2
+                uu[k][j][i].fx[23]=( 7.59e-4*Td + (3.93e-4*Td+0.255e-4*Tn-9.27e-4)    //O, O2
                                     +(3.82e-4*Td+0.190e-4*Tn+5.14e-4)                 //N2
                                     +3.79e-3*Td +2.99e-3*Td)/lamda0;                  //H, He
             }
@@ -338,7 +338,7 @@ int parameters(DM da, Vec X, AppCtx *params)
  *----- smooth divergence of q and and current density
  *----- multidomensional Shapiro filter is used to conduct smoothing (Falissard, JCP 2013)
  -----------------------------------------------------------------------------------------*/
-    smooth_multi_dim(da, params->U, 11, 18);
+    smooth_multi_dim_U(da, params->U, 11, 18);
 
     return 0;
 }

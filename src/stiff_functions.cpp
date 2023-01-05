@@ -12,11 +12,11 @@ using namespace std;
 
 int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 {
-    int    s, t, s3, s14, rank;
+    int    s, t, s3, s14;
     double Br, Bt, Bp, Ec_VxB[3];
     double usr[3], ust[3], usp[3], ui[3], unr, unt, unp, ns[3], nn[7], rhos[7];
-    double ne, Te, Nn, rhon, Tn, Ts[3]; //ne = ni
-    double nusn[7], mtnust_msmt, nusq_msmq[7], nuen, sum_nueq_div_mq, nusttemp, nuis;
+    double ne, Te, Nn, rhon, Tn, TiO, TiH, TiHe; //ne = ni
+    double nusn[7], mtnust_msmt, nusq_msmq[7], sum_nueq_div_mq, nusttemp, nuis;
     double mqnusq_msmq[3], nust_msmt, rhosnusn_rhon[3], sum_nues, sum_nueq;
     double uiminusun_sq[3], uOi_uHi_sq, uHi_uHei_sq, uOi_uHei_sq;
     double Ce, neme, nuis_ms, nns, deni;
@@ -47,8 +47,6 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
     for (k = zs; k < zs+zm; k++) {
         zk=k-zs;
 
@@ -76,7 +74,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 for (s = 0; s < 7; s++) {
                     nusn[s]=0.0; nusq_msmq[s]=0.0;
                 }
-                nuen=0.0; sum_nueq_div_mq=0.0; 
+                sum_nueq_div_mq=0.0; 
 
                 for (s = 0; s < sl; s++) {
                     ff[k][j][i].fx[s] = dxdt[k][j][i].fx[s];
@@ -85,27 +83,23 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 
                     sum_nues += nust[zk][yj][xi][s];
                     sum_nueq += nust[zk][yj][xi][s+7];
+                    sum_nueq_div_mq =+ nust[zk][yj][xi][7+s]/ams[s];
 
                     nns = exp(xx[k][j][i].fx[s]); ne += nns; rhos[s]= nns*ams[s];
-
                     nn[s] = exp(xx[k][j][i].fx[20+s]); Nn += nn[s]; rhon += nn[s]*ams[s];
 
                     s14=14*s;
                     for (t = 0; t< sm; t++) {
                         nusttemp=nust[zk][yj][xi][21+s14+t]; nusn[s] += nusttemp;
-                        mqnusq_msmq[s] += ams[t]*nusttemp/(ams[s]+ams[t]);
+                        if (s < 3) mqnusq_msmq[s] += ams[t]*nusttemp/(ams[s]+ams[t]);
                         nusq_msmq[s] += nusttemp/(ams[s]+ams[t]);
                     }
-
-                    sum_nueq_div_mq =+ nust[zk][yj][xi][7+s]/ams[s];
-
-                    nuen += nust[zk][yj][xi][s+7];
 
                     if (s < 3) {
                         ns[s]=nns;
 
-                        s3=s*3; usr[s]=xx[k][j][i].fx[7+s3]; ust[s]=xx[k][j][i].fx[8+s3];
-                        usp[s]=xx[k][j][i].fx[9+s3];
+                        s3=s*3;
+                        usr[s]=xx[k][j][i].fx[7+s3]; ust[s]=xx[k][j][i].fx[8+s3]; usp[s]=xx[k][j][i].fx[9+s3];
 
                         ui[0] += nns*usr[s]; ui[1] += nns*ust[s]; ui[2] += nns*usp[s];
                     }
@@ -117,8 +111,9 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 ui[1]=(ui[1]+deni*xx[k][j][i].fx[8])/ne;
                 ui[2]=(ui[2]+deni*xx[k][j][i].fx[9])/ne;
 
-                //magnetic field in normal spherical components plus background magnetic field
+                //background magnetic field in normal spherical components
                 Br=uu[k][j][i].fx[0]; Bt=uu[k][j][i].fx[1]; Bp=uu[k][j][i].fx[2];
+                unr=xx[k][j][i].fx[27]; unt=xx[k][j][i].fx[28]; unp=xx[k][j][i].fx[29];
 
                 //ion momentum equation of O+
                 ff[k][j][i].fx[7] = dxdt[k][j][i].fx[7] + qms[0]*((ui[1]-ust[0])*Bp-(ui[2]-usp[0])*Bt)
@@ -155,8 +150,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 
                 //----- O+ temperature equation
                 Tn=xx[k][j][i].fx[30]; Te=xx[k][j][i].fx[19];
-                Ts[0]=xx[k][j][i].fx[16]; Ts[1]=xx[k][j][i].fx[17]; Ts[2]=xx[k][j][i].fx[18];
-                unr=xx[k][j][i].fx[27]; unt=xx[k][j][i].fx[28]; unp=xx[k][j][i].fx[29];
+                TiO=xx[k][j][i].fx[16]; TiH=xx[k][j][i].fx[17]; TiHe=xx[k][j][i].fx[18];
                 neme=ne*ame;
 
                 uiminusun_sq[0]=(usr[0]-unr)*(usr[0]-unr)+(ust[0]-unt)*(ust[0]-unt)+(usp[0]-unp)*(usp[0]-unp);
@@ -167,9 +161,9 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                                     -two3rd*ams[0]*( mqnusq_msmq[0]*uiminusun_sq[0]
                                                     +ams[1]*nust[zk][yj][xi][15]/(ams[0]+ams[1])*uOi_uHi_sq
                                                     +ams[2]*nust[zk][yj][xi][16]/(ams[0]+ams[2])*uOi_uHei_sq)
-                                    +2.0*ams[0]*( nusq_msmq[0]*(Ts[0]-Tn)+nust[zk][yj][xi][15]/(ams[0]+ams[1])*(Ts[0]-Ts[1])
-                                                 +nust[zk][yj][xi][16]/(ams[0]+ams[2])*(Ts[0]-Ts[2])
-                                                 +neme/(ns[0]*ams[0])*nust[zk][yj][xi][0]*(Ts[0]-Te));
+                                    +2.0*ams[0]*( nusq_msmq[0]*(TiO-Tn)+nust[zk][yj][xi][15]/(ams[0]+ams[1])*(TiO-TiH)
+                                                 +nust[zk][yj][xi][16]/(ams[0]+ams[2])*(TiO-TiHe)
+                                                 +neme/(ns[0]*ams[0])*nust[zk][yj][xi][0]*(TiO-Te));
 
                 //----- H+ temperature equation
                 uiminusun_sq[1]=(usr[1]-unr)*(usr[1]-unr)+(ust[1]-unt)*(ust[1]-unt)+(usp[1]-unp)*(usp[1]-unp);
@@ -184,9 +178,9 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 ff[k][j][i].fx[17] = dxdt[k][j][i].fx[17]
                                     -two3rd*ams[1]*( mqnusq_msmq[1]*uiminusun_sq[1]+mtnust_msmt*uOi_uHi_sq
                                                     +ams[2]*nust[zk][yj][xi][30]/(ams[1]+ams[2])*uHi_uHei_sq)
-                                    +2.0*ams[1]*( nusq_msmq[1]*(Ts[1]-Tn)+nust_msmt*(Ts[1]-Ts[0])
-                                                 +nust[zk][yj][xi][30]/(ams[1]+ams[2])*(Ts[1]-Ts[2])
-                                                 +neme/(ns[1]*ams[1])*nust[zk][yj][xi][1]*(Ts[1]-Te));
+                                    +2.0*ams[1]*( nusq_msmq[1]*(TiH-Tn)+nust_msmt*(TiH-TiO)
+                                                 +nust[zk][yj][xi][30]/(ams[1]+ams[2])*(TiH-TiHe)
+                                                 +neme/(ns[1]*ams[1])*nust[zk][yj][xi][1]*(TiH-Te));
 
                 //----- He+ temperature equation
                 uiminusun_sq[2]=(usr[2]-unr)*(usr[2]-unr)+(ust[2]-unt)*(ust[2]-unt)+(usp[2]-unp)*(usp[2]-unp);
@@ -200,9 +194,9 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 ff[k][j][i].fx[18] = dxdt[k][j][i].fx[18]
                                     -two3rd*ams[2]*( mqnusq_msmq[2]*uiminusun_sq[2]+mtnust_msmt*uOi_uHei_sq
                                                     +ams[1]*nust[zk][yj][xi][44]/(ams[2]+ams[1])*uHi_uHei_sq)
-                                    +2.0*ams[2]*( nusq_msmq[2]*(Ts[2]-Tn)+nust_msmt*(Ts[2]-Ts[0])
-                                                 +nust[zk][yj][xi][44]/(ams[2]+ams[1])*(Ts[2]-Ts[1])
-                                                 +neme/(ns[2]*ams[2])*nust[zk][yj][xi][2]*(Ts[2]-Te));
+                                    +2.0*ams[2]*( nusq_msmq[2]*(TiHe-Tn)+nust_msmt*(TiHe-TiO)
+                                                 +nust[zk][yj][xi][44]/(ams[2]+ams[1])*(TiHe-TiH)
+                                                 +neme/(ns[2]*ams[2])*nust[zk][yj][xi][2]*(TiHe-Te));
 
                 //----- electron temperature equation
                 nuis_ms= nust[zk][yj][xi][0]/ams[0]+nust[zk][yj][xi][3]/ams[3]+nust[zk][yj][xi][4]/ams[4]
@@ -212,14 +206,15 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 
                 Ce=ele_cooling_rate(xx, Te, Tn, ne, i, j, k);
                 ff[k][j][i].fx[19] = dxdt[k][j][i].fx[19]
-                                    +2.0*ame*( nuis_ms*(Te-Ts[0])+nust[zk][yj][xi][1]/ams[1]*(Te-Ts[1])
-                                              +nust[zk][yj][xi][2]/ams[2]*(Te-Ts[2])+sum_nueq_div_mq*(Te-Tn))
+                                    +2.0*ame*( nuis_ms*(Te-TiO)+nust[zk][yj][xi][1]/ams[1]*(Te-TiH)
+                                              +nust[zk][yj][xi][2]/ams[2]*(Te-TiHe)+sum_nueq_div_mq*(Te-Tn))
                                     -two3rd*ame*((ui[0]-unr)*(ui[0]-unr)+(ui[1]-unr)*(ui[1]-unt)+(ui[2]-unp)*(ui[2]-unp))
-                                    -two3rd/ne*Ce;
+                                    +two3rd/ne*Ce;
 
                 //----- neutral momentum equation
                 rhosnusn_rhon[0]=(rhos[0]*nusn[0]+rhos[3]*nusn[3]+rhos[4]*nusn[4]+rhos[5]*nusn[5]+rhos[6]*nusn[6])/rhon;
-                rhosnusn_rhon[1]=rhos[1]*nusn[1]/rhon; rhosnusn_rhon[2]=rhos[2]*nusn[2]/rhon;
+                rhosnusn_rhon[1]=rhos[1]*nusn[1]/rhon;
+                rhosnusn_rhon[2]=rhos[2]*nusn[2]/rhon;
 
                 ff[k][j][i].fx[27] = dxdt[k][j][i].fx[27]+rhosnusn_rhon[0]*(unr-usr[0])+rhosnusn_rhon[1]*(unr-usr[1])
                                                          +rhosnusn_rhon[2]*(unr-usr[2]);
@@ -231,24 +226,23 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 //neutral temperature equation
                 nuis_ms = rhos[0]*ams[0]*nusq_msmq[0]+rhos[3]*ams[3]*nusq_msmq[3]+rhos[4]*ams[4]*nusq_msmq[4]
                          +rhos[5]*ams[5]*nusq_msmq[5]+rhos[6]*ams[6]*nusq_msmq[6];
-                nuis = rhos[0]*nusq_msmq[0]+rhos[3]*nusq_msmq[3]+rhos[4]*nusq_msmq[4]
-                      +rhos[5]*nusq_msmq[5]+rhos[6]*nusq_msmq[6];
-                ff[k][j][i].fx[30] =2.0/Nn*( nuis*(Tn-Ts[0])+rhos[1]*nusq_msmq[1]*(Tn-Ts[1])
-                                             +rhos[2]*nusq_msmq[2]*(Tn-Ts[2]))
-                                    -two3rd/Nn*( nuis_ms*uiminusun_sq[0]+rhos[1]*ams[1]*nusq_msmq[1]*uiminusun_sq[1]
-                                                +rhos[2]*ams[2]*nusq_msmq[2]*uiminusun_sq[2]);
+                nuis = rhos[0]*nusq_msmq[0]+rhos[3]*nusq_msmq[3]+rhos[4]*nusq_msmq[4]+rhos[5]*nusq_msmq[5]
+                      +rhos[6]*nusq_msmq[6];
+                ff[k][j][i].fx[30] =( 2.0*(nuis*(Tn-TiO)+rhos[1]*nusq_msmq[1]*(Tn-TiH)+rhos[2]*nusq_msmq[2]*(Tn-TiHe))
+                                     -two3rd*( nuis_ms*uiminusun_sq[0]+rhos[1]*ams[1]*nusq_msmq[1]*uiminusun_sq[1]
+                                              +rhos[2]*ams[2]*nusq_msmq[2]*uiminusun_sq[2]))/Nn;
 
                 //----------- B^r equation
-                ff[k][j][i].fx[31]= dxdt[k][j][i].fx[31]+0.5*( (xx[k][jp][i].fx[33]-xx[k][jm][i].fx[33])/dth
-                                                              -(xx[kp][j][i].fx[32]-xx[km][j][i].fx[32])/dph);
+                ff[k][j][i].fx[31]= dxdt[k][j][i].fx[31]+0.5*( (xx[k][jp][i].fx[36]-xx[k][jm][i].fx[36])/dth
+                                                              -(xx[kp][j][i].fx[35]-xx[km][j][i].fx[35])/dph);
 
                 //----------- B^theta equation
-                ff[k][j][i].fx[32]= dxdt[k][j][i].fx[32]+0.5*( (xx[kp][j][i].fx[31]-xx[km][j][i].fx[31])/dph
-                                                              -(xx[k][j][ip].fx[33]-xx[k][j][im].fx[33])/dr);
+                ff[k][j][i].fx[32]= dxdt[k][j][i].fx[32]+0.5*( (xx[kp][j][i].fx[34]-xx[km][j][i].fx[34])/dph
+                                                              -(xx[k][j][ip].fx[36]-xx[k][j][im].fx[36])/dr);
 
                 //----------- B^phi equation
-                ff[k][j][i].fx[33]= dxdt[k][j][i].fx[33]+0.5*( (xx[k][j][ip].fx[32]-xx[k][j][im].fx[32])/dr
-                                                              -(xx[k][jp][i].fx[31]-xx[k][jm][i].fx[31])/dth);
+                ff[k][j][i].fx[33]= dxdt[k][j][i].fx[33]+0.5*( (xx[k][j][ip].fx[35]-xx[k][j][im].fx[35])/dr
+                                                              -(xx[k][jp][i].fx[34]-xx[k][jm][i].fx[34])/dth);
 
                 electric_field_vxB(xx, uu, ui, i, j, k, xi, yj, zk, xm, ym, Ec_VxB);
 

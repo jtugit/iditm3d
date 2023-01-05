@@ -50,6 +50,8 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
 
     const double two3rd=2.0/3.0;
 
+    if (xs+xm == a1) top_bc_vel(params, ys, ym, zs, zm);
+
     for (k = zs; k < zs+zm; k++) {
         zk=k-zs;
 
@@ -78,14 +80,17 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
 
                 ne=uu[k][j][i].fx[6]; Te=xx[k][j][i].fx[19];
 
-                jr=uu[k][j][i].fx[20]; jtheta=uu[k][j][i].fx[21]; jphi=uu[k][j][i].fx[22];
+                jr=uu[k][j][i].fx[16]; jtheta=uu[k][j][i].fx[17]; jphi=uu[k][j][i].fx[18];
                 B0r=uu[k][j][i].fx[0]; B0t=uu[k][j][i].fx[1]; B0p=uu[k][j][i].fx[2];
                 unr=xx[k][j][i].fx[27]; unth=xx[k][j][i].fx[28]; unph=xx[k][j][i].fx[29];
 
                 //production and loss rates
                 prod_loss_rates(xx, uu, i, j, k, zk, yj, xi, Qeuv, Qphoto);
 
+                rhon=0.0;
                 for (s = 0; s < sl; s++) {
+                    rhon += exp(xx[k][j][i].fx[s+20])*ams[s];
+
                     gradNs = gradient(xx, i, j, k, yj, xi, s);
                     gradNq = gradient(xx, i, j, k, yj, xi, s+20);
 
@@ -128,19 +133,19 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                                        -(gradTs.p + Ts*gradNs.p + gradTe.p + Te/ne*gradne.p)/ams[s];
 
                     //----------- non-stiff terms of Ti equation
-                    gg[k][j][i].fx[s16]=-(uir[s]*gradTs.r + uith[s]*gradTs.t + uiph[s]*gradTs.p)
-                                        -two3rd*(Ts*div_ui[s] + uu[k][j][i].fx[s+11]*exp(-xx[k][j][i].fx[s]));
+                    gg[k][j][i].fx[s16]= two3rd*(uu[k][j][i].fx[s+11]*exp(-xx[k][j][i].fx[s]) - Ts*div_ui[s])
+                                        -(uir[s]*gradTs.r + uith[s]*gradTs.t + uiph[s]*gradTs.p);
                 }
 
                 //----------- non-stiff terms of Te equation
                 uer = uu[k][j][i].fx[7]; ueth = uu[k][j][i].fx[8]; ueph = uu[k][j][i].fx[9];
                 div_ue  = divergence(uu, i, j, k, yj, xi, 7);
 
-                gg[k][j][i].fx[19]= two3rd/ne*(Qphoto-uu[k][j][i].fx[14])
-                                   -(uer*gradTe.r + ueth*gradTe.t + ueph*gradTe.p)-two3rd*Te*div_ue;
+                gg[k][j][i].fx[19]= two3rd*((Qphoto + uu[k][j][i].fx[14])/ne - Te*div_ue)
+                                   -(uer*gradTe.r + ueth*gradTe.t + ueph*gradTe.p);
 
                 //----------- non-stiff terms of unr equation
-                Nn=uu[k][j][i].fx[10]; rhon=uu[k][j][i].fx[11]; Tn=xx[k][j][i].fx[30];
+                Nn=uu[k][j][i].fx[10]; Tn=xx[k][j][i].fx[30];
                 unr=xx[k][j][i].fx[27]; unth=xx[k][j][i].fx[28]; unph=xx[k][j][i].fx[29];
 
                 gradTn=gradient(xx, i, j, k, yj, xi, 30);
@@ -169,7 +174,7 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                 //----------- non-stiff terms of Tn equation
                 Cn=neu_cooling_rate(xx, i, j, k);
 
-                gg[k][j][i].fx[30]= two3rd*((Qeuv-Cn-uu[k][j][i].fx[15])/Nn-Tn*div_un)
+                gg[k][j][i].fx[30]= two3rd*((Qeuv-Cn + uu[k][j][i].fx[15])/Nn-Tn*div_un)
                                    -(unr*gradTn.r + unth*gradTn.t + unph*gradTn.p);
 
                 //----------- non-stiff magnetic field equation

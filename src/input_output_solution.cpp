@@ -103,7 +103,7 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
                 }
                 for (s = 16; s < 20; s++) {
                     if (xx[k][j][i].fx[s] <= 0.0) {
-                        cout<<"Negative or zero temperature of "<<spec[s]<<" = "<<xx[k][j][i].fx[s]
+                        cout<<"Negative or zero temperature of "<<spec[s-16]<<" = "<<xx[k][j][i].fx[s]
                             <<" at ("<<i<<", "<<j<<", "<<k<<")" <<" from input file"<<endl;
                         MPI_Abort(MPI_COMM_WORLD,ierr);
                     }

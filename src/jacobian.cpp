@@ -59,12 +59,14 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
         row.j=j; yj=(uint64_t)(j-ys); kj=(uint64_t)(k*ym+j);
 
         if (j == 0 || j == Nth) {
-            for (ir = 0; ir < a4; ir++) {
-                row.c=ir; nv=0;
-                col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir; vals[nv] = 1.0;
-                nv++;
+            for (i = xs; i < xs+xm; i++) {
+                for (ir = 0; ir < a4; ir++) {
+                    row.c=ir; nv=0;
+                    col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir; vals[nv] = 1.0;
+                    nv++;
 
-                MatSetValuesStencil(Jac,1,&row,nv,col,vals,INSERT_VALUES);
+                    MatSetValuesStencil(Jac,1,&row,nv,col,vals,INSERT_VALUES);
+                }
             }
             continue;
         }
@@ -678,6 +680,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
 
                         neme_nsms_nues=2.0*ne*ame/(ns[1]*ams[1])*nust[zk][yj][xi][1];
                         nust_mims[0]=nust[zk][yj][xi][30]/(ams[1]+ams[2]);
+                        nust_mims[1]=nust[zk][yj][xi][31]/(ams[1]+ams[3]);
                         col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=17;  //dF/dT_{H+}
                         vals[nv]=a+temp*(nusq_msmq+nust_msmt+nust_mims[1])+neme_nsms_nues;
                         nv++;

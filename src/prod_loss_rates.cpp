@@ -99,7 +99,7 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
             qi[6] += segion[s][6]*euvf; /* He + hv --> He+ + e */
 
             /* EUV heating of neutrals due to O, O2, N2 
-             * absorption of EUV flux normalized by t0/p0, assuming heating efficiency of 0.45 */
+             * absorption of EUV flux in J m^{-3} s^{-1} (normalized by t0/p0), assuming heating efficiency of 0.45 */
             Qeuv += 0.45e6*(segabs[s][0]*Nnn[0]+segabs[s][1]*Nnn[1]+segabs[s][3]*Nnn[2])*euvf*pene[s]*t0divp0;
         }
     }

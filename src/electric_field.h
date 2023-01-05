@@ -22,8 +22,8 @@ inline void E_gradPe(Field ***xx, Field ***uu, int i, int j, int k, int xi, int 
     ne=uu[k][j][i].fx[6];
 
     dpe_dr =ne*dTe_dr+Te*dne_dr;
-    dpe_dth=(ne*dTe_dth+Te*dne_dth)/rr[i];
-    dpe_dph=(ne*dTe_dph+Te*dne_dph)/rsin[yj][xi];
+    dpe_dth=(ne*dTe_dth+Te*dne_dth);
+    dpe_dph=(ne*dTe_dph+Te*dne_dph);
 
     //negative of electric field part due to electron pressure gradient in Cartesian coordinates
     inv_ene=1.0/(e*uu[k][j][i].fx[6]);
@@ -60,15 +60,16 @@ inline void electric_field_vxB(Field ***xx, Field ***uu, double ue[], int i, int
 
 inline void currents(Field ***localuu, Field ***uu, int i, int j, int k, int yj, int xi)
 {
-    double dBphi_dtheta = difference_theta(localuu, i, j, k, 27);
-    double dBtheta_dphi = difference_phi(localuu, i, j, k, 26);
-    double dBr_dphi = difference_phi(localuu, i, j, k, 25);
-    double dBphi_dr = difference_r(localuu, i, j, k, 27);
-    double dBtheta_dr = difference_r(localuu, i, j, k, 26);
-    double dBr_dtheta = difference_theta(localuu, i, j, k, 25);
+    double dBphi_dtheta = difference_theta(localuu, i, j, k, 26);
+    double dBtheta_dphi = difference_phi(localuu, i, j, k, 25);
+    double dBr_dphi = difference_phi(localuu, i, j, k, 24);
+    double dBphi_dr = difference_r(localuu, i, j, k, 26);
+    double dBtheta_dr = difference_r(localuu, i, j, k, 25);
+    double dBr_dtheta = difference_theta(localuu, i, j, k, 24);
 
-    uu[k][j][i].fx[20]=( cot_div_r[yj][xi]*localuu[k][j][i].fx[27]+dBphi_dtheta/rr[i]
-                        -dBtheta_dphi/rsin[yj][xi])/mu0;
-    uu[k][j][i].fx[21]=(dBr_dphi/rsin[yj][xi] - dBphi_dr - localuu[k][j][i].fx[27]/rr[i])/mu0;
-    uu[k][j][i].fx[22]=(localuu[k][j][i].fx[26]/rr[i]+dBtheta_dr - dBr_dtheta/rr[i])/mu0;
+    double rsindph=rsin[yj][xi]*dph;
+
+    uu[k][j][i].fx[16]=cot_div_r[yj][xi]*localuu[k][j][i].fx[26]+dBphi_dtheta/rr[i]-dBtheta_dphi/rsindph;
+    uu[k][j][i].fx[17]=dBr_dphi/rsindph - dBphi_dr - localuu[k][j][i].fx[26]/rr[i];
+    uu[k][j][i].fx[18]=localuu[k][j][i].fx[25]/rr[i]+dBtheta_dr - dBr_dtheta/rr[i];
 }

@@ -67,8 +67,8 @@ void top_bc_vel(AppCtx *params, PetscInt ys, PetscInt ym, PetscInt zs, PetscInt 
                   &Bximf, &Byimf, &Bzimf, &SWDen, &vgsex, &vgsey, &vgsez, &UseAL,
                   &ALindex, &gMLT, &Vr, &Vth, &Vph, &epot);
 
-                vt[zk][yj]=(double)Vth*params->rurb3;
-                vp[zk][yj]=(double)Vph*params->rurb3;
+                vt[zk][yj]=(double)Vth*params->rurb3/v0;
+                vp[zk][yj]=(double)Vph*params->rurb3/v0;
             }
         }
     }

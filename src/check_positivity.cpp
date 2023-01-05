@@ -27,7 +27,7 @@ int check_positivity(DM da, Field ***xx)
 
                 for (s = 16; s <= 19; s++) {
                     if (xx[k][j][i].fx[s] <= 0.0) {
-                        cout<<spec[s]<<" temperature <= 0 "<<xx[k][j][i].fx[s]
+                        cout<<spec[s-16]<<" temperature <= 0 "<<xx[k][j][i].fx[s]
                             <<" at (i, j, k) = (" << i << ", " << j << ", "<< k << ")" <<endl;
                         ngnp=-3;
                     }

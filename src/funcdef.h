@@ -69,6 +69,7 @@ void boundary_V_T(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm);
 
 int check_positivity(DM, Field ***xx);
 void const_normalize();
-void smooth_multi_dim(DM da, Vec U, int startIndex, int endIndex);
+void smooth_multi_dim_U(DM da, Vec U, int startIndex, int endIndex);
+void smooth_multi_dim_X(DM da, Vec U);
 
 //#endif  /* INC FUNCDEF */

@@ -129,13 +129,12 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 /* initialy neutral u_{n,r}, u_{n,theta}, u_{n,phi} set to a small constant (m/s) */
                 for (s = 27; s < 30; s++) xx[k][j][i].fx[s]=0.1/v0;
 
-                if (f20[30] <= 0.0) {
+                /*if (f20[10] <= 0.0) {
                     cout<<"Negative neutral temperature from MSIS file at ";
                     cout<<"(i, j, k) = ("<<i<<", "<<j<<", "<<k<<") Tn = "<<f20[10]<<endl;
                     exit(-1);
                 }
-
-                //xx[k][j][i].fx[30]=f20[10]/T0;
+                xx[k][j][i].fx[30]=f20[10]/T0;*/
 
                 /* delta_B */
                 xx[k][j][i].fx[31]=1.0e-9; xx[k][j][i].fx[32]=1.0e-9; xx[k][j][i].fx[33]=1.0e-9;

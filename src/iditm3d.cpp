@@ -151,7 +151,7 @@ int main(int argc,char **argv)
  *----- smooth O+, H+, He+ ion velocities and temperatures 
  *----- multidomensional Shapiro filter is used to conduct smoothing (Falissard, JCP 2013)
  -----------------------------------------------------------------------------------------*/
-        smooth_multi_dim(da, X, 7, 19);
+        smooth_multi_dim_X(da, X);
 
         // output in parallel to a hdf5 file at chosen time steps
         if (params.ndt % params.nout ==0 || params.ndt==params.ntot) output_solution(da, xx, &params);
