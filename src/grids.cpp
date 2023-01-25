@@ -11,8 +11,8 @@ using namespace std;
 
 int grids(DM da, AppCtx *params)
 {
-    PetscInt   i, j, k;
-    PetscInt   xs, ys, zs, xm, ym, zm;
+    int        i, j, k, xs, ys, zs, xm, ym, zm, yj;
+    uint32_t   yj_t;
     string     fname, ch1, tempstr;
     PetscMPIInt rank, nproc;
 
@@ -21,8 +21,14 @@ int grids(DM da, AppCtx *params)
 
     DMDAGetCorners(da,&xs,&ys,&zs,&xm,&ym,&zm);
 
+    //boundary radial distances normalized
+    params->rb=(1.0e3*params->rb+Re)/r0;
+    params->ru=(1.0e3*params->ru+Re)/r0;
+
+    params->rurb3=pow(params->rb/params->ru, 3.0);
+
     dr=(params->ru-params->rb)/(double)Nr;
-    dth = 180.0 / (double)(Nth);
+    dth = 180.0 / (double)Nthm;
     dph= 360.0 / (double)a3;
 
 /* --------- start run from the scratch: first set up grid points */
@@ -32,7 +38,7 @@ int grids(DM da, AppCtx *params)
     /* theta_{j} in deg*/
     theta[0]=dth/2.0;   //dummy element
     theta[1]=dth/2.0;
-    for (j = 2; j < Nth; j++) theta[j] = theta[1] + dth*double(j);
+    for (j = 2; j < Nth; j++) theta[j] = theta[j-1] + dth;
     theta[Nth]=theta[Nthm];  //dummy element
 
     /* phi_{k} in deg */
@@ -47,79 +53,57 @@ int grids(DM da, AppCtx *params)
     for (k = 0; k < a3; k++) phi[k]=phi[k]*rad;
 
 /*----------- transform matrices -------------------------------------------*/
-    for (k = zs; k < zs+zm; k++) {
-        for (j = ys; j < ys+ym; j++) {
-            Jmat.J11.push_back(sin(theta[j])*cos(phi[k]));
-            Jmat.J12.push_back(sin(theta[j])*sin(phi[k]));
-        }
+    double sinphi, cosphi;
+    vector<double> sintheta, costheta;
+
+    for (j = ys; j < ys+ym; j++) {
+        sintheta.push_back(sin(theta[j])); costheta.push_back(cos(theta[j]));
     }
 
-    for (j = ys; j < ys+ym; j++) Jmat.J13.push_back(cos(theta[j]));
-
     for (k = zs; k < zs+zm; k++) {
-        for (j = ys; j < ys+ym; j++) {
-            for (i = xs; i < xs+xm; i++) {
-                Jmat.J21.push_back(cos(theta[j])*cos(phi[k])/rr[i]);
-                Jmat.J22.push_back(cos(theta[j])*sin(phi[k])/rr[i]);
+        sinphi=sin(phi[k]); cosphi=cos(phi[k]);
 
-                Jmat.J31.push_back(-sin(phi[k])/(rr[i]*sin(theta[j])));
-                Jmat.J32.push_back( cos(phi[k])/(rr[i]*sin(theta[j])));
+        Kmat.K13.push_back(-sinphi);
+        Kmat.K23.push_back( cosphi);
+
+        for (j = ys; j < ys+ym; j++) {
+            yj=j-ys; yj_t=(uint32_t)yj;
+
+            Jmat.J11.push_back(sintheta[yj_t]*cosphi);
+            Jmat.J12.push_back(sintheta[yj_t]*sinphi);
+            if (k == 0) Jmat.J13.push_back(costheta[yj_t]);
+
+            Jinv.Jiv11.push_back(sintheta[yj_t]*cosphi);
+            Jinv.Jiv21.push_back(sintheta[yj_t]*sinphi);
+            if (k == 0) Jinv.Jiv31.push_back(costheta[yj_t]);
+
+            Kmat.K11.push_back(sintheta[yj_t]*cosphi);
+            Kmat.K12.push_back(costheta[yj_t]*cosphi);
+            Kmat.K21.push_back(sintheta[yj_t]*sinphi);
+            Kmat.K22.push_back(costheta[yj_t]*sinphi);
+
+            if (k == 0) {
+                Kmat.K31.push_back( costheta[yj_t]);
+                Kmat.K32.push_back(-sintheta[yj_t]);
+            }
+
+            for (i = xs; i < xs+xm; i++) {
+                Jmat.J21.push_back(costheta[yj_t]*cosphi/rr[i]);
+                Jmat.J22.push_back(costheta[yj_t]*sinphi/rr[i]);
+                if (k==0) Jmat.J23.push_back(-sintheta[yj_t]/rr[i]);
+
+                Jmat.J31.push_back(-sinphi/(rr[i]*sintheta[yj_t]));
+                Jmat.J32.push_back( cosphi/(rr[i]*sintheta[yj_t]));
+
+                Jinv.Jiv12.push_back( rr[i]*costheta[yj_t]*cosphi);
+                Jinv.Jiv22.push_back( rr[i]*costheta[yj_t]*sinphi);
+                if(k==0) Jinv.Jiv32.push_back(-rr[i]*sintheta[yj_t]);
+
+                Jinv.Jiv13.push_back(-rr[i]*sintheta[yj_t]*sinphi);
+                Jinv.Jiv23.push_back( rr[i]*sintheta[yj_t]*cosphi);
             }
         }
     }
-
-    for (j = ys; j < ys+ym; j++) {
-        for (i = xs; i < xs+xm; i++) {
-            Jmat.J23.push_back(-sin(theta[j])/rr[i]);
-        }
-    }
-
-    for (k = zs; k < zs+zm; k++) {
-        for (j = ys; j < ys+ym; j++) {
-            Jinv.Jiv11.push_back(sin(theta[j]*cos(phi[k])));
-            Jinv.Jiv21.push_back(sin(theta[j]*sin(phi[k])));
-        }
-    }
-
-    for (k = zs; k < zs+zm; k++) {
-        for (j = ys; j < ys+ym; j++) {
-            for (i = xs; i < xs+xm; i++) {
-                Jinv.Jiv12.push_back( rr[i]*cos(theta[j])*cos(phi[k]));
-                Jinv.Jiv13.push_back(-rr[i]*sin(theta[j])*sin(phi[k]));
-
-                Jinv.Jiv22.push_back( rr[i]*cos(theta[j])*sin(phi[k]));
-                Jinv.Jiv23.push_back( rr[i]*sin(theta[j])*cos(phi[k]));
-            }
-        }
-    }
-
-    for (j = ys; j < ys+ym; j++) Jinv.Jiv31.push_back(cos(theta[j]));
-
-    for (j = ys; j < ys+ym; j++) {
-        for (i = xs; i < xs+xm; i++) {
-            Jinv.Jiv32.push_back(-rr[i]*sin(theta[j]));
-        }
-    }
-
-    for (k = zs; k < zs+zm; k++) {
-        for (j = ys; j < ys+ym; j++) {
-            Kmat.K11.push_back(sin(theta[j])*cos(phi[k]));
-            Kmat.K12.push_back(cos(theta[j])*cos(phi[k]));
-            Kmat.K21.push_back(sin(theta[j])*sin(phi[k]));
-            Kmat.K22.push_back(cos(theta[j])*sin(phi[k]));
-        }
-    }
-
-    for (k = zs; k < zs+zm; k++) {
-        Kmat.K13.push_back(-sin(phi[k]));
-        Kmat.K23.push_back( cos(phi[k]));
-    }
-
-    for (j = ys; j < ys+ym; j++) {
-        Kmat.K31.push_back( cos(theta[j]));
-        Kmat.K32.push_back(-sin(theta[j]));
-    }
-
 /*----------- end calculation of transform matrices -----------------------------------*/
 
 /***************************************************************************************
@@ -153,10 +137,12 @@ int grids(DM da, AppCtx *params)
     thetah[Nth]=pi;
 
     for (j = ys; j < ys+ym; j++) {
+        yj=j-ys; yj_t=(uint32_t)yj;
+
         for (i = xs; i < xs+xm; i++) {
-            r2sintheta[j-ys][i-xs]=rr[i]*rr[i]*sin(theta[j]);
-            cot_div_r[j-ys][i-xs]=cos(theta[j])/(rr[i]*sin(theta[j]));
-            rsin[j-ys][i-xs]=rr[i]*sin(theta[j]);
+            r2sintheta[yj][i-xs]=rr[i]*rr[i]*sintheta[yj_t];
+            cot_div_r[yj][i-xs]=cos(theta[j])/(rr[i]*sintheta[yj_t]);
+            rsin[yj][i-xs]=rr[i]*sintheta[yj_t];
         }
     }
 
@@ -189,8 +175,8 @@ int grids(DM da, AppCtx *params)
         fstr<<"  i        r              rh            zh (km)"<<endl;
         for (i = 0; i < a1; i++) {
             fstr << setw(4) << i;
-            fstr <<scientific<<setw(16)<<setprecision(8)<<rr[i];
-            fstr <<scientific<<setw(16)<<setprecision(8)<<rh[i];
+            fstr <<scientific<<setw(16)<<setprecision(8)<<rr[i]*r0;
+            fstr <<scientific<<setw(16)<<setprecision(8)<<rh[i]*r0;
             fstr <<scientific<<setw(16)<<setprecision(8)<<zh[i] << endl;
         }
         fstr<<"  j    theta (deg)    thetah (deg)"<<endl;

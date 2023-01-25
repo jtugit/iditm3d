@@ -23,8 +23,6 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
 
     params->sec = ftime;
 
-    parameters(da, X, params);
-
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
 
     DMGetLocalVector(da, &localX);
@@ -46,7 +44,7 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
     vector3D grad_usr, grad_ustheta, grad_usphi, grad_unr, grad_untheta, grad_unphi;
     double   uir[3], uith[3], uiph[3], uirr, uitht, uiphp, unr, unth, unph, uer, ueth, ueph;
     double   div_ui[3], div_un, div_ue, divui, ne, Te, Ts, Ec_gradPe[3];
-    double   jr, jtheta, jphi, B0r, B0t, B0p, ms_ne, Qeuv, Qphoto, Cn;
+    double   jr, jtheta, jphi, B0r, B0t, B0p, ms_ne, Qeuv, Qphoto, Cn, Ce;
 
     const double two3rd=2.0/3.0;
 
@@ -141,7 +139,9 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                 uer = uu[k][j][i].fx[7]; ueth = uu[k][j][i].fx[8]; ueph = uu[k][j][i].fx[9];
                 div_ue  = divergence(uu, i, j, k, yj, xi, 7);
 
-                gg[k][j][i].fx[19]= two3rd*((Qphoto + uu[k][j][i].fx[14])/ne - Te*div_ue)
+                Ce=ele_cooling_rate(xx, Te, Tn, ne, i, j, k);
+
+                gg[k][j][i].fx[19]= two3rd*((Qphoto + uu[k][j][i].fx[14]-Ce)/ne - Te*div_ue)
                                    -(uer*gradTe.r + ueth*gradTe.t + ueph*gradTe.p);
 
                 //----------- non-stiff terms of unr equation
@@ -183,13 +183,13 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                 //----------- non-stiff electric field equation
                 E_gradPe(xx, uu, i, j, k, xi, yj, zk, xm, ym, Ec_gradPe);
 
-                gg[k][j][i].fx[34]= Jinv.Jiv11[kj]*Ec_gradPe[0]+Jinv.Jiv21[kj]*Ec_gradPe[1]
-                                   +Jinv.Jiv31[(uint64_t)yj]*Ec_gradPe[2];
+                gg[k][j][i].fx[34]=-( Jinv.Jiv11[kj]*Ec_gradPe[0]+Jinv.Jiv21[kj]*Ec_gradPe[1]
+                                     +Jinv.Jiv31[(uint64_t)yj]*Ec_gradPe[2]);
 
-                gg[k][j][i].fx[35]= Jinv.Jiv12[kji]*Ec_gradPe[0]+Jinv.Jiv22[kji]*Ec_gradPe[1]
-                                   +Jinv.Jiv32[ji]*Ec_gradPe[2];
+                gg[k][j][i].fx[35]=-( Jinv.Jiv12[kji]*Ec_gradPe[0]+Jinv.Jiv22[kji]*Ec_gradPe[1]
+                                     +Jinv.Jiv32[ji]*Ec_gradPe[2]);
 
-                gg[k][j][i].fx[36]= Jinv.Jiv13[kji]*Ec_gradPe[0]+Jinv.Jiv23[kji]*Ec_gradPe[1];
+                gg[k][j][i].fx[36]=-(Jinv.Jiv13[kji]*Ec_gradPe[0]+Jinv.Jiv23[kji]*Ec_gradPe[1]);
             }
 
             if (xs == 0) lower_boundary_bc(xx, gg, j, k);

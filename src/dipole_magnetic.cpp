@@ -79,8 +79,7 @@ void dipole_magnetic(DM da, AppCtx *params)
 
             for (i=xs; i<xs+xm; i++) {
                 xi=i-xs;
-                /* dipole magnetic field in geomagnetic coordinates at (rC_i, thetaC_j, phi_k) */
-                // Note thetaC[Nth] = thetaC[Nth-1] on kc=(k+a3/2) % a3
+                /* dipole magnetic field in geomagnetic coordinates at (r_i, theta_j, phi_k) */
                 rr_unorm=rr[i]*r0;
                 r3=rr_unorm*rr_unorm*rr_unorm;
                 Br=-2.0*Mz*cos(theta[j])/r3;
@@ -89,7 +88,7 @@ void dipole_magnetic(DM da, AppCtx *params)
 
                 uu[k][j][i].fx[0]=Br/B0; uu[k][j][i].fx[1]=Bt/B0; uu[k][j][i].fx[2]=Bp/B0;
 
-                /* dipole magnetic field in special spherical coordinates */
+                /* dipole magnetic field in Cartesian coordinates */
                 B0x=(Kmat.K11[kj]*Br+Kmat.K12[kj]*Bt+Kmat.K13[(uint64_t)zk]*Bp);
                 B0y=(Kmat.K21[kj]*Br+Kmat.K22[kj]*Bt+Kmat.K23[(uint64_t)zk]*Bp);
                 B0z=(Kmat.K31[(uint64_t)yj]*Br+Kmat.K32[(uint64_t)yj]*Bt);
@@ -121,7 +120,7 @@ void dipole_magnetic(DM da, AppCtx *params)
 
         //boundary condition at j = 0
         if (ys == 0) {
-            j=0; yj=0; kj=(uint64_t)(zk*ym+yj);
+            j=0; yj=0;
 
             for (i=xs; i<xs+xm; i++) {
                 xi=i-xs;
@@ -135,8 +134,8 @@ void dipole_magnetic(DM da, AppCtx *params)
         }
 
         //boundary condition at j = Nth
-        if (ys+ym == Nth) {
-            j=Nth; yj=j-ys; kj=(uint64_t)(zk*ym+yj);
+        if (ys+ym == a2) {
+            j=Nth; yj=j-ys;
 
             for (i=xs; i<xs+xm; i++) {
                 xi=i-xs;
@@ -145,7 +144,7 @@ void dipole_magnetic(DM da, AppCtx *params)
                 xdata[s]=rr[i]*r0; xdata[s+1]=theta[j]; xdata[s+2]=phi[k];
                 xdata[s+3]=uu[kc][Nthm][i].fx[0]*B0;
                 xdata[s+4]=uu[kc][Nthm][i].fx[1]*B0;
-                xdata[s+5]=uu[kc][Nthm][i].fx[2]*B0; //background mfd in Tesla
+                xdata[s+5]=uu[kc][Nthm][i].fx[2]*B0;
             }
         }
     }

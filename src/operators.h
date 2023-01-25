@@ -49,7 +49,7 @@ inline double limited_slope_theta(Field ***xx, int i, int j, int k, int s)
 {
     double cc, dd, sgn;
 
-    if (s == 8 || s == 11 || s == 14 || s ==28) sgn = -1.0;
+    if (s==8 || s==11 || s==14 || s==28 || s==32 || s==35) sgn = -1.0;
     else sgn = 1.0;
 
     //when calculating gradient in theta, here treat theta as increase
@@ -107,7 +107,7 @@ inline double difference_theta(Field ***xx, int i, int j, int k, int s)
 
     if (j == 1) {
         kc = (k+a3/2) % a3; 
-        if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32)
+        if (s==8 || s==11 || s==14 || s==28 || s==32 || s==35)
             yL = -(xx[kc][j][i].fx[s] - limited_slope_theta(xx, i, j, kc, s)*(thetah[j]-theta[j]));
         else yL = xx[kc][j][i].fx[s] + limited_slope_theta(xx, i, j, kc, s)*(thetah[j]-theta[j]);
     }
@@ -126,7 +126,7 @@ inline double difference_theta(Field ***xx, int i, int j, int k, int s)
 
     if (j == Nthm) {
         kc = (k+a3/2) % a3;
-        if (s == 8 || s == 11 || s == 14 || s == 28 || s ==32)
+        if (s==8 || s==11 || s==14 || s==28 || s==32 || s==35)
             yR = -(xx[kc][j][i].fx[s] - limited_slope_theta(xx, i, j, kc, s)*(thetah[jp]-theta[j]));
         else yR = xx[kc][j][i].fx[s] + limited_slope_theta(xx, i, j, kc, s)*(thetah[jp]-theta[j]);
     }
@@ -166,13 +166,13 @@ inline double difference_phi(Field ***xx, int i, int j, int k, int s)
     return dydphi;
 }
 
-inline vector3D gradient (Field ***xx, int i, int j, int k, int yj, int xi, int s)
+inline vector3D gradient(Field ***xx, int i, int j, int k, int yj, int xi, int s)
 {
     vector3D y;
 
-    double dydr = difference_r(xx, i, j, k, s);
-    double dydt = difference_theta(xx, i, j, k, s);
-    double dydp = difference_phi(xx, i, j, k, s);
+    double dydr = difference_r(xx, i, j, k, s);     //d/d_{r}
+    double dydt = difference_theta(xx, i, j, k, s); //d/d_{theta}
+    double dydp = difference_phi(xx, i, j, k, s);   //d/d_{phi}
 
     y.r = dydr; y.t = dydt/rr[i]; y.p = dydp/rsin[yj][xi];
 
@@ -181,9 +181,9 @@ inline vector3D gradient (Field ***xx, int i, int j, int k, int yj, int xi, int 
 
 inline double divergence(Field ***xx, int i, int j, int k, int yj, int xi, int s)
 {
-    double dyr_dr = difference_r(xx, i, j, k, s);
-    double dyt_dt = difference_theta(xx, i, j, k, s+1);
-    double dyp_dp = difference_phi(xx, i, j, k, s+2);
+    double dyr_dr = difference_r(xx, i, j, k, s);       //d/d_{r}
+    double dyt_dt = difference_theta(xx, i, j, k, s+1); //d/d_{theta}
+    double dyp_dp = difference_phi(xx, i, j, k, s+2);   //d/d_{phi}
 
     return 2.0*xx[k][j][i].fx[s]/rr[i]+xx[k][j][i].fx[s+1]*cot_div_r[yj][xi]
           +dyr_dr + dyt_dt/rr[i] + dyp_dp/rsin[yj][xi]; 

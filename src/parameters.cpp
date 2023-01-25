@@ -55,7 +55,7 @@ inline double heat_flow_divergence(Field ***xx, Field ***localuu, int i, int j, 
 
     d2Tdph2=(xx[kp][j][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[km][j][i].fx[s])/(dph*dph);
 
-    double r2sin2=rsin[yj][xi]*rsin[yj][xi], rr2=rr[i]*rr[i];
+    double r2sin2=rsin[yj][xi]*rsin[yj][xi]*dph*dph, rr2=rr[i]*rr[i];
 
     double div_q = dlamdadr*dTdr+dlamdadth*dTdth/rr2+dlamdadph*dTdph/r2sin2
                   +localuu[k][j][i].fx[s3]*(2.0*dTdr/rr[i]+cot_div_r[yj][xi]/rr[i]*dTdth
@@ -112,7 +112,7 @@ inline double neu_heat_flow_divergence(Field ***xx, Field ***localuu, int i, int
 
     d2Tdph2=(xx[kp][j][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[km][j][i].fx[30])/(dph*dph);
 
-    double r2sin2=rsin[yj][xi]*rsin[yj][xi], rr2=rr[i]*rr[i];
+    double r2sin2=rsin[yj][xi]*rsin[yj][xi]*dph*dph, rr2=rr[i]*rr[i];
 
     double div_q = dlamdadr*dTdr+dlamdadth*dTdth/rr2+dlamdadph*dTdph/r2sin2
                   +localuu[k][j][i].fx[23]*( 2.0*dTdr/rr[i]+cot_div_r[yj][xi]/rr[i]*dTdth
@@ -125,33 +125,19 @@ inline void Bspecial_sphereto_Bpshere(Field ***xx, Field ***uu, int xm, int ym, 
     int xi, int yj, int zk)
 {
     uint64_t  kj, ji, kji, yj64=(uint64_t)yj, zk64=(uint64_t)zk;
+    double    Bx, By, Bz;
 
     kj=(uint64_t)(zk*ym+yj); ji=(uint64_t)(yj*xm+xi); kji=(uint64_t)(zk*ym*xm+yj*xm+xi);
 
-    uu[k][j][i].fx[24]=( Kmat.K11[kj]*( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]
-                                       +Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
-                                       +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])
-                        +Kmat.K21[kj]*( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]
-                                       +Jinv.Jiv22[kji]*xx[k][j][i].fx[32]
-                                       +Jinv.Jiv23[kji]*xx[k][j][i].fx[33])
-                        +Kmat.K31[yj64]*( Jinv.Jiv31[yj64]*xx[k][j][i].fx[31]
-                                         +Jinv.Jiv32[ji]*xx[k][j][i].fx[32]))/r2sintheta[yj][xi];
+    Bx=( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]+Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
+        +Jinv.Jiv13[kji]*xx[k][j][i].fx[33]);
+    By=( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]+Jinv.Jiv22[kji]*xx[k][j][i].fx[32]
+        +Jinv.Jiv23[kji]*xx[k][j][i].fx[33]);
+    Bz=(Jinv.Jiv31[yj64]*xx[k][j][i].fx[31]+Jinv.Jiv32[ji]*xx[k][j][i].fx[32]);
 
-    uu[k][j][i].fx[25]=( Kmat.K12[kj]*( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]
-                                       +Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
-                                       +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])
-                        +Kmat.K22[kj]*( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]
-                                       +Jinv.Jiv22[kji]*xx[k][j][i].fx[32]
-                                       +Jinv.Jiv23[kji]*xx[k][j][i].fx[33])
-                        +Kmat.K32[yj64]*( Jinv.Jiv31[yj64]*xx[k][j][i].fx[31]
-                                         +Jinv.Jiv32[ji]*xx[k][j][i].fx[32]))/r2sintheta[yj][xi];
-
-    uu[k][j][i].fx[26]=( Kmat.K13[zk64]*( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]
-                                         +Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
-                                         +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])
-                        +Kmat.K23[zk64]*( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]
-                                         +Jinv.Jiv22[kji]*xx[k][j][i].fx[32]
-                                         +Jinv.Jiv23[kji]*xx[k][j][i].fx[33]))/r2sintheta[yj][xi];
+    uu[k][j][i].fx[24]=(Kmat.K11[kj]*Bx+Kmat.K21[kj]*By+Kmat.K31[yj64]*Bz)/r2sintheta[yj][xi];
+    uu[k][j][i].fx[25]=(Kmat.K12[kj]*Bx+Kmat.K22[kj]*By+Kmat.K32[yj64]*Bz)/r2sintheta[yj][xi];
+    uu[k][j][i].fx[26]=(Kmat.K13[zk64]*Bx+Kmat.K23[zk64]*By)/r2sintheta[yj][xi];
 }
 
 /*----------------------------------------------------------------------

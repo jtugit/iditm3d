@@ -141,6 +141,8 @@ int main(int argc,char **argv)
         params.sec += dt;
         if (params.sec >= 86400) update_timedate(&params);
 
+        parameters(da, X, &params);
+
         TSStep(ts);
 
         DMDAVecGetArray(da, X, &xx);

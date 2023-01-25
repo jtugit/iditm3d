@@ -125,10 +125,10 @@ PetscErrorCode input_param(AppCtx *params)
             return -1;
         }
     }
-    if (a3 % 2 !=0) {
-        cout << "Number of grids, a3, along longitude must be even number"<< endl;
-        return -1;
-    }
+    //if (a3 % 2 !=0) {
+    //    cout << "Number of grids, a3, along longitude must be even number"<< endl;
+    //    return -1;
+    //}
 
     if (!rank) {
         if(a1 % 5 != 0 || a2 % 5 !=0 || a3 % 5 !=0) {
@@ -136,12 +136,6 @@ PetscErrorCode input_param(AppCtx *params)
             return -1;
         }
     }
-
-    //boundary radial distances normalized
-    params->rb=(1.0e3*params->rb+Re)/r0;
-    params->ru=(1.0e3*params->ru+Re)/r0;
-
-    params->rurb3=pow(params->rb/params->ru, 3.0);
 
     Nr =a1-1; Nrm=Nr-1;
     Nth=a2-1; Nthm=Nth-1;
