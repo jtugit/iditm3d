@@ -14,7 +14,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
 {
     int    s, t, s3, s14;
     double Br, Bt, Bp, Ec_VxB[3];
-    double usr[3], ust[3], usp[3], ui[3], unr, unt, unp, ns[7], nn[7], rhos[7];
+    double usr[3], ust[3], usp[3], ui[3], unr, unt, unp, ns[7], rhos[7];
     double ne, Te, Nn, rhon, Tn, TiO, TiH, TiHe; //ne = ni
     double sum_nusq[7], mtnust_msmt, nusq_msmq[7], sum_nueq_div_mq, nusttemp, nuis;
     double mqnusq_msmq[3], nust_msmt, rhossum_nusq_rhon[3], sum_nues, sum_nueq;
@@ -68,13 +68,11 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                     continue;
                 }
 
-                xi=i-xs; im = i-1; ip = i+1; ji=(uint64_t)(yj*xm+xi); kji=(uint64_t)(zk*ym*xm+yj*xm+xi);
+                xi=i-xs; im = i-1; ip = i+1; ji=(uint64_t)(yj*xm+xi);
+                kji=(uint64_t)(zk*ym*xm+yj*xm+xi);
 
-                ne=0.0; Nn=0.0; rhon=0.0; ui[0]=0.0; ui[1]=0.0; ui[2]=0.0; sum_nues=0.0; sum_nueq=0.0;
-                for (s = 0; s < 7; s++) {
-                    
-                }
-                sum_nueq_div_mq=0.0; 
+                ne=0.0; Nn=0.0; rhon=0.0; ui[0]=0.0; ui[1]=0.0; ui[2]=0.0; sum_nues=0.0;
+                sum_nueq=0.0; sum_nueq_div_mq=0.0; 
 
                 for (s = 0; s < sl; s++) {
                     ff[k][j][i].fx[s] = dxdt[k][j][i].fx[s];
@@ -85,8 +83,9 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                     sum_nueq += nust[zk][yj][xi][s+7];
                     sum_nueq_div_mq += nust[zk][yj][xi][7+s]/ams[s];
 
-                    ns[s] = exp(xx[k][j][i].fx[s]); ne += ns[s]; rhos[s]= ns[s]*ams[s];
-                    nn[s] = exp(xx[k][j][i].fx[20+s]); Nn += nn[s]; rhon += nn[s]*ams[s];
+                    //ion densities are from last time step
+                    ns[s] = uu[k][j][i].fx[s+27]; rhos[s]= ns[s]*ams[s]; 
+                    //nn[s] = exp(xx[k][j][i].fx[20+s]); Nn += nn[s]; rhon += nn[s]*ams[s];
 
                     s14=14*s; sum_nusq[s]=0.0; nusq_msmq[s]=0.0;
                     for (t = 0; t< sm; t++) {
@@ -104,7 +103,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 }
 
                 //ion bulk velocity
-                deni=ns[3]+ns[4]+ns[5]+ns[6];
+                deni=ns[3]+ns[4]+ns[5]+ns[6]; ne=uu[k][j][i].fx[6];
                 ui[0]=(ui[0]+deni*xx[k][j][i].fx[7])/ne;
                 ui[1]=(ui[1]+deni*xx[k][j][i].fx[8])/ne;
                 ui[2]=(ui[2]+deni*xx[k][j][i].fx[9])/ne;
@@ -212,8 +211,9 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                                     //+two3rd/ne*Ce;
 
                 //----- neutral momentum equation
+                Nn=uu[k][j][i].fx[10]; rhon=uu[k][j][i].fx[34];
                 rhossum_nusq_rhon[0]=( rhos[0]*sum_nusq[0]+rhos[3]*sum_nusq[3]+rhos[4]*sum_nusq[4]
-                                      +rhos[5]*sum_nusq[5]+rhos[6]*sum_nusq[6])/rhon;
+                                      +rhos[5]*sum_nusq[5]+rhos[6]*sum_nusq[6])/Nn;
                 rhossum_nusq_rhon[1]=rhos[1]*sum_nusq[1]/rhon;
                 rhossum_nusq_rhon[2]=rhos[2]*sum_nusq[2]/rhon;
 
@@ -265,7 +265,7 @@ int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx)
                 for (s=0; s<a4; s++) {
                     if (isnan(ff[k][j][i].fx[s]) || isinf(ff[k][j][i].fx[s])) {
                         cout<<"Stiff function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
-                            <<") in stiffunction "<<ff[k][j][i].fx[s]<<" "<<a4<<endl;
+                            <<") in stiffunction "<<ff[k][j][i].fx[s]<<endl;
                         exit(-1);
                     }
                 }

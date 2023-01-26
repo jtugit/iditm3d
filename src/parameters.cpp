@@ -152,7 +152,7 @@ int parameters(DM da, Vec X, AppCtx *params)
     PetscInt xs, ys, zs, xm, ym, zm;
     Field    ***xx, ***uu, ***localuu;
 
-    double Te, Te12, ne, ni[7], nn[7], Tn, nimole, rhon, nO, nO2, nN2, nH, nHe;
+    double Te, Te12, ne, ni[7], nn[7], Tn, nimole, nO, nO2, nN2, nH, nHe;
     int    zk, yj, xi, s0;
     double Td;
     double qn[5], nqd, Dst, amt, Te2, nuss[7];
@@ -183,14 +183,16 @@ int parameters(DM da, Vec X, AppCtx *params)
                 xi=i-xs;
 
                 for (s=6; s< 10; s++) uu[k][j][i].fx[s]=0.0;
-                rhon=0.0;
+                uu[k][j][i].fx[34]=0.0;
                 for (s = 0; s < sl; s++) {
                     ni[s] = exp(xx[k][j][i].fx[s]);
                     uu[k][j][i].fx[6] += ni[s];   //normalized electron density
 
+                    uu[k][j][i].fx[s+27]=ni[s];
+
                     nn[s] = exp(xx[k][j][i].fx[20+s]);
                     uu[k][j][i].fx[10] += nn[s];  //normalized neutral density
-                    rhon += nn[s]*ams[s];
+                    uu[k][j][i].fx[34] += nn[s]*ams[s];
 
                     if (s < 3) {
                         s3=s*3;
@@ -233,7 +235,7 @@ int parameters(DM da, Vec X, AppCtx *params)
                 nqd=nO*qn[0]+nO2*qn[1]+nN2*qn[2]+nH*qn[3]+nHe*qn[4];
                 uu[k][j][i].fx[22]=1.233694e-11*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd)/lamda0;
 
-                amt=rhon/uu[k][j][i].fx[10];  //averaged neutral mass in amu
+                amt=uu[k][j][i].fx[34]/uu[k][j][i].fx[10];  //averaged neutral mass in amu
 
                 /* calculate normalized O+, H+, He+ thermal conductivity Schunk & Nagy eq(5.167) */
                 for (m = 0; m < 3; m++) {
