@@ -21,8 +21,7 @@ using namespace std;
 
 int input_psolutions(DM da, Field ***xx, AppCtx *params)
 {
-    int i, j, k, m, ierr, xs, xm, ys, ym, zs, zm, vsize, s, zk, yj, xi;
-    uint64_t kj, kji, ji;
+    int i, j, k, m, ierr, xs, xm, ys, ym, zs, zm, vsize, s, zk, yj, xi, kji;
     double   *xdata;                 /* pointer to data buffer for writing */
     double   Bx, By, Bz, Bsph[3], Ex, Ey, Ez, Esph[3];
     string   spec[4]={"O+", "H+", "He+", "electron"};
@@ -47,16 +46,15 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
         zk=k-zs;
 
         for (j=ys; j<ys+ym; j++) {
-            yj=j-ys; kj = (uint64_t)(zk*ym+yj);
+            yj=j-ys;
 
             for (i=xs; i<xs+xm; i++) {
-                xi=i-xs; kji=(uint64_t)(zk*ym*xm+yj*xm+xi); ji=(uint64_t)(yj*xm+xi);
-                s=a4*(int)kji;
+                xi=i-xs; kji=(zk*ym*xm+yj*xm+xi); s=a4*kji;
 
                 //ion density (O+, H+, He+, O2+, N2+, NO+, N+), ion mass density, and electron density
                 for (m = 0; m < sl; m++) {
                     if (xdata[s+m]*1.0e6 < denmin) xdata[s+m]=denmin*1.0e-6;
-                    xx[k][j][i].fx[m] = log(xdata[s+m]*5.0e4/n0); //density in m^{-3} converted to log scale
+                    xx[k][j][i].fx[m] = xdata[s+m]*1.0e6/n0; //ion density in m^{-3}
                 }
 
                 //ion velocity in m/s, ion and electron temperatuer in K 
@@ -74,27 +72,27 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
                 for (m = 31; m < 34; m++) Bsph[m-31]=xdata[s+m]*1.0e-9/B0;
 
                 //converte to Cartesian coordinates
-                Bx=Kmat.K11[kj]*Bsph[0]+Kmat.K12[kj]*Bsph[1]+Kmat.K13[(uint64_t)zk]*Bsph[2];
-                By=Kmat.K21[kj]*Bsph[0]+Kmat.K22[kj]*Bsph[1]+Kmat.K23[(uint64_t)zk]*Bsph[2];
-                Bz=Kmat.K31[(uint64_t)yj]*Bsph[0]+Kmat.K32[(uint64_t)yj]*Bsph[1];
+                Bx=K11[zk][yj]*Bsph[0]+K12[zk][yj]*Bsph[1]+K13[zk]*Bsph[2];
+                By=K21[zk][yj]*Bsph[0]+K22[zk][yj]*Bsph[1]+K23[zk]*Bsph[2];
+                Bz=K31[yj]*Bsph[0]+K32[yj]*Bsph[1];
 
                 /* normalized delta_B in special spherical coordinates */
-                xx[k][j][i].fx[31]=r2sintheta[yj][xi]*(Jmat.J11[kj]*Bx+Jmat.J12[kj]*By+Jmat.J13[(uint64_t)yj]*Bz);
-                xx[k][j][i].fx[32]=r2sintheta[yj][xi]*(Jmat.J21[kji]*Bx+Jmat.J22[kji]*By+Jmat.J23[ji]*Bz);
-                xx[k][j][i].fx[33]=r2sintheta[yj][xi]*(Jmat.J31[kji]*Bx+Jmat.J32[kji]*By);
+                xx[k][j][i].fx[31]=r2sintheta[yj][xi]*(J11[zk][yj]*Bx+J12[zk][yj]*By+J13[yj]*Bz);
+                xx[k][j][i].fx[32]=r2sintheta[yj][xi]*(J21[zk][yj][xi]*Bx+J22[zk][yj][xi]*By+J23[yj][xi]*Bz);
+                xx[k][j][i].fx[33]=r2sintheta[yj][xi]*(J31[zk][yj][xi]*Bx+J32[zk][yj][xi]*By);
 
                 /* normalized delta_B in spherical coordinates */
                 for (m = 34; m < 37; m++) Esph[m-34]=xdata[s+m]*1.0e-3/E0;
 
                 //converte to Cartesian coordinates
-                Ex=Kmat.K11[kj]*Esph[0]+Kmat.K12[kj]*Esph[1]+Kmat.K13[(uint64_t)zk]*Esph[2];
-                Ey=Kmat.K21[kj]*Esph[0]+Kmat.K22[kj]*Esph[1]+Kmat.K23[(uint64_t)zk]*Esph[2];
-                Ez=Kmat.K31[(uint64_t)yj]*Esph[0]+Kmat.K32[(uint64_t)yj]*Esph[1];
+                Ex=K11[zk][yj]*Esph[0]+K12[zk][yj]*Esph[1]+K13[zk]*Esph[2];
+                Ey=K21[zk][yj]*Esph[0]+K22[zk][yj]*Esph[1]+K23[zk]*Esph[2];
+                Ez=K31[yj]*Esph[0]+K32[yj]*Esph[1];
 
                 /* normalized E in special spherical coordinates */
-                xx[k][j][i].fx[34]=(Jinv.Jiv11[kj]*Ex+Jinv.Jiv21[kj]*Ey+Jinv.Jiv31[(uint64_t)yj]*Ez);
-                xx[k][j][i].fx[35]=(Jinv.Jiv12[kji]*Ex+Jinv.Jiv22[kji]*Ey+Jinv.Jiv32[ji]*Ez);
-                xx[k][j][i].fx[36]=(Jinv.Jiv13[kji]*Ex+Jinv.Jiv23[kji]*Ey);
+                xx[k][j][i].fx[34]=(Jiv11[zk][yj]*Ex+Jiv21[zk][yj]*Ey+Jiv31[yj]*Ez);
+                xx[k][j][i].fx[35]=(Jiv12[zk][yj][xi]*Ex+Jiv22[zk][yj][xi]*Ey+Jiv32[yj][xi]*Ez);
+                xx[k][j][i].fx[36]=(Jiv13[zk][yj][xi]*Ex+Jiv23[zk][yj][xi]*Ey);
 
 /*----- check if any variables ar not a number (Nan) or infinity (inf) or ------
  *----- negative density or temperature -----------*/
@@ -135,8 +133,7 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
 int output_solution(DM da, Field ***xx, AppCtx *params)
 {
     PetscInt xs, xm, ys, ym, zs, zm, vsize, s;
-    int i, j, k, m, zk, yj, xi, ierr;
-    uint64_t kj, kji, ji;
+    int i, j, k, m, zk, yj, xi, ierr, kji;
     double   Bx, By, Bz, Ex, Ey, Ez;
     double   *xdata;                 /* pointer to data buffer for writing */
     const double B00=B0*1.0e9, n00=n0*1.0e-6, E00=E0*1.0e-3;
@@ -157,14 +154,13 @@ int output_solution(DM da, Field ***xx, AppCtx *params)
         zk=k-zs;
 
         for (j=ys; j<ys+ym; j++) {
-            yj=j-ys; kj = (uint64_t)(zk*ym+yj);
+            yj=j-ys;
 
             for (i=xs; i<xs+xm; i++) {
-                xi=i-xs; kji=(uint64_t)(zk*ym*xm+yj*xm+xi); ji=(uint64_t)(yj*xm+xi);
-                s=a4*(int)kji;
+                xi=i-xs; kji=(zk*ym*xm+yj*xm+xi); s=a4*(int)kji;
 
                 //output ion density in cm^{-3}
-                for (m = 0; m < sl; m++) xdata[s+m]=exp(xx[k][j][i].fx[m])*n00;
+                for (m = 0; m < sl; m++) xdata[s+m]=xx[k][j][i].fx[m]*n00;
 
                 //ion velocity components (m/s) and ion and ele temperatures (K)
                 for (m = 7; m < 16; m++) xdata[s+m]=xx[k][j][i].fx[m]*v0;
@@ -176,28 +172,28 @@ int output_solution(DM da, Field ***xx, AppCtx *params)
                 xdata[s+30]=xx[k][j][i].fx[30]*T0;
 
                 //convert perturbation magentic field to Cartesian coordinates
-                Bx=( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]+Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
-                    +Jinv.Jiv13[kji]*xx[k][j][i].fx[33])/r2sintheta[yj][xi];
-                By=( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]+Jinv.Jiv22[kji]*xx[k][j][i].fx[32]
-                    +Jinv.Jiv23[kji]*xx[k][j][i].fx[33])/r2sintheta[yj][xi];
-                Bz=( Jinv.Jiv31[(uint64_t)yj]*xx[k][j][i].fx[31]+Jinv.Jiv32[ji]*xx[k][j][i].fx[32])/r2sintheta[yj][xi];
+                Bx=( Jiv11[zk][yj]*xx[k][j][i].fx[31]+Jiv12[zk][yj][xi]*xx[k][j][i].fx[32]
+                    +Jiv13[zk][yj][xi]*xx[k][j][i].fx[33])/r2sintheta[yj][xi];
+                By=( Jiv21[zk][yj]*xx[k][j][i].fx[31]+Jiv22[zk][yj][xi]*xx[k][j][i].fx[32]
+                    +Jiv23[zk][yj][xi]*xx[k][j][i].fx[33])/r2sintheta[yj][xi];
+                Bz=(Jiv31[yj]*xx[k][j][i].fx[31]+Jiv32[yj][xi]*xx[k][j][i].fx[32])/r2sintheta[yj][xi];
 
                 /* perturbation magnetic field (nT) in spherical coordinates */
-                xdata[s+31]=(Kmat.K11[kj]*Bx+Kmat.K21[kj]*By+Kmat.K31[(uint64_t)yj]*Bz)*B00;
-                xdata[s+32]=(Kmat.K12[kj]*Bx+Kmat.K22[kj]*By+Kmat.K32[(uint64_t)yj]*Bz)*B00;
-                xdata[s+33]=(Kmat.K13[(uint64_t)zk]*Bx+Kmat.K23[(uint64_t)zk]*By)*B00;
+                xdata[s+31]=(K11[zk][yj]*Bx+K21[zk][yj]*By+K31[yj]*Bz)*B00;
+                xdata[s+32]=(K12[zk][yj]*Bx+K22[zk][yj]*By+K32[yj]*Bz)*B00;
+                xdata[s+33]=(K13[zk]*Bx+K23[zk]*By)*B00;
 
                 //convert electric field to Cartesian coordinates
-                Ex=( Jmat.J11[kj]*xx[k][j][i].fx[34]+Jmat.J21[kji]*xx[k][j][i].fx[35]
-                    +Jmat.J31[kji]*xx[k][j][i].fx[36]);
-                Ey=( Jmat.J12[kj]*xx[k][j][i].fx[34]+Jmat.J22[kji]*xx[k][j][i].fx[35]
-                    +Jmat.J32[kji]*xx[k][j][i].fx[36]);
-                Ez=( Jmat.J13[(uint64_t)yj]*xx[k][j][i].fx[34]+Jmat.J23[ji]*xx[k][j][i].fx[35]);
+                Ex=( J11[zk][yj]*xx[k][j][i].fx[34]+J21[zk][yj][xi]*xx[k][j][i].fx[35]
+                    +J31[zk][yj][xi]*xx[k][j][i].fx[36]);
+                Ey=( J12[zk][yj]*xx[k][j][i].fx[34]+J22[zk][yj][xi]*xx[k][j][i].fx[35]
+                    +J32[zk][yj][xi]*xx[k][j][i].fx[36]);
+                Ez=(J13[yj]*xx[k][j][i].fx[34]+J23[yj][xi]*xx[k][j][i].fx[35]);
 
                 /* E (mV/m) in spherical coordinates */
-                xdata[s+34]=(Kmat.K11[kj]*Ex+Kmat.K21[kj]*Ey+Kmat.K31[(uint64_t)yj]*Ez)*E00;
-                xdata[s+35]=(Kmat.K12[kj]*Ex+Kmat.K22[kj]*Ey+Kmat.K32[(uint64_t)yj]*Ez)*E00;
-                xdata[s+36]=(Kmat.K13[(uint64_t)zk]*Ex+Kmat.K23[(uint64_t)zk]*Ey)*E00;
+                xdata[s+34]=(K11[zk][yj]*Ex+K21[zk][yj]*Ey+K31[yj]*Ez)*E00;
+                xdata[s+35]=(K12[zk][yj]*Ex+K22[zk][yj]*Ey+K32[yj]*Ez)*E00;
+                xdata[s+36]=(K13[zk]*Ex+K23[zk]*Ey)*E00;
             }
         }
     }

@@ -61,9 +61,25 @@ double **vt, **vp;
 
 double ****Ps, ****Ls;
 
-Jmatrix Jmat;
-Jinvmatrix Jinv;
-Kmatrix Kmat;
+double **J11, **J12;     //J11[zk][yj], J12[zk][yj]
+double *J13;             //J13[yj]
+double ***J21, ***J22;   //J21[zk][yj][xi], J22[zk][yj][xi]
+double **J23;            //J23[yj][xi]
+double ***J31, ***J32;   //J31[zk][yj][xi], J32[zk][yj][xi]
+
+double **Jiv11;                   //Jiv11[zk][yj]
+double ***Jiv12, ***Jiv13;        //Jiv12[zk][yj][xi], Jiv13[zk][yj][xi]
+double **Jiv21;                   //Jiv21[zk][yj]
+double ***Jiv22, ***Jiv23;        //Jiv22[zk][yj][xi], Jiv23[zk][yj][xi]
+double *Jiv31;                    //Jiv31[yj]
+double **Jiv32;                   //J32[yj][xi]
+
+double **K11, **K12;      //K11[zk][yj], K12[zk][yj]
+double *K13;              //K13[zk]
+double **K21, **K22;      //K21[zk][yj], K22[zk][yj]
+double *K23;              //K23[zk]
+double *K31, *K32;        //K31[yj], K32[yj]
+
 double **r2sintheta, **cot_div_r, **rsin;
 
 vector3D ***grad_pe;

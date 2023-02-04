@@ -38,9 +38,8 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
     DMDAVecGetArray(da, G, &gg);
 
     int    i, j, k, xi, yj, zk, s, s7, s8, s9, s16;
-    uint64_t kji, kj, ji;
     double   Nn, rhon, Tn;    
-    vector3D gradNs, gradNq, gradTe, gradne, gradTs, gradNn, gradTn;
+    vector3D gradns, gradNq, gradTe, gradne, gradTs, gradNn, gradTn;
     vector3D grad_usr, grad_ustheta, grad_usphi, grad_unr, grad_untheta, grad_unphi;
     double   uir[3], uith[3], uiph[3], uirr, uitht, uiphp, unr, unth, unph, uer, ueth, ueph;
     double   div_ui[3], div_un, div_ue, divui, ne, Te, Ts, Ec_gradPe[3];
@@ -57,12 +56,12 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
             //boundary conditions at j=0 and j=Nth are set later
             if (j == 0 || j == Nth) continue;
 
-            yj=j-ys; kj=(uint64_t)(zk*ym+yj);
+            yj=j-ys;
 
             for (i = xs; i < xs+xm; i++) {
                 if (i == 0 || i == Nr) continue;
 
-                xi=i-xs; ji=(uint64_t)(yj*xm+xi); kji=(uint64_t)(zk*ym*xm+yj*xm+xi);
+                xi=i-xs;
 
                 uir[0]=xx[k][j][i].fx[7];  uith[0]=xx[k][j][i].fx[8];  uiph[0]=xx[k][j][i].fx[9];
                 uir[1]=xx[k][j][i].fx[10]; uith[1]=xx[k][j][i].fx[11]; uiph[1]=xx[k][j][i].fx[12];
@@ -89,7 +88,7 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                 for (s = 0; s < sl; s++) {
                     rhon += exp(xx[k][j][i].fx[s+20])*ams[s];
 
-                    gradNs = gradient(xx, i, j, k, yj, xi, s);
+                    gradns = gradient(xx, i, j, k, yj, xi, s);
                     gradNq = gradient(xx, i, j, k, yj, xi, s+20);
 
                     if (s < 3) {
@@ -99,8 +98,8 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                         divui=div_ui[0]; uirr=uir[0]; uitht=uith[0]; uiphp=uiph[0];
                     }
 
-                    gg[k][j][i].fx[s]= Ps[zk][yj][xi][s]*exp(-xx[k][j][i].fx[s])-Ls[zk][yj][xi][s]
-                                      -divui - uirr*gradNs.r-uitht*gradNs.t-uiphp*gradNs.p;
+                    gg[k][j][i].fx[s]= Ps[zk][yj][xi][s]-(Ls[zk][yj][xi][s]+divui)*xx[k][j][i].fx[s]
+                                      -uirr*gradns.r-uitht*gradns.t-uiphp*gradns.p;
                     gg[k][j][i].fx[s+20]= Ps[zk][yj][xi][s+7]*exp(-xx[k][j][i].fx[s+20])-Ls[zk][yj][xi][s+7]
                                          -div_un - unr*gradNq.r-unth*gradNq.t-unph*gradNq.p;
 
@@ -118,20 +117,20 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
 
                     gg[k][j][i].fx[s7]= (jtheta*B0p-jphi*B0t)/ms_ne-gr[xi]+(uith[s]*uith[s]+uiph[s]*uiph[s])/rr[i]
                                        -(uir[s]*grad_usr.r + uith[s]*grad_usr.t + uiph[s]*grad_usr.p)
-                                       -(gradTs.r + Ts*gradNs.r + gradTe.r + Te/ne*gradne.r)/ams[s];
+                                       -(gradTs.r + Ts*gradns.r + gradTe.r + Te/ne*gradne.r)/ams[s];
 
                     //----------- non-stiff terms of uitheta equation
                     gg[k][j][i].fx[s8]= (jphi*B0r-jr*B0p)/ms_ne-uith[s]*uir[s]/rr[i]+uiph[s]*uiph[s]*cot_div_r[yj][xi]
                                        -(uir[s]*grad_ustheta.r + uith[s]*grad_ustheta.t + uiph[s]*grad_ustheta.p)
-                                       -(gradTs.t + Ts*gradNs.t + gradTe.t + Te/ne*gradne.t)/ams[s];
+                                       -(gradTs.t + Ts*gradns.t + gradTe.t + Te/ne*gradne.t)/ams[s];
 
                     //----------- non-stiff terms of uiphi equation
                     gg[k][j][i].fx[s9]= (jr*B0t-jtheta*B0r)/ms_ne-uiph[s]*uir[s]/rr[i]-uith[s]*uiph[s]*cot_div_r[yj][xi]
                                        -(uir[s]*grad_usphi.r + uith[s]*grad_usphi.t + uiph[s]*grad_usphi.p)
-                                       -(gradTs.p + Ts*gradNs.p + gradTe.p + Te/ne*gradne.p)/ams[s];
+                                       -(gradTs.p + Ts*gradns.p + gradTe.p + Te/ne*gradne.p)/ams[s];
 
                     //----------- non-stiff terms of Ti equation
-                    gg[k][j][i].fx[s16]= two3rd*(uu[k][j][i].fx[s+11]*exp(-xx[k][j][i].fx[s]) - Ts*div_ui[s])
+                    gg[k][j][i].fx[s16]= two3rd*(uu[k][j][i].fx[s+11]/xx[k][j][i].fx[s] - Ts*div_ui[s])
                                         -(uir[s]*gradTs.r + uith[s]*gradTs.t + uiph[s]*gradTs.p);
                 }
 
@@ -139,6 +138,7 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                 uer = uu[k][j][i].fx[7]; ueth = uu[k][j][i].fx[8]; ueph = uu[k][j][i].fx[9];
                 div_ue  = divergence(uu, i, j, k, yj, xi, 7);
 
+                Tn=xx[k][j][i].fx[30];
                 Ce=ele_cooling_rate(xx, Te, Tn, ne, i, j, k);
 
                 gg[k][j][i].fx[19]= two3rd*((Qphoto + uu[k][j][i].fx[14]-Ce)/ne - Te*div_ue)
@@ -181,15 +181,23 @@ int rhsfunctions(TS ts, double ftime, Vec X, Vec G, void* ctx)
                 gg[k][j][i].fx[31] = 0.0; gg[k][j][i].fx[32] = 0.0; gg[k][j][i].fx[33] = 0.0;
 
                 //----------- non-stiff electric field equation
-                E_gradPe(xx, uu, i, j, k, xi, yj, zk, xm, ym, Ec_gradPe);
+                E_gradPe(xx, uu, i, j, k, xi, yj, zk, Ec_gradPe);
 
-                gg[k][j][i].fx[34]=-( Jinv.Jiv11[kj]*Ec_gradPe[0]+Jinv.Jiv21[kj]*Ec_gradPe[1]
-                                     +Jinv.Jiv31[(uint64_t)yj]*Ec_gradPe[2]);
+                gg[k][j][i].fx[34]=-( Jiv11[zk][yj]*Ec_gradPe[0]+Jiv21[zk][yj]*Ec_gradPe[1]
+                                     +Jiv31[yj]*Ec_gradPe[2]);
 
-                gg[k][j][i].fx[35]=-( Jinv.Jiv12[kji]*Ec_gradPe[0]+Jinv.Jiv22[kji]*Ec_gradPe[1]
-                                     +Jinv.Jiv32[ji]*Ec_gradPe[2]);
+                gg[k][j][i].fx[35]=-( Jiv12[zk][yj][xi]*Ec_gradPe[0]+Jiv22[zk][yj][xi]*Ec_gradPe[1]
+                                     +Jiv32[yj][xi]*Ec_gradPe[2]);
 
-                gg[k][j][i].fx[36]=-(Jinv.Jiv13[kji]*Ec_gradPe[0]+Jinv.Jiv23[kji]*Ec_gradPe[1]);
+                gg[k][j][i].fx[36]=-(Jiv13[zk][yj][xi]*Ec_gradPe[0]+Jiv23[zk][yj][xi]*Ec_gradPe[1]);
+
+                for (s=0; s<a4; s++) {
+                    if (isnan(gg[k][j][i].fx[s]) || isinf(gg[k][j][i].fx[s])) {
+                        cout<<"Rightside function is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<s
+                            <<") in rhs_functions "<<gg[k][j][i].fx[s]<<endl;
+                        exit(-1);
+                    }
+                }
             }
 
             if (xs == 0) lower_boundary_bc(xx, gg, j, k);

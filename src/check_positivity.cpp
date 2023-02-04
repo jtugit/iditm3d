@@ -25,9 +25,25 @@ int check_positivity(DM da, Field ***xx)
                     }
                 }
 
+                for (s = 0; s <= 7; s++) {
+                    if (xx[k][j][i].fx[s] <= 0.0) {
+                        cout<<"Density of ion species "<<s<<" < 0 "<<xx[k][j][i].fx[s]
+                            <<" at (i, j, k) = (" << i << ", " << j << ", "<< k << ")" <<endl;
+                        ngnp=-3;
+                    }
+                }
+
                 for (s = 16; s <= 19; s++) {
                     if (xx[k][j][i].fx[s] <= 0.0) {
                         cout<<spec[s-16]<<" temperature <= 0 "<<xx[k][j][i].fx[s]
+                            <<" at (i, j, k) = (" << i << ", " << j << ", "<< k << ")" <<endl;
+                        ngnp=-3;
+                    }
+                }
+
+                for (s = 20; s < 27; s++) {
+                    if (xx[k][j][i].fx[s] <= 0.0) {
+                        cout<<"Density of neutral species "<<s-20<<" < 0 "<<xx[k][j][i].fx[s]
                             <<" at (i, j, k) = (" << i << ", " << j << ", "<< k << ")" <<endl;
                         ngnp=-3;
                     }

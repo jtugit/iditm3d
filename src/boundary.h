@@ -61,6 +61,14 @@ inline void lower_boundary_bc(Field ***xx, Field***gg, PetscInt j, PetscInt k)
         y2=xx[k][j][2].fx[s];
         gg[k][j][0].fx[s] = (y1+rrb*(y2-y1));
     }
+
+    for (s=0; s<a4; s++) {
+        if (isnan(gg[k][j][0].fx[s]) || isinf(gg[k][j][0].fx[s])) {
+            cout<<"Rightside function is Nan or inf at ("<<0<<", "<<j<<", "<<k<<", "<<s
+                 <<") in rhs_functions"<<gg[k][j][0].fx[s]<<endl;
+            exit(-1);
+        }
+    }
 }
 
 inline void upper_boundary_bc(Field ***xx, Field***gg, PetscInt j, PetscInt k, PetscInt yj, PetscInt zk)
@@ -187,5 +195,13 @@ inline void upper_boundary_bc(Field ***xx, Field***gg, PetscInt j, PetscInt k, P
         y1=xx[k][j][1].fx[s];
         y2=xx[k][j][2].fx[s];
         gg[k][j][Nr].fx[s] = (y1+rrt*(y1-y2));
+    }
+
+    for (s=0; s<a4; s++) {
+        if (isnan(gg[k][j][Nr].fx[s]) || isinf(gg[k][j][Nr].fx[s])) {
+            cout<<"Rightside function is Nan or inf at ("<<Nr<<", "<<j<<", "<<k<<", "<<s
+                 <<") in rhs_functions"<<gg[k][j][Nr].fx[s]<<endl;
+            exit(-1);
+        }
     }
 }

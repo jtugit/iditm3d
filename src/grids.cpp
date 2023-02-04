@@ -11,7 +11,7 @@ using namespace std;
 
 int grids(DM da, AppCtx *params)
 {
-    int        i, j, k, xs, ys, zs, xm, ym, zm, yj;
+    int        i, j, k, xs, ys, zs, xm, ym, zm, xi, yj, zk;
     uint32_t   yj_t;
     string     fname, ch1, tempstr;
     PetscMPIInt rank, nproc;
@@ -61,47 +61,56 @@ int grids(DM da, AppCtx *params)
     }
 
     for (k = zs; k < zs+zm; k++) {
-        sinphi=sin(phi[k]); cosphi=cos(phi[k]);
+        zk=k-zs;
 
-        Kmat.K13.push_back(-sinphi);
-        Kmat.K23.push_back( cosphi);
+        sinphi=sin(phi[k]); cosphi=cos(phi[k]);
 
         for (j = ys; j < ys+ym; j++) {
             yj=j-ys; yj_t=(uint32_t)yj;
 
-            Jmat.J11.push_back(sintheta[yj_t]*cosphi);
-            Jmat.J12.push_back(sintheta[yj_t]*sinphi);
-            if (k == 0) Jmat.J13.push_back(costheta[yj_t]);
+            J11[zk][yj] = sintheta[yj_t]*cosphi;
+            J12[zk][yj] = sintheta[yj_t]*sinphi;
 
-            Jinv.Jiv11.push_back(sintheta[yj_t]*cosphi);
-            Jinv.Jiv21.push_back(sintheta[yj_t]*sinphi);
-            if (k == 0) Jinv.Jiv31.push_back(costheta[yj_t]);
+            Jiv11[zk][yj] = sintheta[yj_t]*cosphi;
+            Jiv21[zk][yj] = sintheta[yj_t]*sinphi;
 
-            Kmat.K11.push_back(sintheta[yj_t]*cosphi);
-            Kmat.K12.push_back(costheta[yj_t]*cosphi);
-            Kmat.K21.push_back(sintheta[yj_t]*sinphi);
-            Kmat.K22.push_back(costheta[yj_t]*sinphi);
-
-            if (k == 0) {
-                Kmat.K31.push_back( costheta[yj_t]);
-                Kmat.K32.push_back(-sintheta[yj_t]);
-            }
+            K11[zk][yj] = sintheta[yj_t]*cosphi;
+            K12[zk][yj] = costheta[yj_t]*cosphi;
+            K21[zk][yj] = sintheta[yj_t]*sinphi;
+            K22[zk][yj] = costheta[yj_t]*sinphi;
 
             for (i = xs; i < xs+xm; i++) {
-                Jmat.J21.push_back(costheta[yj_t]*cosphi/rr[i]);
-                Jmat.J22.push_back(costheta[yj_t]*sinphi/rr[i]);
-                if (k==0) Jmat.J23.push_back(-sintheta[yj_t]/rr[i]);
+                xi=i-xs;
 
-                Jmat.J31.push_back(-sinphi/(rr[i]*sintheta[yj_t]));
-                Jmat.J32.push_back( cosphi/(rr[i]*sintheta[yj_t]));
+                J21[zk][yj][xi] = costheta[yj_t]*cosphi/rr[i];
+                J22[zk][yj][xi] = costheta[yj_t]*sinphi/rr[i];
 
-                Jinv.Jiv12.push_back( rr[i]*costheta[yj_t]*cosphi);
-                Jinv.Jiv22.push_back( rr[i]*costheta[yj_t]*sinphi);
-                if(k==0) Jinv.Jiv32.push_back(-rr[i]*sintheta[yj_t]);
+                J31[zk][yj][xi] = -sinphi/(rr[i]*sintheta[yj_t]);
+                J32[zk][yj][xi] =  cosphi/(rr[i]*sintheta[yj_t]);
 
-                Jinv.Jiv13.push_back(-rr[i]*sintheta[yj_t]*sinphi);
-                Jinv.Jiv23.push_back( rr[i]*sintheta[yj_t]*cosphi);
+                Jiv12[zk][yj][xi] = rr[i]*costheta[yj_t]*cosphi;
+                Jiv13[zk][yj][xi] =-rr[i]*sintheta[yj_t]*sinphi;
+
+                Jiv22[zk][yj][xi] = rr[i]*costheta[yj_t]*sinphi;
+                Jiv23[zk][yj][xi] = rr[i]*sintheta[yj_t]*cosphi;
             }
+        }
+
+        K13[zk]=-sinphi; K23[zk]= cosphi;
+    }
+
+    for (j = ys; j < ys+ym; j++) {
+        yj=j-ys;
+
+        J13[yj] = costheta[yj_t]; Jiv31[yj] = costheta[yj_t];
+
+        K31[yj] = costheta[yj_t]; K32[yj] =-sintheta[yj_t];
+
+        for (i = xs; i <xs+xm; i++) {
+            xi=i-xs;
+
+            J23[yj][xi] = sintheta[yj_t]/rr[i];
+            Jiv32[yj][xi] = -rr[i]*sintheta[yj_t];
         }
     }
 /*----------- end calculation of transform matrices -----------------------------------*/

@@ -39,7 +39,7 @@ inline double heat_flow_divergence(Field ***xx, Field ***localuu, int i, int j, 
 
         d2Tdth2=(xx[k][jp][i].fx[s]-2.0*xx[k][j][i].fx[s]+xx[kc][j][i].fx[s])/(dth*dth);
     }
-    if (j > 1 && j < Nthm) {
+    else if (j > 1 && j < Nthm) {
         dlamdadth=(localuu[k][jp][i].fx[s3]-localuu[k][jm][i].fx[s3])/dth;
         dTdth=(xx[k][jp][i].fx[s]-xx[k][jm][i].fx[s])/dth;
 
@@ -96,7 +96,7 @@ inline double neu_heat_flow_divergence(Field ***xx, Field ***localuu, int i, int
 
         d2Tdth2=(xx[k][jp][i].fx[30]-2.0*xx[k][j][i].fx[30]+xx[kc][j][i].fx[30])/(dth*dth);
     }
-    if (j > 1 && j < Nthm) {
+    else if (j > 1 && j < Nthm) {
         dlamdadth=(localuu[k][jp][i].fx[23]-localuu[k][jm][i].fx[23])/dth;
         dTdth=(xx[k][jp][i].fx[30]-xx[k][jm][i].fx[30])/dth;
 
@@ -121,23 +121,20 @@ inline double neu_heat_flow_divergence(Field ***xx, Field ***localuu, int i, int
     return div_q;
 }
 
-inline void Bspecial_sphereto_Bpshere(Field ***xx, Field ***uu, int xm, int ym, int i, int j, int k, 
+inline void Bspecial_sphereto_Bpshere(Field ***xx, Field ***uu, int i, int j, int k, 
     int xi, int yj, int zk)
 {
-    uint64_t  kj, ji, kji, yj64=(uint64_t)yj, zk64=(uint64_t)zk;
     double    Bx, By, Bz;
 
-    kj=(uint64_t)(zk*ym+yj); ji=(uint64_t)(yj*xm+xi); kji=(uint64_t)(zk*ym*xm+yj*xm+xi);
+    Bx=( Jiv11[zk][yj]*xx[k][j][i].fx[31]+Jiv12[zk][yj][xi]*xx[k][j][i].fx[32]
+        +Jiv13[zk][yj][xi]*xx[k][j][i].fx[33]);
+    By=( Jiv21[zk][yj]*xx[k][j][i].fx[31]+Jiv22[zk][yj][xi]*xx[k][j][i].fx[32]
+        +Jiv23[zk][yj][xi]*xx[k][j][i].fx[33]);
+    Bz=(Jiv31[yj]*xx[k][j][i].fx[31]+Jiv32[yj][xi]*xx[k][j][i].fx[32]);
 
-    Bx=( Jinv.Jiv11[kj]*xx[k][j][i].fx[31]+Jinv.Jiv12[kji]*xx[k][j][i].fx[32]
-        +Jinv.Jiv13[kji]*xx[k][j][i].fx[33]);
-    By=( Jinv.Jiv21[kj]*xx[k][j][i].fx[31]+Jinv.Jiv22[kji]*xx[k][j][i].fx[32]
-        +Jinv.Jiv23[kji]*xx[k][j][i].fx[33]);
-    Bz=(Jinv.Jiv31[yj64]*xx[k][j][i].fx[31]+Jinv.Jiv32[ji]*xx[k][j][i].fx[32]);
-
-    uu[k][j][i].fx[24]=(Kmat.K11[kj]*Bx+Kmat.K21[kj]*By+Kmat.K31[yj64]*Bz)/r2sintheta[yj][xi];
-    uu[k][j][i].fx[25]=(Kmat.K12[kj]*Bx+Kmat.K22[kj]*By+Kmat.K32[yj64]*Bz)/r2sintheta[yj][xi];
-    uu[k][j][i].fx[26]=(Kmat.K13[zk64]*Bx+Kmat.K23[zk64]*By)/r2sintheta[yj][xi];
+    uu[k][j][i].fx[24]=(K11[zk][yj]*Bx+K21[zk][yj]*By+K31[yj]*Bz)/r2sintheta[yj][xi];
+    uu[k][j][i].fx[25]=(K12[zk][yj]*Bx+K22[zk][yj]*By+K32[yj]*Bz)/r2sintheta[yj][xi];
+    uu[k][j][i].fx[26]=(K13[zk]*Bx+K23[zk]*By)/r2sintheta[yj][xi];
 }
 
 /*----------------------------------------------------------------------
@@ -183,9 +180,9 @@ int parameters(DM da, Vec X, AppCtx *params)
                 xi=i-xs;
 
                 for (s=6; s< 10; s++) uu[k][j][i].fx[s]=0.0;
-                uu[k][j][i].fx[34]=0.0;
+                uu[k][j][i].fx[34]=0.0;  //rhon - normalized neutral mass density
                 for (s = 0; s < sl; s++) {
-                    ni[s] = exp(xx[k][j][i].fx[s]);
+                    ni[s] = xx[k][j][i].fx[s];
                     uu[k][j][i].fx[6] += ni[s];   //normalized electron density
 
                     uu[k][j][i].fx[s+27]=ni[s];
@@ -209,10 +206,10 @@ int parameters(DM da, Vec X, AppCtx *params)
                 uu[k][j][i].fx[9] = (uu[k][j][i].fx[9]+nimole*xx[k][j][i].fx[9])/uu[k][j][i].fx[6];
 
                 /*----------- normazlied collision frequencies -----------*/
-                collision_freq(xx, ni, nn, i, j, k, xi, yj, zk);
+                collision_freq(xx, ni, nn, uu[k][j][i].fx[6], i, j, k, xi, yj, zk);
 
                 //convert B in special spherical components to spherical components
-                Bspecial_sphereto_Bpshere(xx, uu, xm, ym, i, j, k, xi, yj, zk);
+                Bspecial_sphereto_Bpshere(xx, uu, i, j, k, xi, yj, zk);
 
 /*-----------------------------------------------------------------------------*/
 //--------------- thermal conductivities

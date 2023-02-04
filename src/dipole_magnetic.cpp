@@ -66,8 +66,6 @@ void dipole_magnetic(DM da, AppCtx *params)
     wx=0.0; wy=0.0, wz=w0n;
     GEOMAG_08(wx, wy, wz, wxm, wym, wzm, 1, AAP);
 
-    uint64_t kj;
-
     /* calculate background magnetic field, Earth's rotation rate, centrifugal force */
     for (k = zs; k < zs+zm; k++) {
         zk=k-zs; 
@@ -75,7 +73,7 @@ void dipole_magnetic(DM da, AppCtx *params)
         for (j=ys; j<ys+ym; j++) {
             if (j < 1 || j > Nthm) continue;
 
-            yj=j-ys; kj=(uint64_t)(zk*ym+yj);
+            yj=j-ys;
 
             for (i=xs; i<xs+xm; i++) {
                 xi=i-xs;
@@ -89,9 +87,9 @@ void dipole_magnetic(DM da, AppCtx *params)
                 uu[k][j][i].fx[0]=Br/B0; uu[k][j][i].fx[1]=Bt/B0; uu[k][j][i].fx[2]=Bp/B0;
 
                 /* dipole magnetic field in Cartesian coordinates */
-                B0x=(Kmat.K11[kj]*Br+Kmat.K12[kj]*Bt+Kmat.K13[(uint64_t)zk]*Bp);
-                B0y=(Kmat.K21[kj]*Br+Kmat.K22[kj]*Bt+Kmat.K23[(uint64_t)zk]*Bp);
-                B0z=(Kmat.K31[(uint64_t)yj]*Br+Kmat.K32[(uint64_t)yj]*Bt);
+                B0x=(K11[zk][yj]*Br+K12[zk][yj]*Bt+K13[zk]*Bp);
+                B0y=(K21[zk][yj]*Br+K22[zk][yj]*Bt+K23[zk]*Bp);
+                B0z=(K31[yj]*Br+K32[yj]*Bt);
 
                 uu[k][j][i].fx[3]=B0x/B0; uu[k][j][i].fx[4]=B0y/B0; uu[k][j][i].fx[5]=B0z/B0;
 

@@ -2,7 +2,8 @@
 
 #include "param.h"
 
-inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j, int k, int xi, int yj, int zk)
+inline void collision_freq(Field ***xx, double nis[], double nns[], double ne, int i, int j, int k, 
+    int xi, int yj, int zk)
 {
     int    s;
     double ni[7], nn[7], Te, Te12;
@@ -10,8 +11,9 @@ inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j
     const double n00=n0*1.0e-6;
 
     for (s = 0; s < sl; s++) {
-        ni[s] = nis[s]*n00; nn[s] = nns[s]*n00; //density in cm^{-3} (ne && Nn already in cm^{-3})
+        ni[s] = nis[s]*n00; nn[s] = nns[s]*n00; //density in cm^{-3}
     }
+    ne=ne*n00;
 
 /*--------------------------------------------------*/
 /*---------------- collision frequencies -----------*/
@@ -21,7 +23,7 @@ inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j
     Te12=sqrt(Te);
 
     //electron - ions collisions
-    for (s = 0; s < sl; s++) nust[zk][yj][xi][s]=coe[0]*ni[s];
+    for (s = 0; s < sl; s++) nust[zk][yj][xi][s]=coe[0]*ni[s]/(Te*Te12);
 
     /* electron - neutral collision frequencies */
     nust[zk][yj][xi][7] =coe[1]*nn[0]*(1.0+5.7e-4*Te)*Te12;    //e - O
@@ -38,7 +40,7 @@ inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j
     Tr=0.5*(Ti+Tn); logTrOi=log10(Tr); Tr12Oi=sqrt(Tr);
 
 /* O+ Coulomb collision frequencies */
-    //nust[zk][yj][xi][14]=ne*ame/(ni[0]*ams[0])*nust[zk][yj][xi][0]; // O+ - e
+    nust[zk][yj][xi][14]=ne*ame/(ni[0]*ams[0])*nust[zk][yj][xi][0]; // O+ - e
     nust[zk][yj][xi][15]=coiO[0]*ni[1]/Ti32;     // O+ - H+
     nust[zk][yj][xi][16]=coiO[1]*ni[2]/Ti32;     // O+ - He+
     nust[zk][yj][xi][17]=coiO[2]*ni[3]/Ti32;     // O+ - O2+
@@ -61,7 +63,7 @@ inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j
     logTr=log10(0.5*(Ti+Tn)); Tr12=sqrt(Tr);
 
     /* H+ Coulomb collision frequencies */
-    //nust[zk][yj][xi][28]=ne*ame/(ni[1]*ams[1])*nust[zk][yj][xi][1]; // H+ - e
+    nust[zk][yj][xi][28]=ne*ame/(ni[1]*ams[1])*nust[zk][yj][xi][1]; // H+ - e
     nust[zk][yj][xi][29]=coiH[0]*ni[0]/Ti32;     // H+ - O+
     nust[zk][yj][xi][30]=coiH[1]*ni[2]/Ti32;     // H+ - He+
     nust[zk][yj][xi][31]=coiH[2]*ni[3]/Ti32;     // H+ - O2+
@@ -83,7 +85,7 @@ inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j
     logTr=log10(0.5*(Ti+Tn)); Tr12=sqrt(Tr);
 
     /* He+ Coulomb collision frequencies */
-    //nust[zk][yj][xi][42]=ne*ame/(ni[2]*ams[2])*nust[zk][yj][xi][2];   // He+ - e
+    nust[zk][yj][xi][42]=ne*ame/(ni[2]*ams[2])*nust[zk][yj][xi][2];   // He+ - e
     nust[zk][yj][xi][43]=coiHe[0]*ni[0]/Ti32;      // He+ - O+
     nust[zk][yj][xi][44]=coiHe[1]*ni[1]/Ti32;      // He+ - H+
     nust[zk][yj][xi][45]=coiHe[2]*ni[3]/Ti32;      // He+ - O2+
@@ -120,7 +122,7 @@ inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j
 
 /* ---- N2+ collision frequencies --------------------------------------------------------*/
     /* N2+ Coulomb collision frequencies */
-    //nust[zk][yj][xi][70]=ne*ame/(ni[4]*ams[4])*nust[zk][yj][xi][4];   // N2+ - e
+    nust[zk][yj][xi][70]=ne*ame/(ni[4]*ams[4])*nust[zk][yj][xi][4];   // N2+ - e
     nust[zk][yj][xi][71]=1.50e-1*ni[0]/Ti32;      // N2+ - O+
     nust[zk][yj][xi][72]=4.50e-2*ni[1]/Ti32;      // N2+ - H+
     nust[zk][yj][xi][73]=8.50e-2*ni[2]/Ti32;      // N2+ - He+
@@ -139,7 +141,7 @@ inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j
 
 /* ---- NO+ collision frequencies -------------------------------------------------------*/
     /* NO+ Coulomb collision frequencies */
-    //nust[zk][yj][xi][84]=ne*ame/(ni[5]*ams[5])*nust[zk][yj][xi][5]; // NO+ - e
+    nust[zk][yj][xi][84]=ne*ame/(ni[5]*ams[5])*nust[zk][yj][xi][5]; // NO+ - e
     nust[zk][yj][xi][85]=1.40e-1*ni[0]/Ti32;    // NO+ - O+
     nust[zk][yj][xi][86]=4.20e-2*ni[1]/Ti32;    // NO+ - H+
     nust[zk][yj][xi][87]=8.00e-2*ni[2]/Ti32;    // NO+ - H+e
@@ -158,7 +160,7 @@ inline void collision_freq(Field ***xx, double nis[], double nns[], int i, int j
 
 /* ---- N+ collision frequencies -------------------------------------------------------*/
     /* N+ Coulomb collision frequencies */
-    //nust[zk][yj][xi][98] =ne*ame/(ni[6]*ams[6])*nust[zk][yj][xi][6]; // NO+ - e
+    nust[zk][yj][xi][98] =ne*ame/(ni[6]*ams[6])*nust[zk][yj][xi][6]; // NO+ - e
     nust[zk][yj][xi][99] =0.25*ni[0]/Ti32;    // N+ - O+
     nust[zk][yj][xi][100]=0.088*ni[1]/Ti32;   // N+ - H+
     nust[zk][yj][xi][101]=0.16*ni[2]/Ti32;    // N+ - H+e

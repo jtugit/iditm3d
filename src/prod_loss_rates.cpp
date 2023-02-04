@@ -203,13 +203,13 @@ void prod_loss_rates(Field ***xx, Field ***uu, int i, int j, int k, int zk, int 
     kk[28]=4.43e-12*pow(Te, 0.7);
 
     //ion and neutral densities in cm^{-3}
-    niO =exp(xx[k][j][i].fx[0])*n00;
-    niH =exp(xx[k][j][i].fx[1])*n00;
-    niHe=exp(xx[k][j][i].fx[2])*n00;
-    niO2=exp(xx[k][j][i].fx[3])*n00;
-    niN2=exp(xx[k][j][i].fx[4])*n00;
-    niNO=exp(xx[k][j][i].fx[5])*n00;
-    niN =exp(xx[k][j][i].fx[6])*n00;
+    niO =xx[k][j][i].fx[0]*n00;
+    niH =xx[k][j][i].fx[1]*n00;
+    niHe=xx[k][j][i].fx[2]*n00;
+    niO2=xx[k][j][i].fx[3]*n00;
+    niN2=xx[k][j][i].fx[4]*n00;
+    niNO=xx[k][j][i].fx[5]*n00;
+    niN =xx[k][j][i].fx[6]*n00;
 
     nO =exp(xx[k][j][i].fx[20])*n00;
     nH =exp(xx[k][j][i].fx[21])*n00;

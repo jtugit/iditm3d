@@ -119,6 +119,54 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
         for (j=0; j<92; j++) fluxn[i][j]=new double[4];
     }
 
+    J11 = new double*[zm]; J12 = new double*[zm];
+
+    Jiv11 = new double*[zm]; Jiv21 = new double*[zm];
+
+    K11 = new double*[zm]; K12 = new double*[zm];
+    K21 = new double*[zm]; K22 = new double*[zm];
+
+    for (k = 0; k < zm; k++) {
+        J11[k] = new double[ym]; J12[k] = new double[ym];
+
+        Jiv11[k] = new double[ym]; Jiv21[k] = new double[ym];
+
+        K11[k] = new double[ym]; K12[k] = new double[ym];
+        K21[k] = new double[ym]; K22[k] = new double[ym];
+    }
+
+    J13 = new double[ym]; Jiv31 = new double[ym];
+    K31 = new double[ym]; K32 = new double[ym];
+
+    J21 = new double**[zm]; J22 = new double**[zm];
+    J31 = new double**[zm]; J32 = new double**[zm];
+
+    Jiv12 = new double**[zm]; Jiv13 = new double**[zm];
+    Jiv22 = new double**[zm]; Jiv23 = new double**[zm];
+
+    for (k = 0; k < zm; k++) {
+        J21[k] = new double*[ym]; J22[k] = new double*[ym];
+        J31[k] = new double*[ym]; J32[k] = new double*[ym];
+
+        Jiv12[k] = new double*[ym]; Jiv13[k] = new double*[ym];
+        Jiv22[k] = new double*[ym]; Jiv23[k] = new double*[ym];
+
+        for (j = 0; j < ym; j++) {
+            J21[k][j] = new double[xm]; J22[k][j] = new double[xm];
+            J31[k][j] = new double[xm]; J32[k][j] = new double[xm];
+
+            Jiv12[k][j] = new double[xm]; Jiv13[k][j] = new double[xm];
+            Jiv22[k][j] = new double[xm]; Jiv23[k][j] = new double[xm];
+        }
+    }
+
+    J23 = new double*[ym]; Jiv32 = new double*[ym];
+    for (j = 0; j < ym; j++) {
+        J23[j] = new double[xm]; Jiv32[j] = new double[xm];
+    }
+
+    K13 = new double[zm]; K23 = new double[zm];
+
     return;
 }
 
@@ -208,4 +256,41 @@ void array_deallocate(PetscInt xm, PetscInt ym, PetscInt zm)
         delete[] fluxn[i];
     }
     delete[] fluxn;
+
+    for (k = 0; k < zm; k++) {
+        delete[] J11[k]; delete[] J12[k];
+        delete[] Jiv11[k]; delete[] Jiv21[k];
+        delete[] K11[k]; delete[] K12[k]; delete[] K21[k]; delete[] K22[k];
+    }
+    delete[] J11; delete[] J12;
+    delete[] Jiv11; delete[] Jiv21;
+    delete[] K11; delete[] K12; delete[] K21; delete[] K22;
+
+    delete[] J13; delete[] Jiv31;
+    delete[] K31; delete[] K32;
+
+    for (k = 0; k < zm; k++) {
+        for (j = 0; j < ym; j++) {
+            delete[] J21[k][j]; delete[] J22[k][j];
+
+            delete[] Jiv12[k][j]; delete[] Jiv13[k][j];
+            delete[] Jiv22[k][j]; delete[] Jiv23[k][j];
+        }
+        delete[] J21[k]; delete[] J22[k];
+
+        delete[] Jiv12[k]; delete[] Jiv13[k];
+        delete[] Jiv22[k]; delete[] Jiv23[k];
+    }
+    delete[] J21; delete[] J22;
+
+    delete[] Jiv12; delete[] Jiv13; delete[] Jiv22; delete[] Jiv23;
+
+    for (j = 0; j < ym; j++) {
+        delete[] J23[j]; delete[] Jiv32[j];
+    }
+    delete[] J23; delete[] Jiv32;
+
+    delete[] K13; delete[] K23;
+
+    return;
 }

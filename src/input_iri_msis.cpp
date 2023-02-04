@@ -178,7 +178,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
             }
 
             for (i = xs; i < xs+xm; i++) {
-                for (s=0; s<sl; s++) xx[k][j][i].fx[s] = log(localxx[k][j][i].fx[s]/n0);
+                for (s=0; s<sl; s++) xx[k][j][i].fx[s] = localxx[k][j][i].fx[s]/n0;
 
                 for (s=0; s<a4; s++) {
                     if (isnan(xx[k][j][i].fx[s]) || isinf(xx[k][j][i].fx[s])) {
