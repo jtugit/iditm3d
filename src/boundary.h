@@ -111,16 +111,16 @@ inline void upper_boundary_bc(Field ***xx, Field***gg, PetscInt j, PetscInt k, P
 
     if (vt[zk][yj] > -1.e5) {
         rho=0.0;
-        for (s=0; s<sl; s++) rho += exp(xx[k][j][Nr].fx[s])*ms[s];
+        for (s=0; s<sl; s++) rho += gg[k][j][Nr].fx[s]*ams[s];
 
         // us_theta                      
-        gg[k][j][Nr].fx[8]  = rho*vt[zk][yj];
-        gg[k][j][Nr].fx[11] = rho*vt[zk][yj];
-        gg[k][j][Nr].fx[14] = rho*vt[zk][yj];
+        gg[k][j][Nr].fx[8]  = vt[zk][yj];
+        gg[k][j][Nr].fx[11] = vt[zk][yj];
+        gg[k][j][Nr].fx[14] = vt[zk][yj];
 
         // Btheta
         if (j<Nth/2) sgn=-1.0; else sgn=1.0;
-        gg[k][j][Nr].fx[32] = sgn*vt[zk][yj]*sqrt(rho*mu0);
+        gg[k][j][Nr].fx[32] = sgn*vt[zk][yj]*sqrt(rho);
     }
     else {
         y1=xx[k][j][Nrm].fx[8];
@@ -143,15 +143,15 @@ inline void upper_boundary_bc(Field ***xx, Field***gg, PetscInt j, PetscInt k, P
     if (vp[zk][yj] > -1.e5) {
         // us_phi
         rho=0.0;
-        for (s=0; s<sl; s++) rho += exp(xx[k][j][Nr].fx[s])*ms[s];
+        for (s=0; s<sl; s++) rho += gg[k][j][Nr].fx[s]*ams[s];
 
-        gg[k][j][Nr].fx[9]  = rho*vp[zk][yj];
-        gg[k][j][Nr].fx[12] = rho*vp[zk][yj];
-        gg[k][j][Nr].fx[15] = rho*vp[zk][yj];
+        gg[k][j][Nr].fx[9]  = vp[zk][yj];
+        gg[k][j][Nr].fx[12] = vp[zk][yj];
+        gg[k][j][Nr].fx[15] = vp[zk][yj];
 
         // Bphi
         if (j<Nth/2) sgn=-1.0; else sgn=1.0;
-        gg[k][j][Nr].fx[33] = sgn*vp[zk][yj]*sqrt(rho*mu0);
+        gg[k][j][Nr].fx[33] = sgn*vp[zk][yj]*sqrt(rho);
     }
     else {
         y1=xx[k][j][Nrm].fx[9];

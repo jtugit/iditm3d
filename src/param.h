@@ -78,13 +78,13 @@ const double cspeed2=9.0e16*1.0e-6;  //speed of light reduced by a factor of 0.0
 
 const double mp = 1.6605390666e-27;
 
-const double me=9.1093837015e-31;
+//const double me=9.1093837015e-31;
 //electron mass normalized by H mass, i.e., mass in AMU
 const double ame=0.0005485799090624057;
 
-const double ms[7]={2.656762874216004e-26, 1.673773562960802e-27, 6.64647366797316e-27, 
-                    5.313525748432007e-26, 4.651734508829244e-26, 4.9826301286306257e-26,
-                    2.325867254414622e-26};
+//const double ms[7]={2.656762874216004e-26, 1.673773562960802e-27, 6.64647366797316e-27, 
+//                    5.313525748432007e-26, 4.651734508829244e-26, 4.9826301286306257e-26,
+//S                    2.325867254414622e-26};
 /* mass of O+, H+, He+, O2+, N2+, NO+, N+ or O, H, He, O2, N2, NO, N normalized 
  * by proton mass, i.e. mass in atomic mass unit (AMU) */
 const double ams[7]={15.9994, 1.00797, 4.0026, 31.9988, 28.0134, 30.0061, 14.0067};
@@ -186,7 +186,7 @@ typedef struct {
 extern vector3D ***grad_pe;
 
 /* evaluate normalization parameters from 4 basic parameters: r0, n0, B0, & mp */
-extern double n0, B0, r0, v0, t0, E0, g0, p0, j00, e0, T0, q0, lamda0, beta0, gen, e, Omegae;
+extern double n0, B0, r0, v0, t0, E0, g0, p0, j00, e0, T0, q0, lamda0, beta0, gen, e; //, Omegae;
 //normalized earth's rotational frequency
 extern double w0n;
 

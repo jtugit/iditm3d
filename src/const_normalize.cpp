@@ -43,7 +43,7 @@ void const_normalize()
     for (i = 0; i < sl; i++) qms[i]=e/ams[i];
 
     //normalized (multiplied by t0) electron gyro-frequency using normalization factor B0
-    Omegae=q*B0*t0/me;
+    //Omegae=q*B0*t0/me;
     
 /* coefficients of all collision frequencies, multiplied by t0 */
     coe[0]=54.5*t0;                  //e - ions

@@ -145,14 +145,14 @@ inline void Bspecial_sphereto_Bpshere(Field ***xx, Field ***uu, int i, int j, in
 int parameters(DM da, Vec X, AppCtx *params)
 {
     Vec      localX, localU;
-    int      i, j, k, s, m, tt, s3;
+    int      i, j, k, s, m, s3;
     PetscInt xs, ys, zs, xm, ym, zm;
     Field    ***xx, ***uu, ***localuu;
 
     double Te, Te12, ne, ni[7], nn[7], Tn, nimole, nO, nO2, nN2, nH, nHe;
-    int    zk, yj, xi, s0;
+    int    zk, yj, xi;
     double Td;
-    double qn[5], nqd, Dst, amt, Te2, nuss[7];
+    double qn[5], nqd[4], Te2, nuss[7];
 
     const double n00=n0*1.0e-6;
 
@@ -206,7 +206,7 @@ int parameters(DM da, Vec X, AppCtx *params)
                 uu[k][j][i].fx[9] = (uu[k][j][i].fx[9]+nimole*xx[k][j][i].fx[9])/uu[k][j][i].fx[6];
 
                 /*----------- normazlied collision frequencies -----------*/
-                collision_freq(xx, ni, nn, uu[k][j][i].fx[6], i, j, k, xi, yj, zk);
+                collision_freq(xx, ni, nn, uu[k][j][i].fx[6], i, j, k, xi, yj, zk, nqd);
 
                 //convert B in special spherical components to spherical components
                 Bspecial_sphereto_Bpshere(xx, uu, i, j, k, xi, yj, zk);
@@ -229,39 +229,17 @@ int parameters(DM da, Vec X, AppCtx *params)
                 qn[4]=5.6e-16;                           //He
 
                 /* normalized electron thermal conductivity */
-                nqd=nO*qn[0]+nO2*qn[1]+nN2*qn[2]+nH*qn[3]+nHe*qn[4];
-                uu[k][j][i].fx[22]=1.233694e-11*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd)/lamda0;
-
-                amt=uu[k][j][i].fx[34]/uu[k][j][i].fx[10];  //averaged neutral mass in amu
+                nqd[0]=nO*qn[0]+nO2*qn[1]+nN2*qn[2]+nH*qn[3]+nHe*qn[4];
+                uu[k][j][i].fx[22]=1.233694e-11*Te2*Te12/(1.0+3.32e4*Te2/ne*nqd[0])/lamda0;
 
                 /* calculate normalized O+, H+, He+ thermal conductivity Schunk & Nagy eq(5.167) */
                 for (m = 0; m < 3; m++) {
-                    s0=14*m;
-
                     Td=xx[k][j][i].fx[16+m]*T0; Td=Td*sqrt(Td);
 
-                    nqd=0.0;
-                    for (s = 0; s < sl+sm; s++) {
-                        // ion - electron Coulomb interaction
-                        if (s==0) nqd += nust[zk][yj][xi][s0]*(3.0+1.5*ame/ams[m]);
-                        else if (s > 0 && s < sl) {
-                            // ion - ion Coulomb interactions Schunk & Nagy eq (4.141b)
-                            if (s <= m) tt=s-1; else tt=s;
-                            Dst=(3.0*ams[m]*ams[m]-0.2*ams[tt]*ams[tt]+0.1*ams[m]*ams[tt])
-                                /((ams[m]+ams[tt])*(ams[m]+ams[tt])); 
-                            nqd += nust[zk][yj][xi][s0+s]*(Dst+1.5*ams[tt]/(ams[m]+ams[tt]));
-                        }
-                        else {
-                            // ion - neutral interaction Schunk & Nagy eq (4.147b)
-                            Dst=(3.0*ams[m]*ams[m]+amt*amt+1.6*ams[m]*amt)/((ams[m]+amt)*(ams[m]+amt));
-                            nqd += nust[zk][yj][xi][s0+s+7]*(Dst+1.5*amt/(ams[m]+amt));
-                        }
-                    }
-
                     nuss[m]=1.27*ni[m]*n0/(sqrt(ams[m])*Td); //Schunk & Nagy eq(4.142)
-                    nqd=1.0+1.25*nqd/nuss[m];
+                    nqd[m]=1.0+1.25*nqd[m]/nuss[m];
 
-                    uu[k][j][i].fx[19+m]=4.96682e-13*Td*xx[k][j][i].fx[16+m]/(sqrt(ams[m])*nqd)/lamda0;
+                    uu[k][j][i].fx[19+m]=4.96682e-13*Td*xx[k][j][i].fx[16+m]/(sqrt(ams[m])*nqd[m])/lamda0;
                 }
 
                 /* normalized neutral thermal conductivity */

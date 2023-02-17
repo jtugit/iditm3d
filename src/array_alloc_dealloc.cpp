@@ -98,7 +98,7 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
             Ls[k][j] = new double*[xm];
 
             for (i = 0 ; i < xm; i++) {
-                nust[k][j][i]=new double[112];
+                nust[k][j][i]=new double[38];
 
                 Ps[k][j][i] = new double[14];
                 Ls[k][j][i] = new double[14];

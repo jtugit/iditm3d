@@ -85,7 +85,7 @@ double **r2sintheta, **cot_div_r, **rsin;
 vector3D ***grad_pe;
 
 /* evaluate normalization parameters from 4 basic parameters: r0, n0, B0, & mp */
-double n0, B0, r0, v0, t0, E0, g0, p0, j00, e0, T0, q0, lamda0, beta0, gen, e, Omegae;
+double n0, B0, r0, v0, t0, E0, g0, p0, j00, e0, T0, q0, lamda0, beta0, gen, e; //, Omegae;
 //normalized earth's rotational frequency
 double w0n;
 

@@ -20,7 +20,7 @@ int check_positivity(DM da, Field ***xx)
                 for (s=0; s<a4; s++) {
                     if (isnan(xx[k][j][i].fx[s]) || isinf(xx[k][j][i].fx[s])) {
                         cout<<"Solution is Nan or inf at (i, j, k, s) = ("<<i<<", "<<j<<", "<<k<<", "<<s
-                            <<") in rhsfunctions"<<endl;
+                            <<")"<<endl;
                         exit(-1);
                     }
                 }

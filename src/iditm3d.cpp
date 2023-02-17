@@ -178,6 +178,9 @@ int main(int argc,char **argv)
     VecDestroy(&params.U);
     VecDestroy(&X);
 
+    PCDestroy(&pc);
+    KSPDestroy(&ksp);
+    SNESDestroy(&snes);
     MatDestroy(&A);
     DMDestroy(&da);
     TSDestroy(&ts);
