@@ -17,7 +17,7 @@ int Nr, Nth, Np, Nrm, Nthm, Npm;
 int sl, sm;
 
 //time step
-double dt, dt_half, dt2;
+double dt, dt_half, dt2, alpha;
 
 //change-mass ratios, normalized speed of light
 double qms[7];
@@ -59,7 +59,7 @@ double ***fluxn;
 
 double **vt, **vp;
 
-double ****Ps, ****Ls;
+//double ****Ps, ****Ls;
 
 double **J11, **J12;     //J11[zk][yj], J12[zk][yj]
 double *J13;             //J13[yj]

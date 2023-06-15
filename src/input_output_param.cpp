@@ -103,6 +103,8 @@ PetscErrorCode input_param(AppCtx *params)
         infstr.ignore(200, '\n');
         infstr >> sm;
         infstr.ignore(200, '\n');
+        infstr >> params->alpha;
+        infstr.ignore(200, '\n');
         infstr >> params->outpdir;
         infstr.ignore(200, '\n');
         infstr >> params->prefln;

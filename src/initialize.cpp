@@ -24,7 +24,7 @@ int input_iri_msis(DM da, Vec X, Field ***, AppCtx *params);
 
 PetscErrorCode initialize(DM da, Vec X, AppCtx *params)
 {
-    Field     ***xx;
+    Field     ***xx, ***xn;
     PetscInt  xs, ys, zs, xm, ym, zm;
 
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
@@ -34,7 +34,7 @@ PetscErrorCode initialize(DM da, Vec X, AppCtx *params)
 
     if(euvflux_seg(da, params)<0) return -1;
 
-    const_normalize();
+    const_normalize(params);
     
     /* calculate mesh system in geomagnetic spherical coordinates */
     if(grids(da, params) < 0) return -1;
@@ -46,6 +46,7 @@ PetscErrorCode initialize(DM da, Vec X, AppCtx *params)
     params->ndt=params->npre;
 
     DMDAVecGetArray(da, X, &xx);
+    DMDAVecGetArray(da, params->Xn, &xn);
 
     if (params->smod == 0) {
         /* initialize solution at time step 0 from IRI and MSIS model data */
@@ -64,7 +65,11 @@ PetscErrorCode initialize(DM da, Vec X, AppCtx *params)
         if (output_solution(da, xx, params) < 0) exit(-1);
     }
 
+    int aa=zm*ym*xm;
+    copy(&xx[zs][ys][xs], &xx[zs][ys][xs]+aa, &xn[zs][ys][xs]);
+
     DMDAVecRestoreArray(da, X, &xx);
+    DMDAVecRestoreArray(da, params->Xn, &xn);
 
     /*----- night time EUV flux interpolated to grid altitude and -------------*/
     /*----- integer zenith angle, from Stroble et al. [1974] ------------------*/

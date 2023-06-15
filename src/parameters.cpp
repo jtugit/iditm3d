@@ -166,7 +166,9 @@ int parameters(DM da, Vec X, AppCtx *params)
     DMDAVecGetArray(da, params->U, &uu);
 
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
+
     solar_zenith(params, (int)ys, (int)ym, (int)zs, (int)zm);
+    top_bc_vel(params, ys, ym, zs, zm);
 
     for (k=zs; k<zs+zm; k++) {
         zk=k-zs;

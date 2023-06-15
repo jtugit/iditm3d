@@ -10,7 +10,7 @@
 
 using namespace std;
 
-void const_normalize()
+void const_normalize(AppCtx *params)
 {
     int   i;
 
@@ -31,7 +31,7 @@ void const_normalize()
     e=q/e0;
 
     //normalized time steps
-    dt=dt/t0; dt_half=0.5*dt; dt2=2.0*dt;
+    dt=dt/t0; dt_half=0.5*dt; dt2=dt/params->alpha;
 
     //normalized gravitational acceleration on the surface of the earth
     gen=ge/g0;

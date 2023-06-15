@@ -25,9 +25,9 @@ int check_positivity(DM da, Field ***xx)
                     }
                 }
 
-                for (s = 0; s <= 7; s++) {
+                for (s = 0; s < 7; s++) {
                     if (xx[k][j][i].fx[s] <= 0.0) {
-                        cout<<"Density of ion species "<<s<<" < 0 "<<xx[k][j][i].fx[s]
+                        cout<<"Density of ion species "<<s<<" negative "<<xx[k][j][i].fx[s]
                             <<" at (i, j, k) = (" << i << ", " << j << ", "<< k << ")" <<endl;
                         ngnp=-3;
                     }
@@ -35,22 +35,14 @@ int check_positivity(DM da, Field ***xx)
 
                 for (s = 16; s <= 19; s++) {
                     if (xx[k][j][i].fx[s] <= 0.0) {
-                        cout<<spec[s-16]<<" temperature <= 0 "<<xx[k][j][i].fx[s]
-                            <<" at (i, j, k) = (" << i << ", " << j << ", "<< k << ")" <<endl;
-                        ngnp=-3;
-                    }
-                }
-
-                for (s = 20; s < 27; s++) {
-                    if (xx[k][j][i].fx[s] <= 0.0) {
-                        cout<<"Density of neutral species "<<s-20<<" < 0 "<<xx[k][j][i].fx[s]
+                        cout<<spec[s-16]<<" temperature negative "<<xx[k][j][i].fx[s]
                             <<" at (i, j, k) = (" << i << ", " << j << ", "<< k << ")" <<endl;
                         ngnp=-3;
                     }
                 }
 
                 if (xx[k][j][i].fx[30] <= 0.0) {
-                    cout<<"Neutral temperature <= 0 "<<xx[k][j][i].fx[30]
+                    cout<<"Neutral temperature negative "<<xx[k][j][i].fx[30]
                         <<" at (i, j, k) = (" << i << ", " << j << ", "<< k << ")" <<endl;
                     ngnp=-5;
                 }

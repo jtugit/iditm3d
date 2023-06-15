@@ -82,26 +82,15 @@ void array_allocate(PetscInt xm, PetscInt ym, PetscInt zm)
     }
 
     nust=new double***[zm];
-    Ps = new double***[zm];
-    Ls = new double***[zm];
 
     for (k = 0; k< zm; k++) {
         nust[k]=new double**[ym];
 
-        Ps[k] = new double**[ym];
-        Ls[k] = new double**[ym];
-
         for (j = 0; j < ym; j++) {
             nust[k][j]=new double*[xm];
 
-            Ps[k][j] = new double*[xm];
-            Ls[k][j] = new double*[xm];
-
             for (i = 0 ; i < xm; i++) {
                 nust[k][j][i]=new double[38];
-
-                Ps[k][j][i] = new double[14];
-                Ls[k][j][i] = new double[14];
             }
         }
     }
@@ -231,25 +220,12 @@ void array_deallocate(PetscInt xm, PetscInt ym, PetscInt zm)
 
     for (k = 0; k < zm; k++) {
         for (j = 0; j < ym; j++) {
-            for (i = 0; i < xm; i++) {
-                delete[] nust[k][j][i];
-
-                delete[] Ps[k][j][i];
-                delete[] Ls[k][j][i];
-            }
+            for (i = 0; i < xm; i++) delete[] nust[k][j][i];
             delete[] nust[k][j];
-
-            delete[] Ps[k][j];
-            delete[] Ls[k][j];
         }
         delete[] nust[k];
-
-        delete[] Ps[k];
-        delete[] Ls[k];
     }
     delete[] nust;
-    delete[] Ps;
-    delete[] Ls;
 
     for (i=0; i< xm; i++) {
         for (j=0; j<92; j++) delete[] fluxn[i][j];
@@ -272,16 +248,18 @@ void array_deallocate(PetscInt xm, PetscInt ym, PetscInt zm)
     for (k = 0; k < zm; k++) {
         for (j = 0; j < ym; j++) {
             delete[] J21[k][j]; delete[] J22[k][j];
+            delete[] J31[k][j]; delete[] J32[k][j];
 
             delete[] Jiv12[k][j]; delete[] Jiv13[k][j];
             delete[] Jiv22[k][j]; delete[] Jiv23[k][j];
         }
         delete[] J21[k]; delete[] J22[k];
+        delete[] J31[k]; delete[] J32[k];
 
         delete[] Jiv12[k]; delete[] Jiv13[k];
         delete[] Jiv22[k]; delete[] Jiv23[k];
     }
-    delete[] J21; delete[] J22;
+    delete[] J21; delete[] J22; delete[] J31; delete[] J32;
 
     delete[] Jiv12; delete[] Jiv13; delete[] Jiv22; delete[] Jiv23;
 

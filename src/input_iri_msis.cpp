@@ -84,7 +84,7 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 localxx[k][j][i].fx[1]=f20[9];             //H+
                 localxx[k][j][i].fx[2]=f20[10];            //He+
                 localxx[k][j][i].fx[3]=f20[11];            //O2+
-                localxx[k][j][i].fx[4]=0.05e-6*(f20[11]+f20[12]); //N2+
+                localxx[k][j][i].fx[4]=0.03*(f20[11]+f20[12]); //N2+
                 localxx[k][j][i].fx[5]=0.03*f20[12];       //NO+
                 localxx[k][j][i].fx[6]=f20[13];            //N+
 
@@ -129,12 +129,12 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
                 /* initialy neutral u_{n,r}, u_{n,theta}, u_{n,phi} set to a small constant (m/s) */
                 for (s = 27; s < 30; s++) xx[k][j][i].fx[s]=0.1/v0;
 
-                /*if (f20[10] <= 0.0) {
+                if (f20[10] <= 0.0) {
                     cout<<"Negative neutral temperature from MSIS file at ";
                     cout<<"(i, j, k) = ("<<i<<", "<<j<<", "<<k<<") Tn = "<<f20[10]<<endl;
                     exit(-1);
                 }
-                xx[k][j][i].fx[30]=f20[10]/T0;*/
+                xx[k][j][i].fx[30]=f20[10]/T0;
 
                 /* delta_B */
                 xx[k][j][i].fx[31]=1.0e-9; xx[k][j][i].fx[32]=1.0e-9; xx[k][j][i].fx[33]=1.0e-9;
@@ -178,7 +178,10 @@ int input_iri_msis(DM da, Vec X, Field ***xx, AppCtx *params)
             }
 
             for (i = xs; i < xs+xm; i++) {
-                for (s=0; s<sl; s++) xx[k][j][i].fx[s] = localxx[k][j][i].fx[s]/n0;
+                for (s=0; s<sl; s++) {
+                    if (localxx[k][j][i].fx[s] <= 0.0) xx[k][j][i].fx[s] = denmin/n0;
+                    else xx[k][j][i].fx[s] = localxx[k][j][i].fx[s]/n0;
+                }
 
                 for (s=0; s<a4; s++) {
                     if (isnan(xx[k][j][i].fx[s]) || isinf(xx[k][j][i].fx[s])) {

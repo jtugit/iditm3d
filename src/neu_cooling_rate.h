@@ -44,7 +44,7 @@ inline double neu_cooling_rate(Field ***xx, int i, int j, int k)
     //O and NO density in m^{-3}
     nO =exp(xx[k][j][i].fx[20])*n0;
     nNO=exp(xx[k][j][i].fx[25])*n0;
-    Tn =exp(xx[k][j][i].fx[30])*T0;
+    Tn =xx[k][j][i].fx[30]*T0;
 
     Tx1=exp(-228.0/Tn);
     Tx2=exp(-326.0/Tn);

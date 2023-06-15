@@ -17,7 +17,7 @@ using namespace std;
 int main(int argc,char **argv)
 {
     Vec            X;
-    Field          ***xx;
+    Field          ***xx, ***xn;
     DM             da;
     AppCtx         params;               /* user-defined work context */
 
@@ -29,6 +29,7 @@ int main(int argc,char **argv)
     time_t         start_t, end_t;
     struct         tm *now;
     ofstream       logfstr;
+    int            aa;
 
     PetscInitialize(&argc,&argv,(char*)0,help);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -89,29 +90,20 @@ int main(int argc,char **argv)
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
     DMCreateGlobalVector(da, &X);
     VecDuplicate(X, &params.U);
+    VecDuplicate(X, &params.Xn);
 
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
+    aa=zm*ym*xm;
 
     /* set up grids and related geometric parameters. Input initial solution */
     if (initialize(da, X, &params) < 0) exit(-1);
 
-    TS    ts;
-    TSCreate(MPI_COMM_WORLD, &ts);
-    TSSetProblemType(ts, TS_NONLINEAR);
-    TSSetType(ts, TSCN);
-
-    TSSetDM(ts, da);
-    TSSetSolution(ts, X);
-
-    TSSetTime(ts, params.sec);
-    TSSetTimeStep(ts, dt);
-    TSSetMaxSteps(ts, params.ntot);
-    TSSetTolerances(ts, 1.0e-12, NULL, 1.0e-12, NULL);
-    TSSetFromOptions(ts);
-
     SNES snes;
-    TSGetSNES(ts, &snes);
+    SNESCreate(MPI_COMM_WORLD, &snes);
+    SNESSetType(snes, SNESNEWTONTR);
     SNESSetFromOptions(snes);
+    SNESSetDM(snes, da);
+    SNESSetFunction(snes, NULL, formfunctions, &params);
 
     KSP ksp;
     SNESGetKSP(snes, &ksp);
@@ -129,35 +121,39 @@ int main(int argc,char **argv)
     DMDASetBlockFills(da, dfill, ofill);
     DMCreateMatrix(da, &A);
 
-    TSSetRHSFunction(ts, NULL, rhsfunctions, &params);
-    TSSetIFunction(ts, NULL, stifffunction, &params);
-    TSSetIJacobian(ts, A, A, jacobian, &params);
+    SNESSetJacobian(snes, A, A, jacobian, &params);
 
     if (!rank) cout <<endl<< "Start time advancing ..." <<endl;
 
     params.ntot = params.ntot + params.npre;
     /*************** start time advancing *************************************/
     for (params.ndt = params.npre+1; params.ndt < params.ntot+1; params.ndt++) {
-        params.sec += dt;
+        params.sec += dt*t0;
         if (params.sec >= 86400) update_timedate(&params);
 
+        top_bc_vel(&params, ys, ym, zs, zm);
         parameters(da, X, &params);
 
-        TSStep(ts);
+        SNESSetSolution(snes, X);   //set initial guess of the solution
+        SNESSolve(snes, PETSC_NULL, X);   //iterative solver to find the solution
 
         DMDAVecGetArray(da, X, &xx);
-
         check_positivity(da, xx);
 
 /*-----------------------------------------------------------------------------------------
  *----- smooth O+, H+, He+ ion velocities and temperatures 
  *----- multidomensional Shapiro filter is used to conduct smoothing (Falissard, JCP 2013)
  -----------------------------------------------------------------------------------------*/
-        smooth_multi_dim_X(da, X);
+        //smooth_multi_dim_X(da, X);
+
+        //copy solution to previous time step vector
+        DMDAVecGetArray(da, params.Xn, &xn);
+        copy(&xx[zs][ys][xs], &xx[zs][ys][xs]+aa, &xn[zs][ys][xs]);
 
         // output in parallel to a hdf5 file at chosen time steps
         if (params.ndt % params.nout ==0 || params.ndt==params.ntot) output_solution(da, xx, &params);
         DMDAVecRestoreArray(da, X, &xx);
+        DMDAVecRestoreArray(da, params.Xn, &xn);
 
         if (params.ndt % params.lognum ==0 || params.ndt==params.ntot) {
             end_t=time(NULL);
@@ -176,14 +172,12 @@ int main(int argc,char **argv)
     array_deallocate(xm, ym, zm);
 
     VecDestroy(&params.U);
+    VecDestroy(&params.Xn);
     VecDestroy(&X);
 
-    PCDestroy(&pc);
-    KSPDestroy(&ksp);
     SNESDestroy(&snes);
     MatDestroy(&A);
     DMDestroy(&da);
-    TSDestroy(&ts);
 
     if (!rank) {
         end_t=time(NULL);

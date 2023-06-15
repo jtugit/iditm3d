@@ -100,7 +100,7 @@ int grids(DM da, AppCtx *params)
     }
 
     for (j = ys; j < ys+ym; j++) {
-        yj=j-ys;
+        yj=j-ys; yj_t=(uint32_t)yj;
 
         J13[yj] = costheta[yj_t]; Jiv31[yj] = costheta[yj_t];
 

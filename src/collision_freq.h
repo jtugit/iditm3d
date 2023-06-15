@@ -47,7 +47,7 @@ inline void collision_freq(Field ***xx, double nis[], double nns[], double ne, i
     //total e - neutral collision frequency
     nust[zk][yj][xi][5]=nu_st[7]+nu_st[8]+nu_st[9]+nu_st[10]+nu_st[11]+nu_st[12]+nu_st[13];
 
-    //sum of nu_{O+,neutrals}/ms[s]
+    //sum of nu_{e,neutrals}/ms[s]
     nust[zk][yj][xi][6]= nu_st[7]/ams[0]+nu_st[8]/ams[1]+nu_st[9]/ams[2]+nu_st[10]/ams[3]
                         +nu_st[11]/ams[4]+nu_st[12]/ams[5]+nu_st[13]/ams[6];
 

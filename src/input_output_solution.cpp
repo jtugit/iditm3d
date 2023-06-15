@@ -81,7 +81,7 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
                 xx[k][j][i].fx[32]=r2sintheta[yj][xi]*(J21[zk][yj][xi]*Bx+J22[zk][yj][xi]*By+J23[yj][xi]*Bz);
                 xx[k][j][i].fx[33]=r2sintheta[yj][xi]*(J31[zk][yj][xi]*Bx+J32[zk][yj][xi]*By);
 
-                /* normalized delta_B in spherical coordinates */
+                /* normalized E in spherical coordinates */
                 for (m = 34; m < 37; m++) Esph[m-34]=xdata[s+m]*1.0e-3/E0;
 
                 //converte to Cartesian coordinates
@@ -98,19 +98,19 @@ int input_psolutions(DM da, Field ***xx, AppCtx *params)
  *----- negative density or temperature -----------*/
                 for (m=0; m<a4; m++) {
                     if (isnan(xx[k][j][i].fx[m]) || isinf(xx[k][j][i].fx[m])) {
-                        cout<<"variable is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<m<<") from input file"<<endl;
+                        std::cout<<"variable is Nan or inf at ("<<i<<", "<<j<<", "<<k<<", "<<m<<") from input file"<<endl;
                         MPI_Abort(MPI_COMM_WORLD,ierr);
                     }
                 }
                 for (s = 16; s < 20; s++) {
                     if (xx[k][j][i].fx[s] <= 0.0) {
-                        cout<<"Negative or zero temperature of "<<spec[s-16]<<" = "<<xx[k][j][i].fx[s]
+                        std::cout<<"Negative or zero temperature of "<<spec[s-16]<<" = "<<xx[k][j][i].fx[s]
                             <<" at ("<<i<<", "<<j<<", "<<k<<")" <<" from input file"<<endl;
                         MPI_Abort(MPI_COMM_WORLD,ierr);
                     }
                 }
                 if (xx[k][j][i].fx[30] <= 0.0) {
-                    cout<<"Negative or zero neutral temperature = "<<xx[k][j][i].fx[30] << " at ("<<i<< ", "
+                    std::cout<<"Negative or zero neutral temperature = "<<xx[k][j][i].fx[30] << " at ("<<i<< ", "
                         << j << ", " << k << ") from input file" << endl;
                     MPI_Abort(MPI_COMM_WORLD,ierr);
                 }

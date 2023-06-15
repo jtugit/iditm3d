@@ -59,9 +59,9 @@ typedef struct {
     char dset_diag[11]="diagnostic";
     char dset_pl[10]="prod_loss";
 
-    Vec  U;
+    Vec  Xn, U;
 
-    double ftime;
+    double alpha;
 } AppCtx;
 
 const double pi=3.141592653589793238;
@@ -156,7 +156,7 @@ extern double ***fluxn;
 
 extern double **vt, **vp;
 
-extern double ****Ps, ****Ls;
+//extern double ****Ps, ****Ls;
 
 extern double **J11, **J12;     //J11[zk][yj], J12[zk][yj]
 extern double *J13;             //J13[yj]

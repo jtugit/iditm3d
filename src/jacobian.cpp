@@ -11,11 +11,11 @@ using namespace std;
 #include "funcdef.h"
 #include "ele_cooling_rate.h"
 
-int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, void *ctx)
+int jacobian(SNES snes, Vec X, Mat Jac, Mat Jpre, void *ctx)
 {
     DM         da;
-    Vec        localX, localU;
-    Field      ***xx, ***uu;
+    Vec        localX, localXn, localU;
+    Field      ***xx, ***xn, ***uu;
     AppCtx     *params = (AppCtx*)ctx;
     int        i, j, k, ir, nv, xs, xm, ys, ym, zs, zm, xi, yj, zk, s;
     MatStencil row, *col;
@@ -26,14 +26,12 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
     double     temp, ne, rhon, Nn, ns[7], nsmore, nsmore_norm; //nn[7], 
     double     Bx, By, Bz, Br, Bt, Bp, uex, uey, uez, uir, uit, uip, rhos[7];
 
-    const double four3rd=4.0/3.0; //two3rd=2.0/3.0, dT=1.0e-8;
+    const double two3rd=2.0/3.0, dt_quart=0.25*dt;
 
     double temp1, uir_unr, uit_unt, uip_unp, rhossum_nusq[3], neme_nsms_nues; //, Ce, Cep, Te, Tn,
-    double Bdve[3], neu_friction_coef[3], neu_tem_exchange_coef[4];
+    double Bdve[3], neu_friction_coef[3], neu_tem_exchange_coef[4], Qeuv, Qphoto, Ps[14], Ls[14];;
 
-    params->ftime=ftime;
-
-    TSGetDM(ts, &da);
+    SNESGetDM(snes, &da);
 
     DMDAGetCorners(da, &xs ,&ys, &zs, &xm, &ym, &zm);
 
@@ -41,6 +39,11 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
     DMGlobalToLocalBegin(da, X, INSERT_VALUES,localX);
     DMGlobalToLocalEnd(da, X, INSERT_VALUES, localX);
     DMDAVecGetArray(da, localX, &xx);
+
+    DMGetLocalVector(da, &localXn);
+    DMGlobalToLocalBegin(da,params->Xn, INSERT_VALUES, localXn);
+    DMGlobalToLocalEnd(da,params->Xn, INSERT_VALUES, localXn);
+    DMDAVecGetArray(da, localXn, &xn);
 
     DMGetLocalVector(da, &localU);
     DMGlobalToLocalBegin(da,params->U,INSERT_VALUES,localU);
@@ -89,6 +92,9 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
 
             xi=(i-xs);
 
+            //production and loss rates
+            prod_loss_rates(xn, uu, i, j, k, zk, yj, xi, Qeuv, Qphoto, Ps, Ls);
+
             for (s = 0; s < sl; s++) {
                 ns[s]=uu[k][j][i].fx[s+27]; rhos[s]=ns[s]*ams[s];
             }
@@ -127,137 +133,146 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
 
                 if (ir < sl) {
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
-                    vals[nv]=a; nv++;
+                    vals[nv]=1.0+dt*Ls[ir]; nv++;
                 }
                 else if (ir == 7) {
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;
-                    vals[nv]= a+nust[zk][yj][xi][11]+nust[zk][yj][xi][7]+nust[zk][yj][xi][8];
+                    vals[nv]= 1.0+dt_half*(nust[zk][yj][xi][11]+nust[zk][yj][xi][7]+nust[zk][yj][xi][8]);
                     nv++;
 
+                    temp = dt_half*qms[0]*nsmore_norm;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;
-                    vals[nv]= qms[0]*nsmore_norm*Bp;
+                    vals[nv]= temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;
-                    vals[nv]=-qms[0]*nsmore_norm*Bt;
+                    vals[nv]=-temp*Bt;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10;
-                    vals[nv]=-nust[zk][yj][xi][7];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][7];
                     nv++;
 
+                    temp = dt_half*qms[0]*ns[1]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=11;
-                    vals[nv]= qms[0]*ns[1]/ne*Bp;
+                    vals[nv]= temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=12;
-                    vals[nv]=-qms[0]*ns[1]/ne*Bt;
+                    vals[nv]=-temp*Bt;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;
-                    vals[nv]=-nust[zk][yj][xi][8];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][8];
                     nv++;
 
+                    temp = dt_half*qms[0]*ns[2]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=14;
-                    vals[nv]= qms[0]*ns[2]/ne*Bp;
+                    vals[nv]= temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=15;
-                    vals[nv]=-qms[0]*ns[2]/ne*Bt;
+                    vals[nv]=-temp*Bt;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=27;
-                    vals[nv]=-nust[zk][yj][xi][11];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][11];
                     nv++;
                 }
                 else if (ir == 8) {
+                    temp = dt_half*qms[0]*nsmore_norm;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;
-                    vals[nv]=-qms[0]*nsmore_norm*Bp;
+                    vals[nv]=-temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;
-                    vals[nv]= a+nust[zk][yj][xi][11]+nust[zk][yj][xi][7]+nust[zk][yj][xi][8];
+                    vals[nv]= 1.0+dt_half*(nust[zk][yj][xi][11]+nust[zk][yj][xi][7]+nust[zk][yj][xi][8]);
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;
-                    vals[nv]= qms[0]*nsmore_norm*Br;
+                    vals[nv]= temp*Br;
                     nv++;
 
+                    temp = dt_half*qms[0]*ns[1]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10;
-                    vals[nv]=-qms[0]*ns[1]/ne*Bp;
+                    vals[nv]=-temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=11;
-                    vals[nv]=-nust[zk][yj][xi][7];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][7];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=12;
-                    vals[nv]= qms[0]*ns[1]/ne*Br;
+                    vals[nv]= temp*Br;
                     nv++;
 
+                    temp = dt_half*qms[0]*ns[2]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;
-                    vals[nv]=-qms[0]*ns[2]/ne*Bp;
+                    vals[nv]=-temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=14;
-                    vals[nv]=-nust[zk][yj][xi][8];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][8];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=15;
-                    vals[nv]= qms[0]*ns[2]/ne*Br;
+                    vals[nv]= temp*Br;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=28;
-                    vals[nv]=-nust[zk][yj][xi][11];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][11];
                     nv++;
                 }
                 else if (ir == 9) {
+                    temp = dt_half*qms[0]*nsmore_norm;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;
-                    vals[nv]= qms[0]*nsmore_norm*Bt;
+                    vals[nv]= temp*Bt;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;
-                    vals[nv]=-qms[0]*nsmore_norm*Br;
+                    vals[nv]=-temp*Br;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;
-                    vals[nv]= a+nust[zk][yj][xi][11]+nust[zk][yj][xi][7]+nust[zk][yj][xi][8];
+                    vals[nv]= 1.0+dt_half*(nust[zk][yj][xi][11]+nust[zk][yj][xi][7]+nust[zk][yj][xi][8]);
                     nv++;
 
+                    temp = dt_half*qms[0]*ns[1]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10;
-                    vals[nv]= qms[0]*ns[1]/ne*Bt;
+                    vals[nv]= temp*Bt;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=11;
-                    vals[nv]=-qms[0]*ns[1]/ne*Br;
+                    vals[nv]=-temp*Br;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=12;
-                    vals[nv]=-nust[zk][yj][xi][7];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][7];
                     nv++;
 
+                    temp = dt_half*qms[0]*ns[2]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;
-                    vals[nv]= qms[0]*ns[2]/ne*Bt;
+                    vals[nv]= temp*Bt;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=14;
-                    vals[nv]=-qms[0]*ns[2]/ne*Br;
+                    vals[nv]=-temp*Br;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=15;
-                    vals[nv]=-nust[zk][yj][xi][8];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][8];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=29;
-                    vals[nv]=-nust[zk][yj][xi][11];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][11];
                     nv++;
                 }
                 else if (ir == 10) {
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //u_{O+,r}
-                    vals[nv]=-nust[zk][yj][xi][14];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][14];
                     nv++;
 
-                    temp=qms[1]*nsmore/ne;
+                    temp = dt_half*qms[1]*nsmore/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;  //u_{O+,theta}
                     vals[nv]= temp*Bp;
                     nv++;
@@ -267,10 +282,10 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10;  //u_{H+,r}
-                    vals[nv]=a+nust[zk][yj][xi][19]+nust[zk][yj][xi][14]+nust[zk][yj][xi][15];
+                    vals[nv]=1.0+dt_half*(nust[zk][yj][xi][19]+nust[zk][yj][xi][14]+nust[zk][yj][xi][15]);
                     nv++;
 
-                    temp=qms[1]*(ns[1]/ne-1.0);
+                    temp=dt_half*qms[1]*(ns[1]/ne-1.0);
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=11; //u_{H+,theta}
                     vals[nv]= temp*Bp;
                     nv++;
@@ -280,10 +295,10 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;
-                    vals[nv]=-nust[zk][yj][xi][15];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][15];
                     nv++;
 
-                    temp=qms[1]*ns[2]/ne;
+                    temp=dt_half*qms[1]*ns[2]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=14;
                     vals[nv]= temp*Bp;
                     nv++;
@@ -293,43 +308,43 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=27;
-                    vals[nv]=-nust[zk][yj][xi][19];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][19];
                     nv++;
                 }
                 else if (ir == 11) {
-                    temp=qms[1]*nsmore/ne;
+                    temp=dt_half*qms[1]*nsmore/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //u_{O+,r}
                     vals[nv]=-temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;  //u_{O+,theta}
-                    vals[nv]=-nust[zk][yj][xi][14];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][14];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;  //u_{O+,phi}
                     vals[nv]= temp*Br;
                     nv++;
 
-                    temp=qms[1]*(ns[1]/ne-1.0);
+                    temp=dt_half*qms[1]*(ns[1]/ne-1.0);
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10; //u_{H+,r}
                     vals[nv]=-temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=11;  //u_{H+,theta}
-                    vals[nv]=a+nust[zk][yj][xi][19]+nust[zk][yj][xi][14]+nust[zk][yj][xi][15];
+                    vals[nv]=1.0+dt_half*(nust[zk][yj][xi][19]+nust[zk][yj][xi][14]+nust[zk][yj][xi][15]);
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=12; //u_{H+,phi}
                     vals[nv]= temp*Br;
                     nv++;
 
-                    temp=qms[1]*ns[2]/ne;
+                    temp=dt_half*qms[1]*ns[2]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;
                     vals[nv]=-temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=14;
-                    vals[nv]=-nust[zk][yj][xi][15];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][15];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=15;
@@ -337,11 +352,11 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=28;
-                    vals[nv]=-nust[zk][yj][xi][19];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][19];
                     nv++;
                 }
                 else if (ir == 12) {
-                    temp=qms[1]*nsmore/ne;
+                    temp=dt_half*qms[1]*nsmore/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //u_{O+,r}
                     vals[nv]= temp*Bt;
                     nv++;
@@ -351,10 +366,10 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;  //u_{O+,phi}
-                    vals[nv]=-nust[zk][yj][xi][14];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][14];
                     nv++;
 
-                    temp=qms[1]*(ns[1]/ne-1.0);
+                    temp=dt_half*qms[1]*(ns[1]/ne-1.0);
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10; //u_{H+,r}
                     vals[nv]= temp*Bt;
                     nv++;
@@ -364,10 +379,10 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=12;  //u_{H+,phi}
-                    vals[nv]=a+nust[zk][yj][xi][19]+nust[zk][yj][xi][14]+nust[zk][yj][xi][15];
+                    vals[nv]=1.0+dt_half*(nust[zk][yj][xi][19]+nust[zk][yj][xi][14]+nust[zk][yj][xi][15]);
                     nv++;
 
-                    temp=qms[1]*ns[2]/ne;
+                    temp=dt_half*qms[1]*ns[2]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;
                     vals[nv]= temp*Bt;
                     nv++;
@@ -377,19 +392,19 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=15;
-                    vals[nv]=-nust[zk][yj][xi][15];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][15];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=29;
-                    vals[nv]=-nust[zk][yj][xi][19];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][19];
                     nv++;
                 }
                 else if (ir == 13) {
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //u_{O+,r}
-                    vals[nv]=-nust[zk][yj][xi][22];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][22];
                     nv++;
 
-                    temp=qms[2]*nsmore/ne;
+                    temp=dt_half*qms[2]*nsmore/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;  //u_{O+,theta}
                     vals[nv]= temp*Bp;
                     nv++;
@@ -399,10 +414,10 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10; //u_{H+,r}
-                    vals[nv]=-nust[zk][yj][xi][23];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][23];
                     nv++;
 
-                    temp=qms[2]*ns[1]/ne;
+                    temp=dt_half*qms[2]*ns[1]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=11; //u_{H+,theta}
                     vals[nv]= temp*Bp;
                     nv++;
@@ -412,10 +427,10 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;  //u_{He+,r}
-                    vals[nv]=a+nust[zk][yj][xi][27]+nust[zk][yj][xi][22]+nust[zk][yj][xi][23];
+                    vals[nv]=1.0+dt_half*(nust[zk][yj][xi][27]+nust[zk][yj][xi][22]+nust[zk][yj][xi][23]);
                     nv++;
 
-                    temp=qms[2]*(ns[2]/ne-1.0);
+                    temp=dt_half*qms[2]*(ns[2]/ne-1.0);
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=14; //u_{He+,theta}
                     vals[nv]= temp*Bp;
                     nv++;
@@ -425,43 +440,43 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=27;
-                    vals[nv]=-nust[zk][yj][xi][27];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][27];
                     nv++;
                 }
                 else if (ir == 14) {
-                    temp=qms[2]*nsmore/ne;
+                    temp=dt_half*qms[2]*nsmore/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //u_{O+,r}
                     vals[nv]=-temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;  //u_{O+,theta}
-                    vals[nv]=-nust[zk][yj][xi][22];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][22];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;  //u_{O+,phi}
                     vals[nv]= temp*Br;
                     nv++;
 
-                    temp=qms[2]*ns[1]/ne;
+                    temp=dt_half*qms[2]*ns[1]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10; //u_{H+,r}
                     vals[nv]=-temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=11; //u_{H+,theta}
-                    vals[nv]=-nust[zk][yj][xi][23];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][23];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=12; //u_{H+,phi}
                     vals[nv]= temp*Br;
                     nv++;
 
-                    temp=qms[2]*(ns[2]/ne-1.0);
-                    col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13; //u_{He+,theta}
+                    temp=dt_half*qms[2]*(ns[2]/ne-1.0);
+                    col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13; //u_{He+,r}
                     vals[nv]=-temp*Bp;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=14;  //u_{He+,theta}
-                    vals[nv]=a+nust[zk][yj][xi][27]+nust[zk][yj][xi][22]+nust[zk][yj][xi][23];
+                    vals[nv]=1.0+dt_half*(nust[zk][yj][xi][27]+nust[zk][yj][xi][22]+nust[zk][yj][xi][23]);
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=15; //u_{He+,phi}
@@ -469,11 +484,11 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=28;
-                    vals[nv]=-nust[zk][yj][xi][27];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][27];
                     nv++;
                 }
                 else if (ir == 15) {
-                    temp=qms[2]*nsmore/ne;
+                    temp=dt_half*qms[2]*nsmore/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //u_{O+,r}
                     vals[nv]= temp*Bt;
                     nv++;
@@ -483,10 +498,10 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;  //u_{O+,phi}
-                    vals[nv]=-nust[zk][yj][xi][22];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][22];
                     nv++;
 
-                    temp=qms[2]*ns[1]/ne;
+                    temp=dt_half*qms[2]*ns[1]/ne;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10; //u_{H+,r}
                     vals[nv]= temp*Bt;
                     nv++;
@@ -496,10 +511,10 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=12; //u_{H+,phi}
-                    vals[nv]=-nust[zk][yj][xi][23];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][23];
                     nv++;
 
-                    temp=qms[2]*(ns[2]/ne-1.0);
+                    temp=dt_half*qms[2]*(ns[2]/ne-1.0);
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13; //u_{He+,theta}
                     vals[nv]= temp*Bt;
                     nv++;
@@ -509,15 +524,15 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=15;  //u_{He+,phi}
-                    vals[nv]=a+nust[zk][yj][xi][27]+nust[zk][yj][xi][22]+nust[zk][yj][xi][23];
+                    vals[nv]=1.0+dt_half*(nust[zk][yj][xi][27]+nust[zk][yj][xi][22]+nust[zk][yj][xi][23]);
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=29;
-                    vals[nv]=-nust[zk][yj][xi][27];
+                    vals[nv]=-dt_half*nust[zk][yj][xi][27];
                     nv++;
                 }
                 else if (ir == 16) {  //O+ temperature equation
-                    temp=four3rd*ams[0];
+                    temp=dt*two3rd*ams[0];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //U_{O+,r}
                     vals[nv]=-temp*( nust[zk][yj][xi][13]*(xx[k][j][i].fx[7]-xx[k][j][i].fx[27])
                                     +ams[1]*nust[zk][yj][xi][9]*(xx[k][j][i].fx[7]-xx[k][j][i].fx[10])
@@ -560,14 +575,14 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=15;  //U_{He+,phi}
                     vals[nv]= temp1*(xx[k][j][i].fx[9]-xx[k][j][i].fx[15]);
-                    nv++;
+                    nv++; 
 
-                    temp=2.0*ams[0];
-                    neme_nsms_nues=2.0*ne*ame/rhos[0]*nust[zk][yj][xi][0];
+                    temp=dt*ams[0];
+                    neme_nsms_nues=dt*ne*ame/rhos[0]*nust[zk][yj][xi][0];
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=16;  //T_{O+}
-                    vals[nv]=a+temp*(nust[zk][yj][xi][12]+nust[zk][yj][xi][9]+nust[zk][yj][xi][10])
-                              +neme_nsms_nues;
+                    vals[nv]=1.0+temp*(nust[zk][yj][xi][12]+nust[zk][yj][xi][9]+nust[zk][yj][xi][10])
+                                +neme_nsms_nues;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=17;  //T_{H+}
@@ -582,7 +597,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]=-neme_nsms_nues;
                     nv++;
 
-                    temp=four3rd*ams[0]*nust[zk][yj][xi][13];
+                    temp=dt*two3rd*ams[0]*nust[zk][yj][xi][13];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=27;  //U_{n,r}
                     vals[nv]= temp*(xx[k][j][i].fx[7]-xx[k][j][i].fx[27]);
                     nv++;
@@ -596,11 +611,11 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=30;  //T_{n}
-                    vals[nv]=-2.0*ams[0]*nust[zk][yj][xi][12];
+                    vals[nv]=-dt*ams[0]*nust[zk][yj][xi][12];
                     nv++;
                 }
                 else if (ir == 17) {  //H+ temperature equation
-                    temp=four3rd*ams[1]*nust[zk][yj][xi][18];
+                    temp=dt*two3rd*ams[1]*nust[zk][yj][xi][18];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //dF/dU_{O+,r}
                     vals[nv]= temp*(xx[k][j][i].fx[10]-xx[k][j][i].fx[7]);
                     nv++;
@@ -613,7 +628,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]= temp*(xx[k][j][i].fx[12]-xx[k][j][i].fx[9]);
                     nv++;
 
-                    temp=four3rd*ams[1];
+                    temp=dt*two3rd*ams[1];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10;  //dF/dU_{H+,r}
                     vals[nv]=-temp*( nust[zk][yj][xi][21]*(xx[k][j][i].fx[10]-xx[k][j][i].fx[27])
                                     +nust[zk][yj][xi][18]*(xx[k][j][i].fx[10]-xx[k][j][i].fx[7])
@@ -632,7 +647,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                                     +ams[2]*nust[zk][yj][xi][17]*(xx[k][j][i].fx[12]-xx[k][j][i].fx[15]));
                     nv++;
 
-                    temp=four3rd*ams[2]*nust[zk][yj][xi][17];
+                    temp=dt*two3rd*ams[1]*ams[2]*nust[zk][yj][xi][17];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;  //dF/dU_{He+,r}
                     vals[nv]= temp*(xx[k][j][i].fx[10]-xx[k][j][i].fx[13]);
                     nv++;
@@ -645,15 +660,15 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]= temp*(xx[k][j][i].fx[12]-xx[k][j][i].fx[15]);
                     nv++;
 
-                    temp=2.0*ams[1];
+                    temp=dt*ams[1];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=16;  //dF/dT_{O+}
                     vals[nv]=-temp*nust[zk][yj][xi][16];
                     nv++;
 
-                    neme_nsms_nues=2.0*ne*ame/rhos[1]*nust[zk][yj][xi][1];
+                    neme_nsms_nues=dt*ne*ame/rhos[1]*nust[zk][yj][xi][1];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=17;  //dF/dT_{H+}
-                    vals[nv]=a+temp*(nust[zk][yj][xi][20]+nust[zk][yj][xi][16]+nust[zk][yj][xi][17])
-                              +neme_nsms_nues;
+                    vals[nv]=1.0+temp*(nust[zk][yj][xi][20]+nust[zk][yj][xi][16]+nust[zk][yj][xi][17])
+                                +neme_nsms_nues;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=18;  //dF/dT_{He+}
@@ -664,7 +679,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]=-neme_nsms_nues;
                     nv++;
 
-                    temp=four3rd*ams[1]*nust[zk][yj][xi][21];
+                    temp=dt*two3rd*ams[1]*nust[zk][yj][xi][21];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=27;  //dF/dU_{n,r}
                     vals[nv]= temp*(xx[k][j][i].fx[10]-xx[k][j][i].fx[27]);
                     nv++;
@@ -678,11 +693,11 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=30;  //dF/dT_{n}
-                    vals[nv]=-2.0*ams[1]*nust[zk][yj][xi][20];
+                    vals[nv]=-dt*ams[1]*nust[zk][yj][xi][20];
                     nv++;
                 }
                 else if (ir == 18) {  //He+ temperature equation
-                    temp=four3rd*ams[2]*nust[zk][yj][xi][26];
+                    temp=dt*two3rd*ams[2]*nust[zk][yj][xi][26];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //dF/dU_{O+,r}
                     vals[nv]= temp*(xx[k][j][i].fx[13]-xx[k][j][i].fx[7]);
                     nv++;
@@ -695,7 +710,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]= temp*(xx[k][j][i].fx[15]-xx[k][j][i].fx[9]);
                     nv++;
 
-                    temp=four3rd*ams[1]*nust[zk][yj][xi][25];
+                    temp=dt*two3rd*ams[2]*ams[1]*nust[zk][yj][xi][25];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10;  //dF/dU_{H+,r}
                     vals[nv]= temp*(xx[k][j][i].fx[13]-xx[k][j][i].fx[10]);
                     nv++;
@@ -708,7 +723,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]= temp*(xx[k][j][i].fx[15]-xx[k][j][i].fx[12]);
                     nv++;
 
-                    temp=four3rd*ams[2];
+                    temp=dt*two3rd*ams[2];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;  //dF/dU_{He+,r}
                     vals[nv]=-temp*( nust[zk][yj][xi][29]*(xx[k][j][i].fx[13]-xx[k][j][i].fx[27])
                                     +nust[zk][yj][xi][26]*(xx[k][j][i].fx[13]-xx[k][j][i].fx[7])
@@ -727,7 +742,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                                     +ams[1]*nust[zk][yj][xi][25]*(xx[k][j][i].fx[15]-xx[k][j][i].fx[12]));
                     nv++;
 
-                    temp=2.0*ams[2];
+                    temp=dt*ams[2];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=16;  //dF/dT_{O+}
                     vals[nv]=-temp*nust[zk][yj][xi][24];
                     nv++;
@@ -736,17 +751,17 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]=-temp*nust[zk][yj][xi][25];
                     nv++;
 
-                    neme_nsms_nues=2.0*ne*ame/rhos[2]*nust[zk][yj][xi][2];
+                    neme_nsms_nues=dt*ne*ame/rhos[2]*nust[zk][yj][xi][2];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=18;  //dF/dT_{He+}
-                    vals[nv]=a+temp*(nust[zk][yj][xi][28]+nust[zk][yj][xi][24]+nust[zk][yj][xi][25])
-                              +neme_nsms_nues;
+                    vals[nv]=1.0+temp*(nust[zk][yj][xi][28]+nust[zk][yj][xi][24]+nust[zk][yj][xi][25])
+                                +neme_nsms_nues;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=19;  //dF/dT_{e}
                     vals[nv]=-neme_nsms_nues;
                     nv++;
 
-                    temp=four3rd*ams[2]*nust[zk][yj][xi][29];
+                    temp=dt*two3rd*ams[2]*nust[zk][yj][xi][29];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=27;  //dF/dU_{n,r}
                     vals[nv]= temp*(xx[k][j][i].fx[13]-xx[k][j][i].fx[27]);
                     nv++;
@@ -760,14 +775,14 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=30;  //dF/dT_{n}
-                    vals[nv]=-2.0*ams[2]*nust[zk][yj][xi][28];
+                    vals[nv]=-dt*ams[2]*nust[zk][yj][xi][28];
                     nv++;
                 }
                 else if (ir == 19) {  //electron temperature equation
                     uir_unr=uir-xx[k][j][i].fx[27]; uit_unt=uit-xx[k][j][i].fx[28];
                     uip_unp=uip-xx[k][j][i].fx[29];
 
-                    temp1=four3rd*ame*nust[zk][yj][xi][5];
+                    temp1=dt*two3rd*ame*nust[zk][yj][xi][5];
                     temp=temp1*nsmore/ne;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //dF/dU_{O+,r}
@@ -808,7 +823,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]=-temp*uip_unp;
                     nv++;
 
-                    temp=2.0*ame;
+                    temp=dt*ame;
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=16;  //dF/dT_{O+}
                     vals[nv]=-temp*nust[zk][yj][xi][4];
                     nv++;
@@ -822,11 +837,11 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=19;  //dF/dT_{e}
-                    vals[nv]= a+temp*( nust[zk][yj][xi][4]+nust[zk][yj][xi][1]/ams[1]
-                                      +nust[zk][yj][xi][2]/ams[2]+nust[zk][yj][xi][6]);
+                    vals[nv]= 1.0+temp*( nust[zk][yj][xi][4]+nust[zk][yj][xi][1]/ams[1]
+                                 +nust[zk][yj][xi][2]/ams[2]+nust[zk][yj][xi][6]);
                     nv++;
 
-                    temp=four3rd*ame*nust[zk][yj][xi][5];
+                    temp=dt*two3rd*ame*nust[zk][yj][xi][5];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=27;  //dF/dU_{n,r}
                     vals[nv]= temp*uir_unr;
                     nv++;
@@ -840,69 +855,70 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++; 
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=30;  //dF/dT_{n}
-                    vals[nv]=-2.0*ame*nust[zk][yj][xi][6];
+                    vals[nv]=-dt*ame*nust[zk][yj][xi][6];
                     nv++;
                 }
                 else if (ir >= 20 && ir <= 26) {
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=ir;
-                    vals[nv]=a; nv++;
+                    vals[nv]=1.0; nv++;
                 }
                 else if (ir == 27) { //for u_{n,r} equation
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //dF/dU_{O+,r}
-                    vals[nv]=-rhossum_nusq[0];
+                    vals[nv]=-dt_half*rhossum_nusq[0];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10;  //dF/dU_{H+,r}
-                    vals[nv]=-rhossum_nusq[1];
+                    vals[nv]=-dt_half*rhossum_nusq[1];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;  //dF/dU_{He+,r}
-                    vals[nv]=-rhossum_nusq[2];
+                    vals[nv]=-dt_half*rhossum_nusq[2];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=27;  //dF/dU_{n,r}
-                    vals[nv]= a+rhossum_nusq[0]+rhossum_nusq[1]+rhossum_nusq[2];
+                    vals[nv]= 1.0+dt_half*(rhossum_nusq[0]+rhossum_nusq[1]+rhossum_nusq[2]);
                     nv++;
                 }
                 else if (ir == 28) { //for u_{n,theta} equation
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=8;  //dF/dU_{O+,r}
-                    vals[nv]=-rhossum_nusq[0];
+                    vals[nv]=-dt_half*rhossum_nusq[0];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=11;  //dF/dU_{H+,r}
-                    vals[nv]=-rhossum_nusq[1];
+                    vals[nv]=-dt_half*rhossum_nusq[1];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=14;  //dF/dU_{He+,r}
-                    vals[nv]=-rhossum_nusq[2];
+                    vals[nv]=-dt_half*rhossum_nusq[2];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=28;  //dF/dU_{n,r}
-                    vals[nv]= a+rhossum_nusq[0]+rhossum_nusq[1]+rhossum_nusq[2];
+                    vals[nv]= 1.0+dt_half*(rhossum_nusq[0]+rhossum_nusq[1]+rhossum_nusq[2]);
                     nv++;
                 }
                 else if (ir == 29) { //for u_{n,phi} equation
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=9;  //dF/dU_{O+,r}
-                    vals[nv]=-rhossum_nusq[0];
+                    vals[nv]=-dt_half*rhossum_nusq[0];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=12;  //dF/dU_{H+,r}
-                    vals[nv]=-rhossum_nusq[1];
+                    vals[nv]=-dt_half*rhossum_nusq[1];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=15;  //dF/dU_{He+,r}
-                    vals[nv]=-rhossum_nusq[2];
+                    vals[nv]=-dt_half*rhossum_nusq[2];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=29;  //dF/dU_{n,r}
-                    vals[nv]= a+rhossum_nusq[0]+rhossum_nusq[1]+rhossum_nusq[2];
+                    vals[nv]= 1.0+dt_half*(rhossum_nusq[0]+rhossum_nusq[1]+rhossum_nusq[2]);
                     nv++;
                 }
                 else if (ir == 30) { //for T_n} equation
-                    neu_friction_coef[0]
-                        = four3rd/Nn*( rhos[0]*ams[0]*nust[zk][yj][xi][12]+rhos[3]*ams[3]*nust[zk][yj][xi][31]
-                                      +rhos[4]*ams[4]*nust[zk][yj][xi][33]+rhos[5]*ams[5]*nust[zk][yj][xi][35]
-                                      +rhos[6]*ams[6]*nust[zk][yj][xi][37]);
+                    neu_friction_coef[0]=dt*two3rd/Nn*( rhos[0]*ams[0]*nust[zk][yj][xi][12]
+                                                       +rhos[3]*ams[3]*nust[zk][yj][xi][31]
+                                                       +rhos[4]*ams[4]*nust[zk][yj][xi][33]
+                                                       +rhos[5]*ams[5]*nust[zk][yj][xi][35]
+                                                       +rhos[6]*ams[6]*nust[zk][yj][xi][37]);
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=7;  //dF/dU_{O+,r}
                     vals[nv]=-neu_friction_coef[0]*(xx[k][j][i].fx[7]-xx[k][j][i].fx[27]);
@@ -916,7 +932,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]=-neu_friction_coef[0]*(xx[k][j][i].fx[9]-xx[k][j][i].fx[29]);
                     nv++;
 
-                    neu_friction_coef[1]= four3rd/Nn*rhos[1]*ams[1]*nust[zk][yj][xi][20];
+                    neu_friction_coef[1]= dt*two3rd/Nn*rhos[1]*ams[1]*nust[zk][yj][xi][20];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=10;  //dF/dU_{H+,r}
                     vals[nv]=-neu_friction_coef[1]*(xx[k][j][i].fx[10]-xx[k][j][i].fx[27]);
                     nv++;
@@ -929,7 +945,7 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     vals[nv]=-neu_friction_coef[1]*(xx[k][j][i].fx[12]-xx[k][j][i].fx[29]);
                     nv++;
 
-                    neu_friction_coef[2]=four3rd/Nn*rhos[2]*ams[2]*nust[zk][yj][xi][28];
+                    neu_friction_coef[2]=dt*two3rd/Nn*rhos[2]*ams[2]*nust[zk][yj][xi][28];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=13;  //dF/dU_{He+,r}
                     vals[nv]=-neu_friction_coef[2]*(xx[k][j][i].fx[13]-xx[k][j][i].fx[27]);
                     nv++;
@@ -961,94 +977,94 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                     nv++;
 
                     neu_tem_exchange_coef[0]
-                        = 2.0/Nn*( rhos[0]*nust[zk][yj][xi][12]+rhos[3]*nust[zk][yj][xi][31]
-                                  +rhos[4]*nust[zk][yj][xi][33]+rhos[5]*nust[zk][yj][xi][35]
-                                  +rhos[6]*nust[zk][yj][xi][37]);
+                        = dt/Nn*( rhos[0]*nust[zk][yj][xi][12]+rhos[3]*nust[zk][yj][xi][31]
+                                 +rhos[4]*nust[zk][yj][xi][33]+rhos[5]*nust[zk][yj][xi][35]
+                                 +rhos[6]*nust[zk][yj][xi][37]);
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=16;  //dF/dT_{O+}}
                     vals[nv]=-neu_tem_exchange_coef[0];
                     nv++;
 
-                    neu_tem_exchange_coef[1]= 2.0/Nn*rhos[1]*nust[zk][yj][xi][20];
+                    neu_tem_exchange_coef[1]= dt/Nn*rhos[1]*nust[zk][yj][xi][20];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=17;  //dF/dT_{H+}
                     vals[nv]=-neu_tem_exchange_coef[1];
                     nv++;
 
-                    neu_tem_exchange_coef[2]= 2.0/Nn*rhos[2]*nust[zk][yj][xi][28];
+                    neu_tem_exchange_coef[2]= dt/Nn*rhos[2]*nust[zk][yj][xi][28];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=18;  //dF/dT_{He+}
                     vals[nv]=-neu_tem_exchange_coef[2];
                     nv++;
 
-                    neu_tem_exchange_coef[3]= 2.0*ne*ame/Nn*nust[zk][yj][xi][6];
+                    neu_tem_exchange_coef[3]= dt*ne*ame/Nn*nust[zk][yj][xi][6];
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=19;  //dF/dT_{e}
                     vals[nv]=-neu_tem_exchange_coef[3];
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=30;  //dF/dT_{n}
-                    vals[nv]= a+neu_tem_exchange_coef[0]+neu_tem_exchange_coef[1]+neu_tem_exchange_coef[2]
-                               +neu_tem_exchange_coef[3];
+                    vals[nv]= 1.0+neu_tem_exchange_coef[0]+neu_tem_exchange_coef[1]+neu_tem_exchange_coef[2]
+                                 +neu_tem_exchange_coef[3];
                     nv++;
-               }
+                }
                 else if (ir == 31) { //for Br equation
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=31;  //dF/dB^r_{i,j,k}
-                    vals[nv]= a;
+                    vals[nv]= 1.0;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j-1; col[nv].i=i; col[nv].c=36;  //dF/dB^phi_{i,j-1,k}
-                    vals[nv]=-0.5/dth;
+                    vals[nv]=-dt_quart/dth;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j+1; col[nv].i=i; col[nv].c=36;  //dF/dB^phi_{i,j+1,k}
-                    vals[nv]= 0.5/dth;
+                    vals[nv]= dt_quart/dth;
                     nv++;
 
                     col[nv].k=k-1; col[nv].j=j; col[nv].i=i; col[nv].c=35;  //dF/dB^theta_{i,j,k-1}
-                    vals[nv]= 0.5/dph;
+                    vals[nv]= dt_quart/dph;
                     nv++;
 
                     col[nv].k=k+1; col[nv].j=j; col[nv].i=i; col[nv].c=35;  //dF/dB^theta_{i,j,k+1}
-                    vals[nv]=-0.5/dph;
+                    vals[nv]=-dt_quart/dph;
                     nv++;
                 }
                 else if (ir == 32) { //for Btheta equation
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=32;  //dF/dB^theta_{i,j,k}
-                    vals[nv]= a;
+                    vals[nv]= 1.0;
                     nv++;
 
                     col[nv].k=k-1; col[nv].j=j; col[nv].i=i; col[nv].c=34;  //dF/dB^r_{i,j,k-1}
-                    vals[nv]=-0.5/dph;
+                    vals[nv]=-dt_quart/dph;
                     nv++;
 
                     col[nv].k=k+1; col[nv].j=j; col[nv].i=i; col[nv].c=34;  //dF/dB^r_{i,j,k+1}
-                    vals[nv]= 0.5/dph;
+                    vals[nv]= dt_quart/dph;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i-1; col[nv].c=36;  //dF/dB^phi_{i-1,j,k}
-                    vals[nv]= 0.5/dr;
+                    vals[nv]= dt_quart/dr;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i+1; col[nv].c=36;  //dF/dB^phi_{i+1,j,k}
-                    vals[nv]=-0.5/dr;
+                    vals[nv]=-dt_quart/dr;
                     nv++;
                 }
                 else if (ir == 33) { //for Bphi equation
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=33;  //dF/dB^phi_{i,j,k}
-                    vals[nv]= a;
+                    vals[nv]= 1.0;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i-1; col[nv].c=35;  //dF/dB^theta_{i-1,j,k}
-                    vals[nv]=-0.5/dr;
+                    vals[nv]=-dt_quart/dr;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i+1; col[nv].c=35;  //dF/dB^theta_{i+1,j,k}
-                    vals[nv]= 0.5/dr;
+                    vals[nv]= dt_quart/dr;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j-1; col[nv].i=i; col[nv].c=34;  //dF/dB^r_{i,j-1,k}
-                    vals[nv]= 0.5/dth;
+                    vals[nv]= dt_quart/dth;
                     nv++;
 
                     col[nv].k=k; col[nv].j=j+1; col[nv].i=i; col[nv].c=34;  //dF/dB^r_{i,j+1,k}
-                    vals[nv]=-0.5/dth;
+                    vals[nv]=-dt_quart/dth;
                     nv++;
                 }
                 else if (ir == 34) { //for E^r equation
@@ -1247,10 +1263,10 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
                                +Jiv23[zk][yj][xi]*(Jiv32[yj][xi]*uex - Jiv12[zk][yj][xi]*uez))/r2sintheta[yj][xi];
                     nv++;
 
-                    //col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=33;  //dF/dB^phi_{i,j,k}
-                    //vals[nv]=-(Jiv13[zk][yj][xi]*Jiv23[zk][yj][xi]-Jiv23[zk][yj][xi]*Jiv13[zk][yj][xi])
-                    //          *uez/r2sintheta[yj][xi];
-                    //nv++;
+                    col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=33;  //dF/dB^phi_{i,j,k}
+                    vals[nv]=-(Jiv13[zk][yj][xi]*Jiv23[zk][yj][xi]-Jiv23[zk][yj][xi]*Jiv13[zk][yj][xi])
+                              *uez/r2sintheta[yj][xi];
+                    nv++;
 
                     col[nv].k=k; col[nv].j=j; col[nv].i=i; col[nv].c=36;  //dF/dE^phi_{i,j,k}
                     vals[nv]=1.0;
@@ -1279,9 +1295,11 @@ int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Jac, Mat Jpre, v
 
     DMDAVecRestoreArray(da, localX, &xx);
     DMDAVecRestoreArray(da, localU, &uu);
+    DMDAVecRestoreArray(da, localXn, &xn);
 
     DMRestoreLocalVector(da, &localX);
     DMRestoreLocalVector(da, &localU);
+    DMRestoreLocalVector(da, &localXn);
 
     delete[] vals;
     delete[] col;

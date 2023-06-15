@@ -1,5 +1,88 @@
 #!/bin/bash
-mpiexec -n $1 ./iditm3d -ts_type arkimex -snes_tyep ngmres -ksp_type cgs -pc_type asm \
--ts_rtol 1.0e-4 -ts_atol 1.0e-4 -snes_monitor -snes_rtol 1.0e-4 -snes_atol 1.0e-4 \
--snes_converged_reason #-snes_test_jacobian \
-#-snes_test jacobian_view #-ksp_converged_reason -ksp_monitor_true_residual -ts_max_snes_failures -1
+mpiexec -n $1 ./iditm3d snes_type newtontr -ksp_type gmres -pc_type bjacobi -ksp_rtol 1.0e-8 \
+-ksp_atol 1.0e-8 -snes_monitor -snes_rtol 1.0e-5 -snes_atol 1.0e-5 -snes_stol 1.0e-5 \
+-snes_converged_reason -ksp_converged_reason -ksp_monitor_true_residual
+#-snes_grid_sequence
+#-ts_type cn -ts_monitor -ts_adapt_monitor -ts_adapt_type none #-ksp_monitor_singular_value 
+#-ksp_gmres_restart 1000 #-snes_test_jacobian
+#-snes_test jacobian_view # -ts_max_snes_failures -1
+#-ts_rtol 1.0e-4 -ts_atol 1.0e-4 
+
+#typedef const char *SNESType;
+#define SNESNEWTONLS         "newtonls"
+#define SNESNEWTONTR         "newtontr"
+#define SNESNEWTONTRDC       "newtontrdc"
+#define SNESPYTHON           "python"
+#define SNESNRICHARDSON      "nrichardson"
+#define SNESKSPONLY          "ksponly"
+#define SNESKSPTRANSPOSEONLY "ksptransposeonly"
+#define SNESVINEWTONRSLS     "vinewtonrsls"
+#define SNESVINEWTONSSLS     "vinewtonssls"
+#define SNESNGMRES           "ngmres"
+#define SNESQN               "qn"
+#define SNESSHELL            "shell"
+#define SNESNGS              "ngs"
+#define SNESNCG              "ncg"
+#define SNESFAS              "fas"
+#define SNESMS               "ms"
+#define SNESNASM             "nasm"
+#define SNESANDERSON         "anderson"
+#define SNESASPIN            "aspin"
+#define SNESCOMPOSITE        "composite"
+#define SNESPATCH            "patch"
+
+#typedef const char *PCType;
+#define PCNONE               "none"
+#define PCJACOBI             "jacobi"
+#define PCSOR                "sor"
+#define PCLU                 "lu"
+#define PCQR                 "qr"
+#define PCSHELL              "shell"
+#define PCAMGX               "amgx"
+#define PCBJACOBI            "bjacobi"
+#define PCMG                 "mg"
+#define PCEISENSTAT          "eisenstat"
+#define PCILU                "ilu"
+#define PCICC                "icc"
+#define PCASM                "asm"
+#define PCGASM               "gasm"
+#define PCKSP                "ksp"
+#define PCBJKOKKOS           "bjkokkos"
+#define PCCOMPOSITE          "composite"
+#define PCREDUNDANT          "redundant"
+#define PCSPAI               "spai"
+#define PCNN                 "nn"
+#define PCCHOLESKY           "cholesky"
+#define PCPBJACOBI           "pbjacobi"
+#define PCVPBJACOBI          "vpbjacobi"
+#define PCMAT                "mat"
+#define PCHYPRE              "hypre"
+#define PCPARMS              "parms"
+#define PCFIELDSPLIT         "fieldsplit"
+#define PCTFS                "tfs"
+#define PCML                 "ml"
+#define PCGALERKIN           "galerkin"
+#define PCEXOTIC             "exotic"
+#define PCCP                 "cp"
+#define PCBFBT               "bfbt"
+#define PCLSC                "lsc"
+#define PCPYTHON             "python"
+#define PCPFMG               "pfmg"
+#define PCSMG                "smg"
+#define PCSYSPFMG            "syspfmg"
+#define PCREDISTRIBUTE       "redistribute"
+#define PCSVD                "svd"
+#define PCGAMG               "gamg"
+#define PCCHOWILUVIENNACL    "chowiluviennacl"
+#define PCROWSCALINGVIENNACL "rowscalingviennacl"
+#define PCSAVIENNACL         "saviennacl"
+#define PCBDDC               "bddc"
+#define PCKACZMARZ           "kaczmarz"
+#define PCTELESCOPE          "telescope"
+#define PCPATCH              "patch"
+#define PCLMVM               "lmvm"
+#define PCHMG                "hmg"
+#define PCDEFLATION          "deflation"
+#define PCHPDDM              "hpddm"
+#define PCH2OPUS             "h2opus"
+#define PCMPI                "mpi

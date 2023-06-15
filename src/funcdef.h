@@ -39,7 +39,8 @@ int output_solution(DM,Field***,AppCtx*);
 
 //void neu_cooling_rate(Field ***, Field***, int, int, int);
 
-void prod_loss_rates(Field***, Field ***, int, int, int, int, int, int, double &Qeuv, double &Qphoto);
+void prod_loss_rates(Field***, Field ***, int, int, int, int, int, int, double &Qeuv, double &Qphoto,
+    double[], double[]);
 
 void solar_zenith(AppCtx*, PetscInt, PetscInt, PetscInt, PetscInt);
 
@@ -58,9 +59,10 @@ int print_auxiliary_hdf5(DM, Vec, Field ***, AppCtx *);
 
 double expon_integral(double z, int n);
 
-int rhsfunctions(TS ts, double ftime, Vec X, Vec F, void* ctx);
-int stifffunction(TS ts, double ftime, Vec X, Vec Xdt, Vec F, void* ctx);
-int jacobian(TS ts, double ftime, Vec X, Vec Xdt, double a, Mat Amat, Mat Pmat, void *ctx);
+int formfunctions(SNES, Vec, Vec, void* ctx);
+int functions(Field ***xx, Field ***xn, Field ***uu, int xs, int xm, int ys, int ym, 
+    int zs, int zm, AppCtx *params, Field ***ff);
+int jacobian(SNES snes, Vec X, Mat Amat, Mat Pmat, void *ctx);
 
 int boundary(DM da, Vec X, AppCtx *, int);
 void boundary_bc(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm, AppCtx *);
@@ -68,8 +70,14 @@ void efd_boundary_bc(Field ***uu, int xs, int xm, int ys, int ym, int zs, int zm
 void boundary_V_T(Field ***xx, int xs, int xm, int ys, int ym, int zs, int zm);
 
 int check_positivity(DM, Field ***xx);
-void const_normalize();
+void const_normalize(AppCtx *);
 void smooth_multi_dim_U(DM da, Vec U, int startIndex, int endIndex);
 void smooth_multi_dim_X(DM da, Vec U);
+
+#include "petscdm.h"
+#include "petscdmda.h"
+#include "petscts.h"
+
+int view_vector(Vec X, const char fname[]);
 
 //#endif  /* INC FUNCDEF */
