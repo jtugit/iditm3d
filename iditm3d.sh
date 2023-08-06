@@ -1,6 +1,6 @@
 #!/bin/bash
-mpiexec -n $1 ./iditm3d snes_type newtontr -ksp_type gmres -pc_type bjacobi -ksp_rtol 1.0e-8 \
--ksp_atol 1.0e-8 -snes_monitor -snes_rtol 1.0e-5 -snes_atol 1.0e-5 -snes_stol 1.0e-5 \
+mpiexec -n $1 ./iditm3d -snes_type newtontr -ksp_type gmres -pc_type bjacobi -ksp_rtol 1.0e-8 \
+-ksp_atol 1.0e-8 -snes_monitor -snes_rtol 1.0e-4 -snes_atol 1.0e-4 -snes_stol 1.0e-4 \
 -snes_converged_reason -ksp_converged_reason -ksp_monitor_true_residual
 #-snes_grid_sequence
 #-ts_type cn -ts_monitor -ts_adapt_monitor -ts_adapt_type none #-ksp_monitor_singular_value 

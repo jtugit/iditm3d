@@ -1,7 +1,7 @@
 #include "param.h"
 #include "operators.h"
 
-inline void E_gradPe(Field ***xx, Field ***uu, int i, int j, int k, int xi, int yj, int zk, double Ec_gradPe[]) 
+inline void E_gradPe(Field ***xx, Field ***uu, int i, int j, int k, int yj, int zk, double Ec_gradPe[]) 
 {
     double dTe_dr, dne_dr, dTe_dth, dne_dth, dTe_dph, dne_dph;
     double ne, Te, dpe_dr, dpe_dth, dpe_dph, inv_ene;
@@ -23,9 +23,9 @@ inline void E_gradPe(Field ***xx, Field ***uu, int i, int j, int k, int xi, int 
 
     //negative of electric field part due to electron pressure gradient in Cartesian coordinates
     inv_ene=1.0/(e*ne);
-    Ec_gradPe[0] =(J11[zk][yj]*dpe_dr+J21[zk][yj][xi]*dpe_dth+J31[zk][yj][xi]*dpe_dph)*inv_ene;
-    Ec_gradPe[1] =(J12[zk][yj]*dpe_dr+J22[zk][yj][xi]*dpe_dth+J32[zk][yj][xi]*dpe_dph)*inv_ene;
-    Ec_gradPe[2] =(J13[yj]*dpe_dr+J23[yj][xi]*dpe_dth)*inv_ene;
+    Ec_gradPe[0] =(K11[zk][yj]*dpe_dr+K12[zk][yj]*dpe_dth+K13[zk]*dpe_dph)*inv_ene;
+    Ec_gradPe[1] =(K21[zk][yj]*dpe_dr+K22[zk][yj]*dpe_dth+K23[zk]*dpe_dph)*inv_ene;
+    Ec_gradPe[2] =(K31[yj]*dpe_dr+K32[yj]*dpe_dth)*inv_ene;
 }
 
 /*-------------------------------------------------------------------------------------------------------

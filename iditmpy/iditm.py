@@ -1,4 +1,4 @@
-#!/usr/bin/python3.10
+#!/usr/bin/python3.11
 import os
 import tkinter as tk
 from tkinter import filedialog

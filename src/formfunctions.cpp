@@ -139,9 +139,9 @@ int formfunctions(SNES snes, Vec X, Vec F, void* ctx)
                                               -Ps[s+7]*exp(-xn[k][j][i].fx[s+20])+Ls[s+7]);
                 }
 
-                usr[0]=xx[k][j][i].fx[7]; usth[0]=xx[k][j][i].fx[10]; usph[0]=xx[k][j][i].fx[13];
-                usr[1]=xx[k][j][i].fx[8]; usth[1]=xx[k][j][i].fx[11]; usph[1]=xx[k][j][i].fx[14];
-                usr[2]=xx[k][j][i].fx[9]; usth[2]=xx[k][j][i].fx[12]; usph[2]=xx[k][j][i].fx[15];
+                usr[0]=xx[k][j][i].fx[7]; usth[0]=xx[k][j][i].fx[8]; usph[0]=xx[k][j][i].fx[9];
+                usr[1]=xx[k][j][i].fx[10]; usth[1]=xx[k][j][i].fx[11]; usph[1]=xx[k][j][i].fx[12];
+                usr[2]=xx[k][j][i].fx[13]; usth[2]=xx[k][j][i].fx[14]; usph[2]=xx[k][j][i].fx[15];
                 unr=xx[k][j][i].fx[27]; unth=xx[k][j][i].fx[28]; unph=xx[k][j][i].fx[29];
 
                 //ion bulk velocity
@@ -433,7 +433,7 @@ int formfunctions(SNES snes, Vec X, Vec F, void* ctx)
                                            +(uith_n-unth_n)*(uith_n-unth_n)
                                            +(uiph_n-unph_n)*(uiph_n-unph_n))
                                         +(uer*gradTe.r + ueth*gradTe.t + ueph*gradTe.p)
-                                        +two3rd*(Te_n*div_ue+(uu[k][j][i].fx[14]-Qeuv + Ce)/ne));
+                                        +two3rd*(Te_n*div_ue+(uu[k][j][i].fx[14] -Qeuv + Ce)/ne));
 
 //------------------ for neutrals
                 //-----------  un_r equation
@@ -541,21 +541,14 @@ int formfunctions(SNES snes, Vec X, Vec F, void* ctx)
                 //----------- electric field equation
                 ui[0]=uir; ui[1]=uith; ui[2]=uiph;
                 electric_field_vxB(xx, uu, ui, i, j, k, xi, yj, zk, Ec_VxB);
-                E_gradPe(xn, uu, i, j, k, xi, yj, zk, Ec_gradPe);
+                E_gradPe(xn, uu, i, j, k, yj, zk, Ec_gradPe);
 
-                ff[k][j][i].fx[34]= xx[k][j][i].fx[34] -xn[k][j][i].fx[34]
-                                   -( Jiv11[zk][yj]*(Ec_VxB[0]-Ec_gradPe[0])
-                                     +Jiv21[zk][yj]*(Ec_VxB[1]-Ec_gradPe[1])
-                                     +Jiv31[yj]*(Ec_VxB[2]-Ec_gradPe[2]));
+                double Ex = Ec_VxB[0]-Ec_gradPe[0], Ey = Ec_VxB[1]-Ec_gradPe[1], Ez = Ec_VxB[2]-Ec_gradPe[2];
+                ff[k][j][i].fx[34]= xx[k][j][i].fx[34]-(Jiv11[zk][yj]*Ex+Jiv21[zk][yj]*Ey+Jiv31[yj]*Ez);
 
-                ff[k][j][i].fx[35]= xx[k][j][i].fx[35]-xn[k][j][i].fx[35]
-                                   -( Jiv12[zk][yj][xi]*(Ec_VxB[0]-Ec_gradPe[0])
-                                     +Jiv22[zk][yj][xi]*(Ec_VxB[1]-Ec_gradPe[1])
-                                     +Jiv32[yj][xi]*(Ec_VxB[2]-Ec_gradPe[2]));
+                ff[k][j][i].fx[35]= xx[k][j][i].fx[35]-(Jiv12[zk][yj][xi]*Ex+Jiv22[zk][yj][xi]*Ey+Jiv32[yj][xi]*Ez);
 
-                ff[k][j][i].fx[36]= xx[k][j][i].fx[36]-xn[k][j][i].fx[36]
-                                   -( Jiv13[zk][yj][xi]*(Ec_VxB[0]-Ec_gradPe[0])
-                                     +Jiv23[zk][yj][xi]*(Ec_VxB[1]-Ec_gradPe[1]));
+                ff[k][j][i].fx[36]= xx[k][j][i].fx[36]-(Jiv13[zk][yj][xi]*Ex+Jiv23[zk][yj][xi]*Ey);
 
                 for (s=0; s<a4; s++) {
                     if (isnan(ff[k][j][i].fx[s]) || isinf(ff[k][j][i].fx[s])) {
@@ -568,22 +561,6 @@ int formfunctions(SNES snes, Vec X, Vec F, void* ctx)
         }
     }
 
-/*#include <iostream>
-#include <fstream>
-
-fstream fstr;
-    fstr.open("run0.log", fstream::out);
-
-    for (k = zs; k < zs+zm; k++) {
-        for (j = ys; j< ys+ym; j++) {
-            for (i = xs; i < xs+xm; i++) {
-                for (s=0; s< a4; s++) fstr<<k<<" "<<j<<" "<<i<<" "<<s
-                <<" "<<ff[k][j][i].fx[s]<<" "<<xx[k][j][i].fx[s]<<" "<<xn[k][j][i].fx[s]<<endl;
-            }
-        }
-    }
-    fstr.close();*/
-
     DMDAVecRestoreArray(da, localX, &xx);
     DMDAVecRestoreArray(da, localXn, &xn);
     DMDAVecRestoreArray(da, localU, &uu);
@@ -593,10 +570,6 @@ fstream fstr;
     DMRestoreLocalVector(da, &localU);
 
     DMDAVecRestoreArray(da, F, &ff);
-
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0) std::cout<<"------- OK --------------"<<endl;
 
     return 0;
 }

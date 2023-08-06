@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.26)
 project(iditm3d
     VERSION 0.1.0 
     DESCRIPTION "An Inductive Dynamic Ionosphere-Thermosphere Model"
